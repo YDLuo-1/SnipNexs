@@ -39,14 +39,14 @@ CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent)
             window->raise();
             window->activateWindow();
             mainWindow_.setCaptureStatus(
-                QStringLiteral("OCR 完成：%1，%2 ms，识别 %3 个字符。")
+                tr("OCR 完成：%1，%2 ms，识别 %3 个字符。")
                     .arg(languageTag)
                     .arg(elapsedMs)
                     .arg(text.size()));
         });
     connect(&ocrService_, &OcrService::failed, this, [this](const QString& message) {
         mainWindow_.setCaptureStatus(message);
-        mainWindow_.showNotification(QStringLiteral("OCR 失败"), message);
+        mainWindow_.showNotification(tr("OCR 失败"), message);
     });
 }
 
@@ -81,7 +81,7 @@ void CaptureController::captureAfterUiSettles()
         screen = QGuiApplication::primaryScreen();
     }
     if (screen == nullptr) {
-        reportFailure(QStringLiteral("未找到可用显示器。"));
+        reportFailure(tr("未找到可用显示器。"));
         return;
     }
 
@@ -89,7 +89,7 @@ void CaptureController::captureAfterUiSettles()
     timer.start();
     QPixmap screenshot = screen->grabWindow(0);
     if (screenshot.isNull()) {
-        reportFailure(QStringLiteral("屏幕捕获失败。请检查远程桌面或系统权限。"));
+        reportFailure(tr("屏幕捕获失败。请检查远程桌面或系统权限。"));
         return;
     }
 
@@ -114,7 +114,7 @@ void CaptureController::captureAfterUiSettles()
     overlay->show();
 
     mainWindow_.setCaptureStatus(
-        QStringLiteral("已捕获 %1，耗时 %2 ms。选区可移动并通过八个控制点缩放。")
+        tr("已捕获 %1，耗时 %2 ms。选区可移动并通过八个控制点缩放。")
             .arg(screen->name())
             .arg(timer.elapsed()));
 }
@@ -131,13 +131,13 @@ void CaptureController::recognizeImage(const QImage& image)
 {
     finishCapture(mainWindowWasVisible_);
     if (!ocrService_.recognize(image)) {
-        const QString message = QStringLiteral("已有 OCR 任务正在运行，请稍后再试。");
+        const QString message = tr("已有 OCR 任务正在运行，请稍后再试。");
         mainWindow_.setCaptureStatus(message);
-        mainWindow_.showNotification(QStringLiteral("OCR 忙碌"), message);
+        mainWindow_.showNotification(tr("OCR 忙碌"), message);
         return;
     }
     mainWindow_.setCaptureStatus(
-        QStringLiteral("正在本地识别 %1 × %2 像素图像……")
+        tr("正在本地识别 %1 × %2 像素图像……")
             .arg(image.width())
             .arg(image.height()));
 }
@@ -161,7 +161,7 @@ void CaptureController::pinImage(const QImage& image)
     pin->show();
 
     mainWindow_.setCaptureStatus(
-        QStringLiteral("已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。")
+        tr("已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。")
             .arg(image.width())
             .arg(image.height()));
     finishCapture(false);
@@ -171,12 +171,12 @@ void CaptureController::copyImage(const QImage& image)
 {
     QGuiApplication::clipboard()->setImage(image);
     mainWindow_.setCaptureStatus(
-        QStringLiteral("已复制 %1 × %2 像素截图到剪贴板。")
+        tr("已复制 %1 × %2 像素截图到剪贴板。")
             .arg(image.width())
             .arg(image.height()));
     mainWindow_.showNotification(
-        QStringLiteral("截图已复制"),
-        QStringLiteral("%1 × %2 像素").arg(image.width()).arg(image.height()));
+        tr("截图已复制"),
+        tr("%1 × %2 像素").arg(image.width()).arg(image.height()));
     finishCapture(false);
 }
 
@@ -192,9 +192,9 @@ void CaptureController::saveImage(const QImage& image)
     const QString initialPath = QDir(pictures).filePath(suggestedName);
     const QString fileName = QFileDialog::getSaveFileName(
         nullptr,
-        QStringLiteral("保存截图"),
+        tr("保存截图"),
         initialPath,
-        QStringLiteral("PNG 图片 (*.png);;JPEG 图片 (*.jpg *.jpeg);;BMP 图片 (*.bmp)"));
+        tr("PNG 图片 (*.png);;JPEG 图片 (*.jpg *.jpeg);;BMP 图片 (*.bmp)"));
 
     if (fileName.isEmpty()) {
         if (overlay_ != nullptr) {
@@ -205,16 +205,16 @@ void CaptureController::saveImage(const QImage& image)
     }
 
     if (!image.save(fileName)) {
-        reportFailure(QStringLiteral("无法保存截图：%1").arg(QDir::toNativeSeparators(fileName)));
+        reportFailure(tr("无法保存截图：%1").arg(QDir::toNativeSeparators(fileName)));
         return;
     }
 
     mainWindow_.setCaptureStatus(
-        QStringLiteral("已保存 %1 × %2 像素截图：%3")
+        tr("已保存 %1 × %2 像素截图：%3")
             .arg(image.width())
             .arg(image.height())
             .arg(QDir::toNativeSeparators(fileName)));
-    mainWindow_.showNotification(QStringLiteral("截图已保存"), QDir::toNativeSeparators(fileName));
+    mainWindow_.showNotification(tr("截图已保存"), QDir::toNativeSeparators(fileName));
     finishCapture(false);
 }
 
@@ -232,7 +232,7 @@ void CaptureController::finishCapture(bool restoreMainWindow)
 void CaptureController::reportFailure(const QString& message)
 {
     mainWindow_.setCaptureStatus(message);
-    mainWindow_.showNotification(QStringLiteral("截图失败"), message);
+    mainWindow_.showNotification(tr("截图失败"), message);
     finishCapture(mainWindowWasVisible_);
 }
 

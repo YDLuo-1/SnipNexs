@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class QCloseEvent;
+class QEvent;
 class QLabel;
 class QPushButton;
 class QShowEvent;
@@ -25,10 +26,12 @@ signals:
     void stopRequested();
 
 protected:
+    void changeEvent(QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
 
 private:
+    void retranslateUi();
     void updateElapsed();
 
     QLabel* stateLabel_ = nullptr;

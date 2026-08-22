@@ -2,7 +2,7 @@
 
 | 依赖 | 当前用途 | 链接方式 | 许可证注意事项 |
 |---|---|---|---|
-| Qt 6.8.3 Core/Gui/Widgets/Network | UI、事件循环、单实例通信、屏幕采集、标注与贴图 | 动态链接 | LGPL-3.0-only；随包发布许可文本并允许替换 DLL |
+| Qt 6.8.3 Core/Gui/Widgets/Network/LinguistTools | UI、事件循环、单实例通信、屏幕采集、标注、贴图与中英翻译资源生成 | 运行库动态链接；LinguistTools 仅构建时使用 | LGPL-3.0-only；随包发布许可文本并允许替换 DLL |
 | Windows SDK / User32 | Windows 10 API、全局快捷键 | 系统组件 | 随 MSVC/Windows SDK 条款 |
 | Windows.Media.Ocr / C++/WinRT | 本地 OCR；语言模型由 Windows 语言包提供 | 系统 API、`windowsapp.lib` | 不随 SnipNexs 分发 OCR 模型或第三方 OCR DLL |
 | Windows.Graphics.Capture / D3D11 | 显示器 GPU 捕获、区域纹理复制、鼠标指针捕获 | 系统 API、`d3d11.lib` | Windows 10 2004 已支持；不分发捕获运行时 |

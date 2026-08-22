@@ -16,7 +16,7 @@ app
  └─ recorder ─ Windows.Graphics.Capture + D3D11 + Windows.Media
 ```
 
-- `app`：生命周期、单实例、托盘、快捷键和窗口协调。
+- `app`：生命周期、单实例、托盘、快捷键、语言切换和窗口协调。
 - `capture`：屏幕/窗口/区域采集及捕获会话状态。
 - `editor`：选区、绘制命令、撤销重做与导出。
 - `pin`：贴图窗口及其交互，不复制编辑器内部状态。
@@ -30,6 +30,7 @@ app
 ## 当前实现（0.5.0）
 
 - `app/MainWindow` 只负责主窗口、托盘和状态展示，通过 `captureRequested` 信号请求截图。
+- 界面以中文源码文案为默认语言，英文由内嵌 Qt `.qm` 资源提供；`QSettings` 只保存 `zh_CN` 或 `en`，不增加自定义国际化框架。
 - `capture/CaptureController` 协调窗口隐藏、显示器采集、剪贴板和文件保存。
 - `capture/CaptureOverlay` 负责选区状态、标注交互与轻量绘制；原始 `QPixmap` 保持隐式共享，用户确认后才转换和裁剪为 `QImage`。
 - `editor/AnnotationDocument` 保存画笔、矩形和箭头数据及撤销游标；复制、保存或贴图时才合成标注。

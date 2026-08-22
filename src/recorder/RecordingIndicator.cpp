@@ -1,6 +1,7 @@
 #include "RecordingIndicator.h"
 
 #include <QCloseEvent>
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -17,14 +18,13 @@ RecordingIndicator::RecordingIndicator(QWidget* parent)
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_DeleteOnClose);
     setAttribute(Qt::WA_QuitOnClose, false);
-    setWindowTitle(QStringLiteral("SnipNexs Recording"));
 
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins(14, 10, 10, 10);
     layout->setSpacing(10);
-    stateLabel_ = new QLabel(QStringLiteral("● 正在启动"), this);
+    stateLabel_ = new QLabel(this);
     elapsedLabel_ = new QLabel(QStringLiteral("00:00"), this);
-    stopButton_ = new QPushButton(QStringLiteral("停止录制"), this);
+    stopButton_ = new QPushButton(this);
     stopButton_->setObjectName(QStringLiteral("stopButton"));
     layout->addWidget(stateLabel_);
     layout->addWidget(elapsedLabel_);
@@ -45,6 +45,7 @@ RecordingIndicator::RecordingIndicator(QWidget* parent)
         setStopping();
         emit stopRequested();
     });
+    retranslateUi();
     adjustSize();
 }
 
@@ -53,9 +54,9 @@ void RecordingIndicator::setRecordingReady()
     if (stopping_) {
         return;
     }
-    stateLabel_->setText(QStringLiteral("● 录制中"));
     elapsed_.start();
     timer_->start();
+    retranslateUi();
 }
 
 void RecordingIndicator::setStopping()
@@ -64,15 +65,23 @@ void RecordingIndicator::setStopping()
         return;
     }
     stopping_ = true;
-    stateLabel_->setText(QStringLiteral("正在完成 MP4…"));
     stopButton_->setEnabled(false);
     timer_->stop();
+    retranslateUi();
 }
 
 void RecordingIndicator::finish()
 {
     recording_ = false;
     close();
+}
+
+void RecordingIndicator::changeEvent(QEvent* event)
+{
+    QWidget::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
 }
 
 void RecordingIndicator::closeEvent(QCloseEvent* event)
@@ -91,6 +100,20 @@ void RecordingIndicator::showEvent(QShowEvent* event)
     QWidget::showEvent(event);
     const auto windowHandle = reinterpret_cast<HWND>(winId());
     SetWindowDisplayAffinity(windowHandle, WDA_EXCLUDEFROMCAPTURE);
+}
+
+void RecordingIndicator::retranslateUi()
+{
+    setWindowTitle(tr("SnipNexs Recording"));
+    stopButton_->setText(tr("停止录制"));
+    if (stopping_) {
+        stateLabel_->setText(tr("正在完成 MP4…"));
+    } else if (elapsed_.isValid()) {
+        stateLabel_->setText(tr("● 录制中"));
+    } else {
+        stateLabel_->setText(tr("● 正在启动"));
+    }
+    adjustSize();
 }
 
 void RecordingIndicator::updateElapsed()

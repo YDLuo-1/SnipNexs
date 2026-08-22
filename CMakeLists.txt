@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network LinguistTools)
 
 qt_add_executable(SnipNexs WIN32
     src/main.cpp
@@ -70,6 +70,11 @@ target_compile_definitions(SnipNexs PRIVATE
     WINVER=0x0A00
     _WIN32_WINNT=0x0A00
     SNIPNEXS_VERSION="${PROJECT_VERSION}"
+)
+
+qt_add_translations(SnipNexs
+    TS_FILES translations/snipnexs_en.ts
+    RESOURCE_PREFIX /i18n
 )
 
 if(MSVC)
