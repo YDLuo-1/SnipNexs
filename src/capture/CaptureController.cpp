@@ -6,10 +6,12 @@
 #include "pin/PinWindow.h"
 
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QCursor>
 #include <QDateTime>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFileDialog>
 #include <QGuiApplication>
 #include <QImage>
@@ -18,6 +20,8 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QtGui/qscreen_platform.h>
+
+#include <dwmapi.h>
 
 #include <algorithm>
 #include <utility>
@@ -60,12 +64,18 @@ void CaptureController::startCapture()
     capturePending_ = true;
     mainWindowWasVisible_ = mainWindow_.isVisible();
     mainWindow_.hide();
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    QGuiApplication::sync();
     QTimer::singleShot(120, this, &CaptureController::captureAfterUiSettles);
 }
 
 void CaptureController::captureAfterUiSettles()
 {
     capturePending_ = false;
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    QGuiApplication::sync();
+    DwmFlush();
+
     QScreen* screen = QGuiApplication::screenAt(QCursor::pos());
     if (screen == nullptr) {
         screen = QGuiApplication::primaryScreen();
@@ -104,7 +114,7 @@ void CaptureController::captureAfterUiSettles()
     overlay->show();
 
     mainWindow_.setCaptureStatus(
-        QStringLiteral("已捕获 %1，耗时 %2 ms。拖出选区后复制或保存。")
+        QStringLiteral("已捕获 %1，耗时 %2 ms。选区可移动并通过八个控制点缩放。")
             .arg(screen->name())
             .arg(timer.elapsed()));
 }

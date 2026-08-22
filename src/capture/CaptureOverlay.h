@@ -46,21 +46,46 @@ protected:
     void showEvent(QShowEvent* event) override;
 
 private:
+    enum class Interaction {
+        None,
+        Create,
+        Move,
+        Resize,
+    };
+
+    enum class ResizeHandle {
+        None,
+        TopLeft,
+        Top,
+        TopRight,
+        Right,
+        BottomRight,
+        Bottom,
+        BottomLeft,
+        Left,
+    };
+
     void acceptCopy();
     void acceptOcr();
     void acceptPin();
     void acceptRecord();
     void acceptSave();
+    [[nodiscard]] QRect handleRect(ResizeHandle handle) const;
+    [[nodiscard]] ResizeHandle resizeHandleAt(const QPoint& point) const;
+    [[nodiscard]] bool selectionGeometryEditable() const;
     void positionToolbar();
+    void updateCursorForPosition(const QPoint& point);
     void updateEditorActions();
-    void updateSelection(const QPoint& point);
+    void updateInteraction(const QPoint& point);
 
     QPixmap screenshot_;
     QPixmap dimmedScreenshot_;
     QRect selection_;
-    QPoint dragOrigin_;
+    QRect interactionStartSelection_;
+    QPoint interactionOrigin_;
     qreal devicePixelRatio_ = 1.0;
-    bool dragging_ = false;
+    Interaction interaction_ = Interaction::None;
+    ResizeHandle activeResizeHandle_ = ResizeHandle::None;
     bool annotationDrawing_ = false;
     AnnotationTool annotationTool_ = AnnotationTool::None;
     AnnotationDocument annotations_;
