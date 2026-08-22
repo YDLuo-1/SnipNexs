@@ -32,6 +32,18 @@ void MainWindow::showAndActivate()
     activateWindow();
 }
 
+void MainWindow::setCaptureStatus(const QString& text)
+{
+    statusLabel_->setText(text);
+}
+
+void MainWindow::showNotification(const QString& title, const QString& message)
+{
+    if (trayIcon_ != nullptr && trayIcon_->isVisible()) {
+        trayIcon_->showMessage(title, message, QSystemTrayIcon::Information, 2500);
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (trayIcon_ != nullptr && trayIcon_->isVisible()) {
@@ -69,24 +81,24 @@ void MainWindow::setupUi()
     cardLayout->setContentsMargins(24, 22, 24, 22);
     cardLayout->setSpacing(10);
 
-    auto* stage = new QLabel(QStringLiteral("阶段 1 · 基础运行框架"), card);
+    auto* stage = new QLabel(QStringLiteral("阶段 2 · Windows 区域截图"), card);
     stage->setObjectName(QStringLiteral("stage"));
-    auto* status = new QLabel(
-        QStringLiteral("单实例唤醒、系统托盘与独立部署已就绪。\n"
-                       "下一阶段将接入 Windows 10 屏幕区域截图闭环。"),
+    statusLabel_ = new QLabel(
+        QStringLiteral("按 Ctrl+Shift+A，或点击下方按钮开始截图。\n"
+                       "拖出选区后可复制到剪贴板或保存为图片。"),
         card);
-    status->setWordWrap(true);
+    statusLabel_->setWordWrap(true);
     cardLayout->addWidget(stage);
-    cardLayout->addWidget(status);
+    cardLayout->addWidget(statusLabel_);
 
     auto* actions = new QHBoxLayout();
     actions->addStretch();
     auto* hideButton = new QPushButton(QStringLiteral("最小化到托盘"), central);
     hideButton->setObjectName(QStringLiteral("secondaryButton"));
-    auto* quitButton = new QPushButton(QStringLiteral("退出"), central);
-    quitButton->setObjectName(QStringLiteral("primaryButton"));
+    auto* captureButton = new QPushButton(QStringLiteral("区域截图  Ctrl+Shift+A"), central);
+    captureButton->setObjectName(QStringLiteral("primaryButton"));
     actions->addWidget(hideButton);
-    actions->addWidget(quitButton);
+    actions->addWidget(captureButton);
 
     root->addWidget(title);
     root->addWidget(subtitle);
@@ -96,10 +108,11 @@ void MainWindow::setupUi()
     setCentralWidget(central);
 
     connect(hideButton, &QPushButton::clicked, this, &QWidget::hide);
-    connect(quitButton, &QPushButton::clicked, qApp, &QApplication::quit);
+    connect(captureButton, &QPushButton::clicked, this, &MainWindow::captureRequested);
 
     setStyleSheet(QStringLiteral(R"(
         QMainWindow, QWidget { background: #11161d; color: #e8edf2; }
+        QLabel { background: transparent; }
         QLabel#title { font-size: 34px; font-weight: 700; color: #ffffff; }
         QLabel#subtitle { font-size: 15px; color: #93a1af; }
         QFrame#card { background: #19212b; border: 1px solid #283440; border-radius: 12px; }
@@ -124,6 +137,8 @@ void MainWindow::setupTray()
     trayIcon_->setToolTip(QStringLiteral("SnipNexs"));
 
     auto* menu = new QMenu(this);
+    menu->addAction(QStringLiteral("区域截图\tCtrl+Shift+A"), this, &MainWindow::captureRequested);
+    menu->addSeparator();
     menu->addAction(QStringLiteral("打开 SnipNexs"), this, &MainWindow::showAndActivate);
     menu->addSeparator();
     menu->addAction(QStringLiteral("退出"), qApp, &QApplication::quit);

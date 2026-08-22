@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "A lightweight and extensible screenshot toolkit for Windows"
     LANGUAGES CXX
 )
@@ -19,7 +19,16 @@ qt_add_executable(SnipNexs WIN32
     src/app/AppIcon.h
     src/app/MainWindow.cpp
     src/app/MainWindow.h
+    src/capture/CaptureController.cpp
+    src/capture/CaptureController.h
+    src/capture/CaptureGeometry.h
+    src/capture/CaptureOverlay.cpp
+    src/capture/CaptureOverlay.h
+    src/platform/windows/GlobalHotkey.cpp
+    src/platform/windows/GlobalHotkey.h
 )
+
+target_include_directories(SnipNexs PRIVATE src)
 
 target_link_libraries(SnipNexs PRIVATE
     Qt6::Core
@@ -31,6 +40,7 @@ target_link_libraries(SnipNexs PRIVATE
 target_compile_definitions(SnipNexs PRIVATE
     UNICODE
     _UNICODE
+    NOMINMAX
     WINVER=0x0A00
     _WIN32_WINNT=0x0A00
     SNIPNEXS_VERSION="${PROJECT_VERSION}"
@@ -44,6 +54,12 @@ include(GNUInstallDirs)
 install(TARGETS SnipNexs
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+install(FILES
+    LICENSE
+    THIRD_PARTY_NOTICES.md
+    DESTINATION .
+)
+install(FILES licenses/LGPL-3.0-only.txt DESTINATION licenses)
 
 qt_generate_deploy_app_script(
     TARGET SnipNexs
@@ -62,10 +78,39 @@ install(SCRIPT ${deploy_script})
 
 include(CTest)
 if(BUILD_TESTING)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS Test)
+
     add_test(NAME SnipNexsSelfTest COMMAND SnipNexs --self-test)
     set_tests_properties(SnipNexsSelfTest PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
         PASS_REGULAR_EXPRESSION "self-test: ok"
+    )
+
+    add_executable(CaptureGeometryTests tests/CaptureGeometryTests.cpp)
+    target_include_directories(CaptureGeometryTests PRIVATE src)
+    target_link_libraries(CaptureGeometryTests PRIVATE Qt6::Core)
+    add_test(NAME CaptureGeometryTests COMMAND CaptureGeometryTests)
+    set_tests_properties(CaptureGeometryTests PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(CaptureOverlayTests
+        tests/CaptureOverlayTests.cpp
+        src/capture/CaptureOverlay.cpp
+        src/capture/CaptureOverlay.h
+        src/capture/CaptureGeometry.h
+    )
+    target_include_directories(CaptureOverlayTests PRIVATE src)
+    target_link_libraries(CaptureOverlayTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Test
+    )
+    add_test(NAME CaptureOverlayTests COMMAND CaptureOverlayTests)
+    set_tests_properties(CaptureOverlayTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 endif()

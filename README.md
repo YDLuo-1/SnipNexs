@@ -1,26 +1,37 @@
 # SnipNexs
 
-SnipNexs 是面向 Windows 10/11 的轻量截图工具，使用 C++20 与 Qt 6 Widgets 开发。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-当前版本：`0.1.0`（阶段 1）。已具备可运行主窗口、系统托盘、单实例唤醒、命令行自检和独立部署能力。截图、标注、贴图、OCR、翻译与录屏将按阶段加入。
+SnipNexs is a lightweight screenshot toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-## 设计目标
+Current version: `0.2.0` (Stage 2). It includes a runnable main window, system tray integration, single-instance activation, region capture, copy/save actions, and standalone deployment. Annotation, image pinning, OCR, translation, and recording will be added in later stages.
 
-- 轻量：不使用 QML、WebEngine 或 Chromium；未被实际功能需要的库不进入依赖。
-- 高性能：图像数据尽量共享，耗时工作不阻塞 UI 线程，后续用测量结果决定是否引入原生加速。
-- 可扩展：按业务能力分模块；只在 OCR、翻译、编码器等确实存在多实现的边界使用接口。
-- Windows 10：最低目标为 Windows 10 2004（x64），主要验证环境为 Windows 10 22H2 与 Windows 11。
+## Usage
 
-## 构建
+- Press `Ctrl+Shift+A`, or click **Region Capture** in the main window.
+- Drag a region on the monitor under the mouse pointer.
+- Press `Enter` or double-click the selection to copy it, or use the **Copy** and **Save** buttons next to the selection.
+- Press `Esc` or right-click to cancel.
 
-要求：
+## Design goals
 
-- Visual Studio 2022 C++ 工具链
+- Lightweight: no QML, WebEngine, or Chromium; a dependency is added only when a delivered feature requires it.
+- Fast: image data is shared where possible, expensive work stays off the UI thread, and native acceleration is introduced only after measurement.
+- Extensible: code is separated by capability; interfaces are used only at boundaries that genuinely need multiple implementations, such as OCR, translation, or encoders.
+- Windows 10: the minimum target is Windows 10 2004 (x64); primary validation targets are Windows 10 22H2 and Windows 11.
+
+See [Architecture](docs/architecture.md) and [Dependencies and licenses](docs/dependencies.md) for the current technical boundaries.
+
+## Build
+
+Requirements:
+
+- Visual Studio 2022 C++ toolchain
 - CMake 3.25+
 - Ninja
-- Qt 6.8.x MSVC 2022 x64（动态库版本）
+- Qt 6.8.x for MSVC 2022 x64, shared-library build
 
-PowerShell：
+PowerShell, from an x64 Visual Studio developer environment:
 
 ```powershell
 $env:SNIPNEXS_QT_DIR = 'C:\Qt\6.8.3\msvc2022_64'
@@ -31,8 +42,10 @@ $installRoot = Join-Path $PWD 'dist\SnipNexs'
 cmake --install build/release --prefix $installRoot
 ```
 
-部署后的程序位于 `dist/SnipNexs/bin/SnipNexs.exe`。
+The deployed executable is `dist/SnipNexs/bin/SnipNexs.exe`.
 
-## 许可证
+## License
 
-SnipNexs 采用 [GNU GPL v3.0 or later](LICENSE)。Qt 以动态链接方式使用，遵循 Qt LGPL 的相关要求；发布包不得移除 Qt 的许可文本，且必须允许用户替换 Qt 动态库。
+SnipNexs is licensed under the [GNU GPL v3.0 or later](LICENSE). Qt is dynamically linked under its LGPL terms. Distributed packages must retain the applicable Qt license notices and allow users to replace the Qt DLLs.
+
+See [Third-party notices](THIRD_PARTY_NOTICES.md) for exact deployed components and license sources.
