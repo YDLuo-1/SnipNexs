@@ -29,6 +29,7 @@ public:
 
 signals:
     void copyRequested(const QImage& image);
+    void ocrRequested(const QImage& image);
     void saveRequested(const QImage& image);
     void pinRequested(const QImage& image);
     void canceled();
@@ -44,6 +45,7 @@ protected:
 
 private:
     void acceptCopy();
+    void acceptOcr();
     void acceptPin();
     void acceptSave();
     void positionToolbar();

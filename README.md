@@ -4,13 +4,15 @@
 
 SnipNexs is a lightweight screenshot toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.3.0` (Stage 3). It includes a runnable main window, system tray integration, single-instance activation, region capture, lightweight annotation, image pinning, copy/save actions, and standalone deployment. OCR, translation, and recording will be added in later stages.
+Current version: `0.4.0` (Stage 4). It includes a runnable main window, system tray integration, single-instance activation, region capture, lightweight annotation, image pinning, local Windows OCR, explicit browser translation, copy/save actions, and standalone deployment. Recording will be added in a later stage.
 
 ## Usage
 
 - Press `Ctrl+Shift+A`, or click **Region Capture** in the main window.
 - Drag a region on the monitor under the mouse pointer.
 - Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
+- Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
+- The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.
 - Press `Enter` or double-click the selection to copy it, or use **Pin**, **Copy**, and **Save** next to the selection.
 - Pinned images stay on top: drag to move, use the mouse wheel to resize, and right-click to close.
 - Press `Esc` or right-click to cancel.
@@ -18,7 +20,8 @@ Current version: `0.3.0` (Stage 3). It includes a runnable main window, system t
 ## Privacy
 
 - Screen pixels stay in local process memory unless you explicitly choose **Copy**, **Save**, or **Pin**.
-- The current version has no telemetry and does not upload screenshots or annotation data.
+- The current version has no telemetry. OCR is local and never uploads screenshots or annotation data.
+- Browser translation is opt-in: after confirmation, at most 4,000 recognized characters are placed in a `translate.google.com` URL. No image is transmitted.
 - Generated `SnipNexs-*` images and common capture directories are ignored by Git. Every stage is also audited for staged images, binaries, local paths, and likely secrets before push.
 
 ## Design goals
@@ -28,13 +31,13 @@ Current version: `0.3.0` (Stage 3). It includes a runnable main window, system t
 - Extensible: code is separated by capability; interfaces are used only at boundaries that genuinely need multiple implementations, such as OCR, translation, or encoders.
 - Windows 10: the minimum target is Windows 10 2004 (x64); primary validation targets are Windows 10 22H2 and Windows 11.
 
-See [Architecture](docs/architecture.md) and [Dependencies and licenses](docs/dependencies.md) for the current technical boundaries.
+See [Architecture](docs/architecture.md), [Dependencies and licenses](docs/dependencies.md), and the pinned [source review](docs/source-review.md) for the current technical boundaries.
 
 ## Build
 
 Requirements:
 
-- Visual Studio 2022 C++ toolchain
+- Visual Studio 2022 C++ toolchain with Windows SDK `10.0.22621.0` or newer (C++/WinRT included)
 - CMake 3.25+
 - Ninja
 - Qt 6.8.x for MSVC 2022 x64, shared-library build
