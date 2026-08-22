@@ -36,6 +36,10 @@ Current version: `0.5.0` (Stage 5). It includes a runnable main window, system t
 
 See [Architecture](docs/architecture.md), [Dependencies and licenses](docs/dependencies.md), and the pinned [source review](docs/source-review.md) for the current technical boundaries.
 
+## AI-assisted development
+
+Generative AI tools assisted with parts of the requirements analysis, design, documentation, code, and testing. AI output is not a substitute for human review, security assessment, or license checks. See the [AI-assisted development notice](docs/ai-assisted-development.md) for responsibilities and privacy precautions.
+
 ## Recording implementation notes
 
 - Capture: `Windows.Graphics.Capture`, supported by the project minimum of Windows 10 2004.
