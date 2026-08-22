@@ -36,6 +36,10 @@ SnipNexs 是面向 Windows 10/11 的轻量截图与录屏工具，使用 C++20 �
 
 当前技术边界见[架构说明](docs/architecture.md)、[依赖与许可](docs/dependencies.md)和固定提交号的[同类源码核对](docs/source-review.md)。
 
+## AI 辅助开发
+
+本项目在部分需求分析、设计、文档、代码和测试工作中使用了生成式 AI 辅助。AI 输出不能替代人工审查、安全评估或许可证核对；相关责任与隐私注意事项见 [AI 辅助开发声明](docs/ai-assisted-development.md)。
+
 ## 录屏实现说明
 
 - 捕获：`Windows.Graphics.Capture`，项目最低支持的 Windows 10 2004 已包含该能力。
