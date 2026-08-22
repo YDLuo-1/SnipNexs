@@ -5,6 +5,12 @@
 /build-*/
 /dist/
 /aqtinstall.log
+/captures/
+/screenshots/
+SnipNexs-*.png
+SnipNexs-*.jpg
+SnipNexs-*.jpeg
+SnipNexs-*.bmp
 
 CMakeUserPresets.json
 *.user
