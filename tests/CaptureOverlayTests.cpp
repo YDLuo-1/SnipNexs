@@ -50,6 +50,25 @@ int main(int argc, char* argv[])
         ok &= copied.size() == QSize(100, 60);
     }
 
+    snipnexs::CaptureOverlay annotationOverlay(pixmap);
+    annotationOverlay.resize(200, 150);
+    annotationOverlay.setSelection(QRect(20, 20, 80, 60));
+    annotationOverlay.setAnnotationTool(snipnexs::AnnotationTool::Rectangle);
+    annotationOverlay.show();
+    annotationOverlay.activateWindow();
+    QApplication::processEvents();
+
+    QTest::mousePress(&annotationOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(25, 25));
+    QTest::mouseMove(&annotationOverlay, QPoint(70, 50));
+    QTest::mouseRelease(&annotationOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(70, 50));
+    const QImage annotated = annotationOverlay.selectedImage();
+    ok &= annotated.size() == QSize(160, 120);
+    ok &= annotated.pixelColor(10, 10).red() > 200;
+
+    QTest::keyClick(&annotationOverlay, Qt::Key_Z, Qt::ControlModifier);
+    const QImage undone = annotationOverlay.selectedImage();
+    ok &= undone.pixelColor(10, 10) == QColor(160, 120, 80);
+
     QTextStream(stdout) << (ok ? "capture overlay: ok\n" : "capture overlay: failed\n");
     return ok ? 0 : 1;
 }

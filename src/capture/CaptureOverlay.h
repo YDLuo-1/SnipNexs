@@ -4,11 +4,15 @@
 #include <QPixmap>
 #include <QWidget>
 
+#include "editor/AnnotationDocument.h"
+
+class QButtonGroup;
 class QFrame;
 class QLabel;
 class QKeyEvent;
 class QMouseEvent;
 class QPaintEvent;
+class QPushButton;
 class QShowEvent;
 
 namespace snipnexs {
@@ -20,11 +24,13 @@ class CaptureOverlay final : public QWidget
 public:
     explicit CaptureOverlay(QPixmap screenshot, QWidget* parent = nullptr);
     void setSelection(const QRect& selection);
+    void setAnnotationTool(AnnotationTool tool);
     [[nodiscard]] QImage selectedImage() const;
 
 signals:
     void copyRequested(const QImage& image);
     void saveRequested(const QImage& image);
+    void pinRequested(const QImage& image);
     void canceled();
 
 protected:
@@ -38,8 +44,10 @@ protected:
 
 private:
     void acceptCopy();
+    void acceptPin();
     void acceptSave();
     void positionToolbar();
+    void updateEditorActions();
     void updateSelection(const QPoint& point);
 
     QPixmap screenshot_;
@@ -48,8 +56,14 @@ private:
     QPoint dragOrigin_;
     qreal devicePixelRatio_ = 1.0;
     bool dragging_ = false;
+    bool annotationDrawing_ = false;
+    AnnotationTool annotationTool_ = AnnotationTool::None;
+    AnnotationDocument annotations_;
     QFrame* toolbar_ = nullptr;
     QLabel* sizeLabel_ = nullptr;
+    QButtonGroup* toolButtons_ = nullptr;
+    QPushButton* undoButton_ = nullptr;
+    QPushButton* redoButton_ = nullptr;
 };
 
 } // namespace snipnexs

@@ -27,11 +27,13 @@ app
 
 目录在功能落地时才创建；不会为路线图中的假想实现预建空类。
 
-## 当前实现（0.2.0）
+## 当前实现（0.3.0）
 
 - `app/MainWindow` 只负责主窗口、托盘和状态展示，通过 `captureRequested` 信号请求截图。
 - `capture/CaptureController` 协调窗口隐藏、显示器采集、剪贴板和文件保存。
-- `capture/CaptureOverlay` 负责选区状态与轻量绘制；原始 `QPixmap` 保持隐式共享，用户确认后才转换和裁剪为 `QImage`。
+- `capture/CaptureOverlay` 负责选区状态、标注交互与轻量绘制；原始 `QPixmap` 保持隐式共享，用户确认后才转换和裁剪为 `QImage`。
+- `editor/AnnotationDocument` 保存画笔、矩形和箭头数据及撤销游标；复制、保存或贴图时才合成标注。
+- `pin/PinWindow` 是仅持有一份隐式共享 `QPixmap` 的置顶窗口，支持移动和有界缩放。
 - `platform/windows/GlobalHotkey` 是唯一的 Win32 快捷键边界，使用 `RegisterHotKey`，未引入第三方热键库。
 - 当前选区限定在鼠标所在显示器，已处理显示缩放比例；跨显示器单次选区尚未实现。
 
