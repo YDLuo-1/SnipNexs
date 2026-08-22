@@ -26,12 +26,14 @@ public:
     void setSelection(const QRect& selection);
     void setAnnotationTool(AnnotationTool tool);
     [[nodiscard]] QImage selectedImage() const;
+    [[nodiscard]] QRect selectedPixelRect() const;
 
 signals:
     void copyRequested(const QImage& image);
     void ocrRequested(const QImage& image);
     void saveRequested(const QImage& image);
     void pinRequested(const QImage& image);
+    void recordRequested(const QRect& pixelRect);
     void canceled();
 
 protected:
@@ -47,6 +49,7 @@ private:
     void acceptCopy();
     void acceptOcr();
     void acceptPin();
+    void acceptRecord();
     void acceptSave();
     void positionToolbar();
     void updateEditorActions();

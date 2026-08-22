@@ -50,6 +50,8 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     auto* ocrButton = new QPushButton(QStringLiteral("识字"), toolbar_);
     ocrButton->setObjectName(QStringLiteral("ocrButton"));
     auto* pinButton = new QPushButton(QStringLiteral("贴图"), toolbar_);
+    auto* recordButton = new QPushButton(QStringLiteral("录屏"), toolbar_);
+    recordButton->setObjectName(QStringLiteral("recordButton"));
     auto* copyButton = new QPushButton(QStringLiteral("复制"), toolbar_);
     auto* saveButton = new QPushButton(QStringLiteral("保存"), toolbar_);
     auto* cancelButton = new QPushButton(QStringLiteral("取消"), toolbar_);
@@ -70,6 +72,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     layout->addWidget(redoButton_);
     layout->addWidget(ocrButton);
     layout->addWidget(pinButton);
+    layout->addWidget(recordButton);
     layout->addWidget(copyButton);
     layout->addWidget(saveButton);
     layout->addWidget(cancelButton);
@@ -89,6 +92,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
     connect(ocrButton, &QPushButton::clicked, this, &CaptureOverlay::acceptOcr);
     connect(pinButton, &QPushButton::clicked, this, &CaptureOverlay::acceptPin);
+    connect(recordButton, &QPushButton::clicked, this, &CaptureOverlay::acceptRecord);
     connect(saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
     connect(cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
     connect(toolButtons_, &QButtonGroup::idClicked, this, [this](int id) {
@@ -314,6 +318,11 @@ QImage CaptureOverlay::selectedImage() const
     return image;
 }
 
+QRect CaptureOverlay::selectedPixelRect() const
+{
+    return logicalToPixelRect(selection_, devicePixelRatio_, screenshot_.size());
+}
+
 void CaptureOverlay::acceptCopy()
 {
     const QImage image = selectedImage();
@@ -335,6 +344,14 @@ void CaptureOverlay::acceptPin()
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit pinRequested(image);
+    }
+}
+
+void CaptureOverlay::acceptRecord()
+{
+    const QRect pixelRect = selectedPixelRect();
+    if (pixelRect.isValid()) {
+        emit recordRequested(pixelRect);
     }
 }
 

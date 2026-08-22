@@ -82,6 +82,17 @@ int main(int argc, char* argv[])
         }
     }
 
+    QSignalSpy recordSpy(&annotationOverlay, &snipnexs::CaptureOverlay::recordRequested);
+    auto* recordButton = annotationOverlay.findChild<QPushButton*>(QStringLiteral("recordButton"));
+    ok &= recordButton != nullptr;
+    if (recordButton != nullptr) {
+        QTest::mouseClick(recordButton, Qt::LeftButton);
+        ok &= recordSpy.count() == 1;
+        if (recordSpy.count() == 1) {
+            ok &= qvariant_cast<QRect>(recordSpy.takeFirst().at(0)) == QRect(40, 40, 160, 120);
+        }
+    }
+
     QTextStream(stdout) << (ok ? "capture overlay: ok\n" : "capture overlay: failed\n");
     return ok ? 0 : 1;
 }

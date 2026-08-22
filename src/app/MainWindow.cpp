@@ -81,11 +81,11 @@ void MainWindow::setupUi()
     cardLayout->setContentsMargins(24, 22, 24, 22);
     cardLayout->setSpacing(10);
 
-    auto* stage = new QLabel(QStringLiteral("阶段 4 · 本地 OCR"), card);
+    auto* stage = new QLabel(QStringLiteral("阶段 5 · 原生区域录屏"), card);
     stage->setObjectName(QStringLiteral("stage"));
     statusLabel_ = new QLabel(
-        QStringLiteral("按 Ctrl+Shift+A 开始截图。选区支持标注、贴图和本地文字识别。\n"
-                       "识别结果可复制；联网翻译只在确认后发送文字。"),
+        QStringLiteral("截图选区支持标注、贴图和本地文字识别。\n"
+                       "区域录屏使用 Windows GPU 捕获并保存 H.264 MP4（当前不含音频）。"),
         card);
     statusLabel_->setWordWrap(true);
     cardLayout->addWidget(stage);
@@ -97,7 +97,10 @@ void MainWindow::setupUi()
     hideButton->setObjectName(QStringLiteral("secondaryButton"));
     auto* captureButton = new QPushButton(QStringLiteral("区域截图  Ctrl+Shift+A"), central);
     captureButton->setObjectName(QStringLiteral("primaryButton"));
+    auto* recordButton = new QPushButton(QStringLiteral("区域录屏"), central);
+    recordButton->setObjectName(QStringLiteral("recordButton"));
     actions->addWidget(hideButton);
+    actions->addWidget(recordButton);
     actions->addWidget(captureButton);
 
     root->addWidget(title);
@@ -108,6 +111,7 @@ void MainWindow::setupUi()
     setCentralWidget(central);
 
     connect(hideButton, &QPushButton::clicked, this, &QWidget::hide);
+    connect(recordButton, &QPushButton::clicked, this, &MainWindow::recordRequested);
     connect(captureButton, &QPushButton::clicked, this, &MainWindow::captureRequested);
 
     setStyleSheet(QStringLiteral(R"(
@@ -123,6 +127,8 @@ void MainWindow::setupUi()
         QPushButton#primaryButton:hover { background: #52dfce; }
         QPushButton#secondaryButton { background: transparent; color: #d8e0e7; border: 1px solid #3c4a58; }
         QPushButton#secondaryButton:hover { background: #202a35; }
+        QPushButton#recordButton { background: #d84d57; color: #ffffff; border: 0; }
+        QPushButton#recordButton:hover { background: #ea616b; }
     )"));
 }
 
@@ -138,6 +144,7 @@ void MainWindow::setupTray()
 
     auto* menu = new QMenu(this);
     menu->addAction(QStringLiteral("区域截图\tCtrl+Shift+A"), this, &MainWindow::captureRequested);
+    menu->addAction(QStringLiteral("区域录屏"), this, &MainWindow::recordRequested);
     menu->addSeparator();
     menu->addAction(QStringLiteral("打开 SnipNexs"), this, &MainWindow::showAndActivate);
     menu->addSeparator();

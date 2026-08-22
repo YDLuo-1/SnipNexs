@@ -2,9 +2,9 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-SnipNexs is a lightweight screenshot toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
+SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.4.0` (Stage 4). It includes a runnable main window, system tray integration, single-instance activation, region capture, lightweight annotation, image pinning, local Windows OCR, explicit browser translation, copy/save actions, and standalone deployment. Recording will be added in a later stage.
+Current version: `0.5.0` (Stage 5). It includes a runnable main window, system tray integration, single-instance activation, region capture, lightweight annotation, image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
@@ -13,6 +13,8 @@ Current version: `0.4.0` (Stage 4). It includes a runnable main window, system t
 - Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
 - The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.
+- Click **Region Recording**, draw a region, then click **Record** in the selection toolbar. Choose an MP4 path and use the floating indicator to stop.
+- Recording captures the pointer and writes H.264/MP4 through Windows media APIs. Stage 5 records video only; system audio and microphone input are not included yet.
 - Press `Enter` or double-click the selection to copy it, or use **Pin**, **Copy**, and **Save** next to the selection.
 - Pinned images stay on top: drag to move, use the mouse wheel to resize, and right-click to close.
 - Press `Esc` or right-click to cancel.
@@ -21,17 +23,26 @@ Current version: `0.4.0` (Stage 4). It includes a runnable main window, system t
 
 - Screen pixels stay in local process memory unless you explicitly choose **Copy**, **Save**, or **Pin**.
 - The current version has no telemetry. OCR is local and never uploads screenshots or annotation data.
+- Recording is local. Frames stay on the GPU path and are written only to the path you choose; SnipNexs does not stream or upload the video.
 - Browser translation is opt-in: after confirmation, at most 4,000 recognized characters are placed in a `translate.google.com` URL. No image is transmitted.
 - Generated `SnipNexs-*` images and common capture directories are ignored by Git. Every stage is also audited for staged images, binaries, local paths, and likely secrets before push.
 
 ## Design goals
 
 - Lightweight: no QML, WebEngine, or Chromium; a dependency is added only when a delivered feature requires it.
-- Fast: image data is shared where possible, expensive work stays off the UI thread, and native acceleration is introduced only after measurement.
+- Fast: image data is shared where possible, expensive work stays off the UI thread, and recording uses a two-frame Windows capture pool with a single latest-frame slot instead of an unbounded queue.
 - Extensible: code is separated by capability; interfaces are used only at boundaries that genuinely need multiple implementations, such as OCR, translation, or encoders.
 - Windows 10: the minimum target is Windows 10 2004 (x64); primary validation targets are Windows 10 22H2 and Windows 11.
 
 See [Architecture](docs/architecture.md), [Dependencies and licenses](docs/dependencies.md), and the pinned [source review](docs/source-review.md) for the current technical boundaries.
+
+## Recording implementation notes
+
+- Capture: `Windows.Graphics.Capture`, supported by the project minimum of Windows 10 2004.
+- Crop: D3D11 `CopySubresourceRegion`; screen pixels are not read back to CPU memory.
+- Encode/container: `MediaStreamSource` and `MediaTranscoder`, H.264 in MP4. Hardware acceleration is requested, but the final encoder choice still depends on the installed driver and Windows codecs.
+- Backpressure: the capture pool has two buffers and SnipNexs retains only the newest frame; the transcoder requests frames as it can consume them.
+- The floating stop indicator requests `WDA_EXCLUDEFROMCAPTURE`. Windows treats this as a best-effort display-affinity feature, not a security boundary.
 
 ## Build
 

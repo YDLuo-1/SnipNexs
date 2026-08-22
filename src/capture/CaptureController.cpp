@@ -17,6 +17,7 @@
 #include <QScreen>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QtGui/qscreen_platform.h>
 
 #include <algorithm>
 #include <utility>
@@ -83,11 +84,18 @@ void CaptureController::captureAfterUiSettles()
     }
 
     auto* overlay = new CaptureOverlay(std::move(screenshot));
+    activeScreenName_ = screen->name();
+    if (const auto* nativeScreen = screen->nativeInterface<QNativeInterface::QWindowsScreen>()) {
+        activeMonitorHandle_ = reinterpret_cast<quintptr>(nativeScreen->handle());
+    } else {
+        activeMonitorHandle_ = 0;
+    }
     overlay_ = overlay;
     overlay->setGeometry(screen->geometry());
     connect(overlay, &CaptureOverlay::copyRequested, this, &CaptureController::copyImage);
     connect(overlay, &CaptureOverlay::ocrRequested, this, &CaptureController::recognizeImage);
     connect(overlay, &CaptureOverlay::pinRequested, this, &CaptureController::pinImage);
+    connect(overlay, &CaptureOverlay::recordRequested, this, &CaptureController::recordRegion);
     connect(overlay, &CaptureOverlay::saveRequested, this, &CaptureController::saveImage);
     connect(overlay, &CaptureOverlay::canceled, this, [this]() {
         finishCapture(mainWindowWasVisible_);
@@ -99,6 +107,14 @@ void CaptureController::captureAfterUiSettles()
         QStringLiteral("已捕获 %1，耗时 %2 ms。拖出选区后复制或保存。")
             .arg(screen->name())
             .arg(timer.elapsed()));
+}
+
+void CaptureController::recordRegion(const QRect& pixelRect)
+{
+    const QString screenName = activeScreenName_;
+    const quintptr monitorHandle = activeMonitorHandle_;
+    finishCapture(false);
+    emit recordRegionRequested(monitorHandle, screenName, pixelRect);
 }
 
 void CaptureController::recognizeImage(const QImage& image)
