@@ -32,7 +32,19 @@ int main(int argc, char* argv[])
     overlay.render(&rendered);
     const QColor selectedPixel = rendered.pixelColor(25, 25);
     const QColor dimmedPixel = rendered.pixelColor(5, 5);
+    const QColor handlePixel = rendered.pixelColor(20, 20);
     ok &= selectedPixel.lightness() > dimmedPixel.lightness();
+    ok &= handlePixel.lightness() > 220;
+
+    QTest::mousePress(&overlay, Qt::LeftButton, Qt::NoModifier, QPoint(40, 30));
+    QTest::mouseMove(&overlay, QPoint(60, 50));
+    QTest::mouseRelease(&overlay, Qt::LeftButton, Qt::NoModifier, QPoint(60, 50));
+    ok &= overlay.selectedPixelRect() == QRect(80, 80, 100, 60);
+
+    QTest::mousePress(&overlay, Qt::LeftButton, Qt::NoModifier, QPoint(89, 69));
+    QTest::mouseMove(&overlay, QPoint(109, 79));
+    QTest::mouseRelease(&overlay, Qt::LeftButton, Qt::NoModifier, QPoint(109, 79));
+    ok &= overlay.selectedPixelRect() == QRect(80, 80, 140, 80);
 
     snipnexs::CaptureOverlay interactionOverlay(pixmap);
     interactionOverlay.resize(200, 150);

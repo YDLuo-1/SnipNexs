@@ -57,6 +57,7 @@ target_link_libraries(SnipNexs PRIVATE
     Qt6::Widgets
     Qt6::Network
     d3d11
+    dwmapi
     dxgi
     shcore
     windowsapp

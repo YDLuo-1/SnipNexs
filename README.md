@@ -9,7 +9,7 @@ Current version: `0.5.0` (Stage 5). It includes a runnable main window, system t
 ## Usage
 
 - Press `Ctrl+Shift+A`, or click **Region Capture** in the main window.
-- Drag a region on the monitor under the mouse pointer.
+- Drag a region on the monitor under the mouse pointer. Before annotating, drag inside the selection to move it, or drag any of its eight handles to resize it.
 - Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
 - The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.

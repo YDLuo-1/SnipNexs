@@ -14,9 +14,18 @@
 #include <QShowEvent>
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace snipnexs {
+
+namespace {
+
+constexpr int kHandleSize = 8;
+constexpr int kHandleHitPadding = 3;
+constexpr int kMinimumSelectionSize = 3;
+
+}
 
 CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     : QWidget(parent)
@@ -29,6 +38,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     setAttribute(Qt::WA_DeleteOnClose);
     setCursor(Qt::CrossCursor);
     setFocusPolicy(Qt::StrongFocus);
+    setMouseTracking(true);
 
     QPainter dimmer(&dimmedScreenshot_);
     dimmer.fillRect(
@@ -116,8 +126,10 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
 void CaptureOverlay::setSelection(const QRect& selection)
 {
     selection_ = selection.normalized().intersected(rect());
-    dragging_ = false;
-    if (selection_.width() >= 3 && selection_.height() >= 3) {
+    interaction_ = Interaction::None;
+    activeResizeHandle_ = ResizeHandle::None;
+    if (selection_.width() >= kMinimumSelectionSize
+        && selection_.height() >= kMinimumSelectionSize) {
         positionToolbar();
         toolbar_->show();
     } else {
@@ -137,12 +149,14 @@ void CaptureOverlay::setAnnotationTool(AnnotationTool tool)
         }
         toolButtons_->setExclusive(true);
         setCursor(Qt::CrossCursor);
+        update();
         return;
     }
     if (auto* button = toolButtons_->button(static_cast<int>(tool))) {
         button->setChecked(true);
     }
     setCursor(Qt::CrossCursor);
+    update();
 }
 
 void CaptureOverlay::keyPressEvent(QKeyEvent* event)
@@ -199,9 +213,12 @@ void CaptureOverlay::mouseMoveEvent(QMouseEvent* event)
         update();
         return;
     }
-    if (dragging_) {
-        updateSelection(event->position().toPoint());
+    const QPoint point = event->position().toPoint();
+    if (interaction_ != Interaction::None) {
+        updateInteraction(point);
+        return;
     }
+    updateCursorForPosition(point);
 }
 
 void CaptureOverlay::mousePressEvent(QMouseEvent* event)
@@ -224,12 +241,25 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+    const QPoint point = event->position().toPoint();
+    if (selectionGeometryEditable()) {
+        activeResizeHandle_ = resizeHandleAt(point);
+        if (activeResizeHandle_ != ResizeHandle::None) {
+            interaction_ = Interaction::Resize;
+        } else if (selection_.contains(point)) {
+            interaction_ = Interaction::Move;
+        }
+    }
+
     toolbar_->hide();
-    annotations_.clear();
-    updateEditorActions();
-    dragging_ = true;
-    dragOrigin_ = event->position().toPoint();
-    selection_ = QRect(dragOrigin_, QSize(1, 1));
+    interactionOrigin_ = point;
+    interactionStartSelection_ = selection_;
+    if (interaction_ == Interaction::None) {
+        annotations_.clear();
+        updateEditorActions();
+        interaction_ = Interaction::Create;
+        selection_ = QRect(interactionOrigin_, QSize(1, 1));
+    }
     update();
 }
 
@@ -249,13 +279,16 @@ void CaptureOverlay::mouseReleaseEvent(QMouseEvent* event)
         update();
         return;
     }
-    if (!dragging_ || event->button() != Qt::LeftButton) {
+    if (interaction_ == Interaction::None || event->button() != Qt::LeftButton) {
         return;
     }
 
-    updateSelection(event->position().toPoint());
-    dragging_ = false;
+    const QPoint point = event->position().toPoint();
+    updateInteraction(point);
+    interaction_ = Interaction::None;
+    activeResizeHandle_ = ResizeHandle::None;
     setSelection(selection_);
+    updateCursorForPosition(point);
 }
 
 void CaptureOverlay::paintEvent(QPaintEvent*)
@@ -285,6 +318,24 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
     painter.setPen(QPen(QColor(57, 208, 190), 2));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(selection_.adjusted(0, 0, -1, -1));
+
+    if (selectionGeometryEditable()) {
+        static constexpr std::array handles {
+            ResizeHandle::TopLeft,
+            ResizeHandle::Top,
+            ResizeHandle::TopRight,
+            ResizeHandle::Right,
+            ResizeHandle::BottomRight,
+            ResizeHandle::Bottom,
+            ResizeHandle::BottomLeft,
+            ResizeHandle::Left,
+        };
+        painter.setPen(QPen(QColor(57, 208, 190), 1));
+        painter.setBrush(QColor(245, 249, 252));
+        for (const ResizeHandle handle : handles) {
+            painter.drawRect(handleRect(handle));
+        }
+    }
 }
 
 void CaptureOverlay::showEvent(QShowEvent* event)
@@ -363,6 +414,75 @@ void CaptureOverlay::acceptSave()
     }
 }
 
+QRect CaptureOverlay::handleRect(ResizeHandle handle) const
+{
+    QPoint center;
+    switch (handle) {
+    case ResizeHandle::TopLeft:
+        center = selection_.topLeft();
+        break;
+    case ResizeHandle::Top:
+        center = QPoint(selection_.center().x(), selection_.top());
+        break;
+    case ResizeHandle::TopRight:
+        center = selection_.topRight();
+        break;
+    case ResizeHandle::Right:
+        center = QPoint(selection_.right(), selection_.center().y());
+        break;
+    case ResizeHandle::BottomRight:
+        center = selection_.bottomRight();
+        break;
+    case ResizeHandle::Bottom:
+        center = QPoint(selection_.center().x(), selection_.bottom());
+        break;
+    case ResizeHandle::BottomLeft:
+        center = selection_.bottomLeft();
+        break;
+    case ResizeHandle::Left:
+        center = QPoint(selection_.left(), selection_.center().y());
+        break;
+    case ResizeHandle::None:
+        return {};
+    }
+
+    const int offset = kHandleSize / 2;
+    return QRect(center.x() - offset, center.y() - offset, kHandleSize, kHandleSize);
+}
+
+CaptureOverlay::ResizeHandle CaptureOverlay::resizeHandleAt(const QPoint& point) const
+{
+    static constexpr std::array handles {
+        ResizeHandle::TopLeft,
+        ResizeHandle::Top,
+        ResizeHandle::TopRight,
+        ResizeHandle::Right,
+        ResizeHandle::BottomRight,
+        ResizeHandle::Bottom,
+        ResizeHandle::BottomLeft,
+        ResizeHandle::Left,
+    };
+    for (const ResizeHandle handle : handles) {
+        if (handleRect(handle).adjusted(
+                -kHandleHitPadding,
+                -kHandleHitPadding,
+                kHandleHitPadding,
+                kHandleHitPadding)
+                .contains(point)) {
+            return handle;
+        }
+    }
+    return ResizeHandle::None;
+}
+
+bool CaptureOverlay::selectionGeometryEditable() const
+{
+    return selection_.isValid()
+        && annotationTool_ == AnnotationTool::None
+        && annotations_.itemCount() == 0
+        && !annotations_.canRedo();
+}
+
 void CaptureOverlay::positionToolbar()
 {
     const QRect pixelRect = logicalToPixelRect(
@@ -387,12 +507,101 @@ void CaptureOverlay::updateEditorActions()
     redoButton_->setEnabled(annotations_.canRedo());
 }
 
-void CaptureOverlay::updateSelection(const QPoint& point)
+void CaptureOverlay::updateCursorForPosition(const QPoint& point)
+{
+    if (!selectionGeometryEditable()) {
+        setCursor(Qt::CrossCursor);
+        return;
+    }
+
+    switch (resizeHandleAt(point)) {
+    case ResizeHandle::TopLeft:
+    case ResizeHandle::BottomRight:
+        setCursor(Qt::SizeFDiagCursor);
+        return;
+    case ResizeHandle::TopRight:
+    case ResizeHandle::BottomLeft:
+        setCursor(Qt::SizeBDiagCursor);
+        return;
+    case ResizeHandle::Top:
+    case ResizeHandle::Bottom:
+        setCursor(Qt::SizeVerCursor);
+        return;
+    case ResizeHandle::Left:
+    case ResizeHandle::Right:
+        setCursor(Qt::SizeHorCursor);
+        return;
+    case ResizeHandle::None:
+        setCursor(selection_.contains(point) ? Qt::SizeAllCursor : Qt::CrossCursor);
+        return;
+    }
+}
+
+void CaptureOverlay::updateInteraction(const QPoint& point)
 {
     const QPoint bounded(
         std::clamp(point.x(), 0, width() - 1),
         std::clamp(point.y(), 0, height() - 1));
-    selection_ = QRect(dragOrigin_, bounded).normalized();
+
+    if (interaction_ == Interaction::Create) {
+        selection_ = QRect(interactionOrigin_, bounded).normalized();
+    } else if (interaction_ == Interaction::Move) {
+        selection_ = interactionStartSelection_.translated(bounded - interactionOrigin_);
+        if (selection_.left() < 0) {
+            selection_.moveLeft(0);
+        }
+        if (selection_.top() < 0) {
+            selection_.moveTop(0);
+        }
+        if (selection_.right() >= width()) {
+            selection_.moveRight(width() - 1);
+        }
+        if (selection_.bottom() >= height()) {
+            selection_.moveBottom(height() - 1);
+        }
+    } else if (interaction_ == Interaction::Resize) {
+        selection_ = interactionStartSelection_;
+        switch (activeResizeHandle_) {
+        case ResizeHandle::TopLeft:
+        case ResizeHandle::Left:
+        case ResizeHandle::BottomLeft:
+            selection_.setLeft(std::min(
+                bounded.x(), interactionStartSelection_.right() - kMinimumSelectionSize + 1));
+            break;
+        default:
+            break;
+        }
+        switch (activeResizeHandle_) {
+        case ResizeHandle::TopRight:
+        case ResizeHandle::Right:
+        case ResizeHandle::BottomRight:
+            selection_.setRight(std::max(
+                bounded.x(), interactionStartSelection_.left() + kMinimumSelectionSize - 1));
+            break;
+        default:
+            break;
+        }
+        switch (activeResizeHandle_) {
+        case ResizeHandle::TopLeft:
+        case ResizeHandle::Top:
+        case ResizeHandle::TopRight:
+            selection_.setTop(std::min(
+                bounded.y(), interactionStartSelection_.bottom() - kMinimumSelectionSize + 1));
+            break;
+        default:
+            break;
+        }
+        switch (activeResizeHandle_) {
+        case ResizeHandle::BottomLeft:
+        case ResizeHandle::Bottom:
+        case ResizeHandle::BottomRight:
+            selection_.setBottom(std::max(
+                bounded.y(), interactionStartSelection_.top() + kMinimumSelectionSize - 1));
+            break;
+        default:
+            break;
+        }
+    }
     update();
 }
 
