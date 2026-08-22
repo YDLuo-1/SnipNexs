@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "A lightweight and extensible screenshot toolkit for Windows"
     LANGUAGES CXX
 )
@@ -24,6 +24,10 @@ qt_add_executable(SnipNexs WIN32
     src/capture/CaptureGeometry.h
     src/capture/CaptureOverlay.cpp
     src/capture/CaptureOverlay.h
+    src/editor/AnnotationDocument.cpp
+    src/editor/AnnotationDocument.h
+    src/pin/PinWindow.cpp
+    src/pin/PinWindow.h
     src/platform/windows/GlobalHotkey.cpp
     src/platform/windows/GlobalHotkey.h
 )
@@ -100,6 +104,8 @@ if(BUILD_TESTING)
         src/capture/CaptureOverlay.cpp
         src/capture/CaptureOverlay.h
         src/capture/CaptureGeometry.h
+        src/editor/AnnotationDocument.cpp
+        src/editor/AnnotationDocument.h
     )
     target_include_directories(CaptureOverlayTests PRIVATE src)
     target_link_libraries(CaptureOverlayTests PRIVATE
@@ -111,6 +117,18 @@ if(BUILD_TESTING)
     add_test(NAME CaptureOverlayTests COMMAND CaptureOverlayTests)
     set_tests_properties(CaptureOverlayTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(AnnotationDocumentTests
+        tests/AnnotationDocumentTests.cpp
+        src/editor/AnnotationDocument.cpp
+        src/editor/AnnotationDocument.h
+    )
+    target_include_directories(AnnotationDocumentTests PRIVATE src)
+    target_link_libraries(AnnotationDocumentTests PRIVATE Qt6::Core Qt6::Gui)
+    add_test(NAME AnnotationDocumentTests COMMAND AnnotationDocumentTests)
+    set_tests_properties(AnnotationDocumentTests PROPERTIES
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 endif()

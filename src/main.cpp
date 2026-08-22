@@ -58,38 +58,6 @@ int runSelfTest(QApplication& app)
     return app.exec();
 }
 
-int runCaptureProbe(QApplication& app)
-{
-    snipnexs::MainWindow window;
-    snipnexs::CaptureController captureController(window);
-    window.show();
-    QTimer::singleShot(50, &captureController, &snipnexs::CaptureController::startCapture);
-    QTimer::singleShot(850, &app, [&app]() {
-        QWidget* captureWindow = nullptr;
-        for (QWidget* topLevel : QApplication::topLevelWidgets()) {
-            if (topLevel->windowTitle() == QStringLiteral("SnipNexs Capture")) {
-                captureWindow = topLevel;
-                break;
-            }
-        }
-
-        const bool ok = captureWindow != nullptr
-            && captureWindow->isVisible()
-            && captureWindow->width() > 0
-            && captureWindow->height() > 0;
-        QTextStream output(stdout);
-        output << "capture-probe: " << (ok ? "ok" : "failed");
-        if (captureWindow != nullptr) {
-            output << " (" << captureWindow->width() << 'x' << captureWindow->height() << ')';
-            captureWindow->close();
-        }
-        output << '\n';
-        output.flush();
-        app.exit(ok ? 0 : 1);
-    });
-    return app.exec();
-}
-
 } // namespace
 
 int main(int argc, char* argv[])
@@ -107,20 +75,12 @@ int main(int argc, char* argv[])
     parser.addVersionOption();
     const QCommandLineOption selfTestOption(
         QStringLiteral("self-test"), QStringLiteral("Run a non-interactive startup check."));
-    const QCommandLineOption captureProbeOption(
-        QStringLiteral("capture-probe"),
-        QStringLiteral("Capture the current screen and verify the selection overlay."));
     parser.addOption(selfTestOption);
-    parser.addOption(captureProbeOption);
     parser.process(app);
 
     if (parser.isSet(selfTestOption)) {
         return runSelfTest(app);
     }
-    if (parser.isSet(captureProbeOption)) {
-        return runCaptureProbe(app);
-    }
-
     if (notifyExistingInstance()) {
         return 0;
     }
@@ -134,6 +94,17 @@ int main(int argc, char* argv[])
     }
 
     snipnexs::MainWindow window;
+    snipnexs::CaptureController captureController(window);
+    snipnexs::GlobalHotkey captureHotkey;
+    QObject::connect(&window, &snipnexs::MainWindow::captureRequested,
+        &captureController, &snipnexs::CaptureController::startCapture);
+    QObject::connect(&captureHotkey, &snipnexs::GlobalHotkey::activated,
+        &captureController, &snipnexs::CaptureController::startCapture);
+    if (!captureHotkey.registerCaptureShortcut()) {
+        window.setCaptureStatus(
+            QStringLiteral("全局快捷键 Ctrl+Shift+A 已被其他程序占用。\n"
+                           "仍可点击“区域截图”按钮使用截图功能。"));
+    }
     window.show();
 
     QObject::connect(&instanceServer, &QLocalServer::newConnection, &window, [&]() {

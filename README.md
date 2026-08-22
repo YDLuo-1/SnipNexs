@@ -4,14 +4,22 @@
 
 SnipNexs is a lightweight screenshot toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.2.0` (Stage 2). It includes a runnable main window, system tray integration, single-instance activation, region capture, copy/save actions, and standalone deployment. Annotation, image pinning, OCR, translation, and recording will be added in later stages.
+Current version: `0.3.0` (Stage 3). It includes a runnable main window, system tray integration, single-instance activation, region capture, lightweight annotation, image pinning, copy/save actions, and standalone deployment. OCR, translation, and recording will be added in later stages.
 
 ## Usage
 
 - Press `Ctrl+Shift+A`, or click **Region Capture** in the main window.
 - Drag a region on the monitor under the mouse pointer.
-- Press `Enter` or double-click the selection to copy it, or use the **Copy** and **Save** buttons next to the selection.
+- Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
+- Press `Enter` or double-click the selection to copy it, or use **Pin**, **Copy**, and **Save** next to the selection.
+- Pinned images stay on top: drag to move, use the mouse wheel to resize, and right-click to close.
 - Press `Esc` or right-click to cancel.
+
+## Privacy
+
+- Screen pixels stay in local process memory unless you explicitly choose **Copy**, **Save**, or **Pin**.
+- The current version has no telemetry and does not upload screenshots or annotation data.
+- Generated `SnipNexs-*` images and common capture directories are ignored by Git. Every stage is also audited for staged images, binaries, local paths, and likely secrets before push.
 
 ## Design goals
 

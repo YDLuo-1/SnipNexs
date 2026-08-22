@@ -2,9 +2,11 @@
 
 #include "CaptureGeometry.h"
 
+#include <QButtonGroup>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QKeySequence>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
@@ -40,11 +42,31 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     layout->setSpacing(7);
 
     sizeLabel_ = new QLabel(toolbar_);
+    auto* penButton = new QPushButton(QStringLiteral("画笔"), toolbar_);
+    auto* rectangleButton = new QPushButton(QStringLiteral("矩形"), toolbar_);
+    auto* arrowButton = new QPushButton(QStringLiteral("箭头"), toolbar_);
+    undoButton_ = new QPushButton(QStringLiteral("撤销"), toolbar_);
+    redoButton_ = new QPushButton(QStringLiteral("重做"), toolbar_);
+    auto* pinButton = new QPushButton(QStringLiteral("贴图"), toolbar_);
     auto* copyButton = new QPushButton(QStringLiteral("复制"), toolbar_);
     auto* saveButton = new QPushButton(QStringLiteral("保存"), toolbar_);
     auto* cancelButton = new QPushButton(QStringLiteral("取消"), toolbar_);
     copyButton->setObjectName(QStringLiteral("accentButton"));
+    toolButtons_ = new QButtonGroup(this);
+    toolButtons_->setExclusive(true);
+    toolButtons_->addButton(penButton, static_cast<int>(AnnotationTool::Pen));
+    toolButtons_->addButton(rectangleButton, static_cast<int>(AnnotationTool::Rectangle));
+    toolButtons_->addButton(arrowButton, static_cast<int>(AnnotationTool::Arrow));
+    for (auto* button : toolButtons_->buttons()) {
+        button->setCheckable(true);
+    }
     layout->addWidget(sizeLabel_);
+    layout->addWidget(penButton);
+    layout->addWidget(rectangleButton);
+    layout->addWidget(arrowButton);
+    layout->addWidget(undoButton_);
+    layout->addWidget(redoButton_);
+    layout->addWidget(pinButton);
     layout->addWidget(copyButton);
     layout->addWidget(saveButton);
     layout->addWidget(cancelButton);
@@ -55,13 +77,32 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
         QLabel { color: #b9c5d0; padding: 0 5px; }
         QPushButton { min-height: 28px; padding: 0 12px; color: #eaf0f5; background: #27323e; border: 0; border-radius: 5px; }
         QPushButton:hover { background: #344351; }
+        QPushButton:checked { color: #092824; background: #f0ba45; font-weight: 600; }
+        QPushButton:disabled { color: #667380; background: #202832; }
         QPushButton#accentButton { color: #092824; background: #39d0be; font-weight: 600; }
         QPushButton#accentButton:hover { background: #52dfce; }
     )"));
 
     connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
+    connect(pinButton, &QPushButton::clicked, this, &CaptureOverlay::acceptPin);
     connect(saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
     connect(cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
+    connect(toolButtons_, &QButtonGroup::idClicked, this, [this](int id) {
+        setAnnotationTool(static_cast<AnnotationTool>(id));
+    });
+    connect(undoButton_, &QPushButton::clicked, this, [this]() {
+        const bool changed = annotations_.undo();
+        Q_UNUSED(changed);
+        updateEditorActions();
+        update();
+    });
+    connect(redoButton_, &QPushButton::clicked, this, [this]() {
+        const bool changed = annotations_.redo();
+        Q_UNUSED(changed);
+        updateEditorActions();
+        update();
+    });
+    updateEditorActions();
 }
 
 void CaptureOverlay::setSelection(const QRect& selection)
@@ -78,9 +119,52 @@ void CaptureOverlay::setSelection(const QRect& selection)
     update();
 }
 
+void CaptureOverlay::setAnnotationTool(AnnotationTool tool)
+{
+    annotationTool_ = tool;
+    if (tool == AnnotationTool::None) {
+        toolButtons_->setExclusive(false);
+        for (auto* button : toolButtons_->buttons()) {
+            button->setChecked(false);
+        }
+        toolButtons_->setExclusive(true);
+        setCursor(Qt::CrossCursor);
+        return;
+    }
+    if (auto* button = toolButtons_->button(static_cast<int>(tool))) {
+        button->setChecked(true);
+    }
+    setCursor(Qt::CrossCursor);
+}
+
 void CaptureOverlay::keyPressEvent(QKeyEvent* event)
 {
+    if (event->matches(QKeySequence::Undo)) {
+        const bool changed = annotations_.undo();
+        Q_UNUSED(changed);
+        updateEditorActions();
+        update();
+        return;
+    }
+    if (event->matches(QKeySequence::Redo)) {
+        const bool changed = annotations_.redo();
+        Q_UNUSED(changed);
+        updateEditorActions();
+        update();
+        return;
+    }
     if (event->key() == Qt::Key_Escape) {
+        if (annotationDrawing_) {
+            annotations_.cancel();
+            annotationDrawing_ = false;
+            toolbar_->show();
+            update();
+            return;
+        }
+        if (annotationTool_ != AnnotationTool::None) {
+            setAnnotationTool(AnnotationTool::None);
+            return;
+        }
         emit canceled();
         return;
     }
@@ -102,6 +186,11 @@ void CaptureOverlay::mouseDoubleClickEvent(QMouseEvent* event)
 
 void CaptureOverlay::mouseMoveEvent(QMouseEvent* event)
 {
+    if (annotationDrawing_) {
+        annotations_.update(event->position());
+        update();
+        return;
+    }
     if (dragging_) {
         updateSelection(event->position().toPoint());
     }
@@ -117,7 +206,19 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+    if (annotationTool_ != AnnotationTool::None) {
+        if (selection_.contains(event->position().toPoint())) {
+            annotationDrawing_ = true;
+            toolbar_->hide();
+            annotations_.begin(annotationTool_, event->position());
+            update();
+        }
+        return;
+    }
+
     toolbar_->hide();
+    annotations_.clear();
+    updateEditorActions();
     dragging_ = true;
     dragOrigin_ = event->position().toPoint();
     selection_ = QRect(dragOrigin_, QSize(1, 1));
@@ -126,6 +227,20 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
 
 void CaptureOverlay::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (annotationDrawing_ && event->button() == Qt::LeftButton) {
+        const QPoint point = event->position().toPoint();
+        const QPoint bounded(
+            std::clamp(point.x(), selection_.left(), selection_.right()),
+            std::clamp(point.y(), selection_.top(), selection_.bottom()));
+        annotations_.update(bounded);
+        annotations_.commit();
+        annotationDrawing_ = false;
+        updateEditorActions();
+        positionToolbar();
+        toolbar_->show();
+        update();
+        return;
+    }
     if (!dragging_ || event->button() != Qt::LeftButton) {
         return;
     }
@@ -156,6 +271,7 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
     painter.save();
     painter.setClipRect(selection_);
     painter.drawPixmap(rect(), screenshot_);
+    annotations_.paint(painter);
     painter.restore();
 
     painter.setPen(QPen(QColor(57, 208, 190), 2));
@@ -185,6 +301,12 @@ QImage CaptureOverlay::selectedImage() const
 
     QImage image = screenshot_.toImage().copy(pixelRect);
     image.setDevicePixelRatio(1.0);
+    {
+        QPainter painter(&image);
+        painter.scale(devicePixelRatio_, devicePixelRatio_);
+        painter.translate(-selection_.topLeft());
+        annotations_.paint(painter);
+    }
     return image;
 }
 
@@ -193,6 +315,14 @@ void CaptureOverlay::acceptCopy()
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit copyRequested(image);
+    }
+}
+
+void CaptureOverlay::acceptPin()
+{
+    const QImage image = selectedImage();
+    if (!image.isNull()) {
+        emit pinRequested(image);
     }
 }
 
@@ -220,6 +350,12 @@ void CaptureOverlay::positionToolbar()
     }
     y = std::clamp(y, 8, std::max(8, height() - toolbar_->height() - 8));
     toolbar_->move(x, y);
+}
+
+void CaptureOverlay::updateEditorActions()
+{
+    undoButton_->setEnabled(annotations_.canUndo());
+    redoButton_->setEnabled(annotations_.canRedo());
 }
 
 void CaptureOverlay::updateSelection(const QPoint& point)

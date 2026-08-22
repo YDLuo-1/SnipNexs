@@ -24,6 +24,7 @@ public slots:
 private:
     void captureAfterUiSettles();
     void copyImage(const QImage& image);
+    void pinImage(const QImage& image);
     void saveImage(const QImage& image);
     void finishCapture(bool restoreMainWindow);
     void reportFailure(const QString& message);

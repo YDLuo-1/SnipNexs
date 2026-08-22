@@ -2,6 +2,7 @@
 
 #include "CaptureOverlay.h"
 #include "app/MainWindow.h"
+#include "pin/PinWindow.h"
 
 #include <QClipboard>
 #include <QCursor>
@@ -16,6 +17,7 @@
 #include <QStandardPaths>
 #include <QTimer>
 
+#include <algorithm>
 #include <utility>
 
 namespace snipnexs {
@@ -67,6 +69,7 @@ void CaptureController::captureAfterUiSettles()
     overlay_ = overlay;
     overlay->setGeometry(screen->geometry());
     connect(overlay, &CaptureOverlay::copyRequested, this, &CaptureController::copyImage);
+    connect(overlay, &CaptureOverlay::pinRequested, this, &CaptureController::pinImage);
     connect(overlay, &CaptureOverlay::saveRequested, this, &CaptureController::saveImage);
     connect(overlay, &CaptureOverlay::canceled, this, [this]() {
         finishCapture(mainWindowWasVisible_);
@@ -78,6 +81,31 @@ void CaptureController::captureAfterUiSettles()
         QStringLiteral("已捕获 %1，耗时 %2 ms。拖出选区后复制或保存。")
             .arg(screen->name())
             .arg(timer.elapsed()));
+}
+
+void CaptureController::pinImage(const QImage& image)
+{
+    auto* pin = new PinWindow(image);
+    QPoint position = QCursor::pos() + QPoint(18, 18);
+    if (QScreen* screen = QGuiApplication::screenAt(QCursor::pos())) {
+        const QRect available = screen->availableGeometry();
+        position.setX(std::clamp(
+            position.x(),
+            available.left(),
+            std::max(available.left(), available.right() - pin->width() + 1)));
+        position.setY(std::clamp(
+            position.y(),
+            available.top(),
+            std::max(available.top(), available.bottom() - pin->height() + 1)));
+    }
+    pin->move(position);
+    pin->show();
+
+    mainWindow_.setCaptureStatus(
+        QStringLiteral("已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。")
+            .arg(image.width())
+            .arg(image.height()));
+    finishCapture(false);
 }
 
 void CaptureController::copyImage(const QImage& image)
