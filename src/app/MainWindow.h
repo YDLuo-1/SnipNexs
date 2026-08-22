@@ -19,6 +19,7 @@ public:
 
 signals:
     void captureRequested();
+    void recordRequested();
 
 public slots:
     void showAndActivate();

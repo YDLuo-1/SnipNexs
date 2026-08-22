@@ -2,6 +2,7 @@
 #include "app/MainWindow.h"
 #include "capture/CaptureController.h"
 #include "platform/windows/GlobalHotkey.h"
+#include "recorder/RecorderController.h"
 
 #include <QApplication>
 #include <QCommandLineOption>
@@ -34,11 +35,16 @@ int runSelfTest(QApplication& app)
     const bool qtOk = QLibraryInfo::version() >= QVersionNumber(6, 8);
     snipnexs::MainWindow window;
     snipnexs::CaptureController captureController(window);
+    snipnexs::RecorderController recorderController(window);
     snipnexs::GlobalHotkey captureHotkey;
     QObject::connect(&window, &snipnexs::MainWindow::captureRequested,
         &captureController, &snipnexs::CaptureController::startCapture);
     QObject::connect(&captureHotkey, &snipnexs::GlobalHotkey::activated,
         &captureController, &snipnexs::CaptureController::startCapture);
+    QObject::connect(&window, &snipnexs::MainWindow::recordRequested,
+        &captureController, &snipnexs::CaptureController::startCapture);
+    QObject::connect(&captureController, &snipnexs::CaptureController::recordRegionRequested,
+        &recorderController, &snipnexs::RecorderController::startRegion);
     if (!captureHotkey.registerCaptureShortcut()) {
         window.setCaptureStatus(
             QStringLiteral("全局快捷键 Ctrl+Shift+A 已被其他程序占用。\n"
@@ -70,7 +76,7 @@ int main(int argc, char* argv[])
     QApplication::setQuitOnLastWindowClosed(false);
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("SnipNexs screenshot toolkit"));
+    parser.setApplicationDescription(QStringLiteral("SnipNexs screenshot and recording toolkit"));
     parser.addHelpOption();
     parser.addVersionOption();
     const QCommandLineOption selfTestOption(
@@ -95,11 +101,16 @@ int main(int argc, char* argv[])
 
     snipnexs::MainWindow window;
     snipnexs::CaptureController captureController(window);
+    snipnexs::RecorderController recorderController(window);
     snipnexs::GlobalHotkey captureHotkey;
     QObject::connect(&window, &snipnexs::MainWindow::captureRequested,
         &captureController, &snipnexs::CaptureController::startCapture);
     QObject::connect(&captureHotkey, &snipnexs::GlobalHotkey::activated,
         &captureController, &snipnexs::CaptureController::startCapture);
+    QObject::connect(&window, &snipnexs::MainWindow::recordRequested,
+        &captureController, &snipnexs::CaptureController::startCapture);
+    QObject::connect(&captureController, &snipnexs::CaptureController::recordRegionRequested,
+        &recorderController, &snipnexs::RecorderController::startRegion);
     if (!captureHotkey.registerCaptureShortcut()) {
         window.setCaptureStatus(
             QStringLiteral("全局快捷键 Ctrl+Shift+A 已被其他程序占用。\n"

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.4.0
-    DESCRIPTION "A lightweight and extensible screenshot toolkit for Windows"
+    VERSION 0.5.0
+    DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )
 
@@ -36,6 +36,15 @@ qt_add_executable(SnipNexs WIN32
     src/pin/PinWindow.h
     src/platform/windows/GlobalHotkey.cpp
     src/platform/windows/GlobalHotkey.h
+    src/recorder/NativeScreenRecorder.cpp
+    src/recorder/NativeScreenRecorder.h
+    src/recorder/RecorderController.cpp
+    src/recorder/RecorderController.h
+    src/recorder/RecordingIndicator.cpp
+    src/recorder/RecordingIndicator.h
+    src/recorder/RecordingSettings.h
+    src/recorder/ScreenRecorderService.cpp
+    src/recorder/ScreenRecorderService.h
     src/translate/BrowserTranslation.cpp
     src/translate/BrowserTranslation.h
 )
@@ -47,6 +56,9 @@ target_link_libraries(SnipNexs PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    d3d11
+    dxgi
+    shcore
     windowsapp
 )
 
@@ -72,7 +84,11 @@ install(FILES
     THIRD_PARTY_NOTICES.md
     DESTINATION .
 )
-install(FILES licenses/LGPL-3.0-only.txt DESTINATION licenses)
+install(FILES
+    licenses/LGPL-3.0-only.txt
+    licenses/MIT-Microsoft-SimpleRecorder.txt
+    DESTINATION licenses
+)
 
 qt_generate_deploy_app_script(
     TARGET SnipNexs
@@ -168,6 +184,43 @@ if(BUILD_TESTING)
     set_tests_properties(WindowsOcrTests PROPERTIES
         SKIP_RETURN_CODE 77
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(NativeScreenRecorderTests
+        tests/NativeScreenRecorderTests.cpp
+        src/recorder/NativeScreenRecorder.cpp
+        src/recorder/NativeScreenRecorder.h
+        src/recorder/RecordingSettings.h
+    )
+    target_include_directories(NativeScreenRecorderTests PRIVATE src)
+    target_link_libraries(NativeScreenRecorderTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        d3d11
+        dxgi
+        mfplat
+        mfreadwrite
+        mfuuid
+        propsys
+        shcore
+        windowsapp
+    )
+    target_compile_definitions(NativeScreenRecorderTests PRIVATE
+        UNICODE
+        _UNICODE
+        NOMINMAX
+        WINVER=0x0A00
+        _WIN32_WINNT=0x0A00
+    )
+    if(MSVC)
+        target_compile_options(NativeScreenRecorderTests PRIVATE /W4 /permissive- /utf-8 /EHsc)
+    endif()
+    add_test(NAME NativeScreenRecorderTests COMMAND NativeScreenRecorderTests)
+    set_tests_properties(NativeScreenRecorderTests PROPERTIES
+        SKIP_RETURN_CODE 77
+        TIMEOUT 20
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 endif()

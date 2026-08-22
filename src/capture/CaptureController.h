@@ -23,10 +23,15 @@ public:
 public slots:
     void startCapture();
 
+signals:
+    void recordRegionRequested(
+        quintptr monitorHandle, const QString& screenName, const QRect& pixelRect);
+
 private:
     void captureAfterUiSettles();
     void copyImage(const QImage& image);
     void recognizeImage(const QImage& image);
+    void recordRegion(const QRect& pixelRect);
     void pinImage(const QImage& image);
     void saveImage(const QImage& image);
     void finishCapture(bool restoreMainWindow);
@@ -37,6 +42,8 @@ private:
     QPointer<CaptureOverlay> overlay_;
     bool capturePending_ = false;
     bool mainWindowWasVisible_ = false;
+    QString activeScreenName_;
+    quintptr activeMonitorHandle_ = 0;
 };
 
 } // namespace snipnexs

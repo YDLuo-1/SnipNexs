@@ -13,7 +13,7 @@ app
  ├─ pin
  ├─ ocr ────── Windows.Media.Ocr
  ├─ translate ─ browser
- └─ recorder ─ platform/windows + media（后续）
+ └─ recorder ─ Windows.Graphics.Capture + D3D11 + Windows.Media
 ```
 
 - `app`：生命周期、单实例、托盘、快捷键和窗口协调。
@@ -27,7 +27,7 @@ app
 
 目录在功能落地时才创建；不会为路线图中的假想实现预建空类。
 
-## 当前实现（0.4.0）
+## 当前实现（0.5.0）
 
 - `app/MainWindow` 只负责主窗口、托盘和状态展示，通过 `captureRequested` 信号请求截图。
 - `capture/CaptureController` 协调窗口隐藏、显示器采集、剪贴板和文件保存。
@@ -37,6 +37,10 @@ app
 - `ocr/OcrService` 复用一个工作线程，避免 OCR 阻塞 UI；同一时刻只接受一个识别任务。
 - `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型。
 - `translate/BrowserTranslation` 只构造文本翻译 URL；结果窗口在打开浏览器前明确提示传输边界。
+- `recorder/RecorderController` 管理路径、临时文件、悬浮停止条和录制生命周期；完成的 MP4 通过同目录原子替换落到用户目标路径。
+- `recorder/ScreenRecorderService` 只维护一个后台录制线程；停止请求是原子标志，不阻塞 UI。
+- `recorder/NativeScreenRecorder` 使用 Windows Graphics Capture 获取 GPU 表面，D3D11 裁剪后直接交给 Windows 媒体管线，不做 CPU 像素回读。
+- 帧池容量为 2，应用只保存最新帧；慢编码时覆盖旧帧，不让内存随录制时长增长。
 - `platform/windows/GlobalHotkey` 是唯一的 Win32 快捷键边界，使用 `RegisterHotKey`，未引入第三方热键库。
 - 当前选区限定在鼠标所在显示器，已处理显示缩放比例；跨显示器单次选区尚未实现。
 
@@ -52,5 +56,5 @@ app
 
 - 截图到首帧显示目标：常用桌面环境 P95 小于 100 ms。
 - 编辑交互目标：60 Hz 显示器下不出现可感知掉帧。
-- 录屏队列必须有上限，并记录采集、转换、编码与写盘耗时。
+- 录屏队列已有固定上限；结束结果记录捕获帧、向媒体管线提交的帧、总耗时和文件大小。
 - 每个阶段至少包含可自动执行的构建/自检；性能结论只能来自对应完整链路的测量。

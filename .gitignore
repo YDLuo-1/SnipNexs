@@ -11,6 +11,8 @@ SnipNexs-*.png
 SnipNexs-*.jpg
 SnipNexs-*.jpeg
 SnipNexs-*.bmp
+SnipNexs-*.mp4
+*.snipnexs-*.partial.mp4
 
 CMakeUserPresets.json
 *.user
