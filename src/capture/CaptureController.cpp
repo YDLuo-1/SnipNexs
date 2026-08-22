@@ -2,6 +2,7 @@
 
 #include "CaptureOverlay.h"
 #include "app/MainWindow.h"
+#include "ocr/OcrResultWindow.h"
 #include "pin/PinWindow.h"
 
 #include <QClipboard>
@@ -26,6 +27,22 @@ CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent)
     : QObject(parent)
     , mainWindow_(mainWindow)
 {
+    connect(&ocrService_, &OcrService::recognized, this,
+        [this](const QString& text, const QString& languageTag, qint64 elapsedMs) {
+            auto* window = new OcrResultWindow(text, languageTag, elapsedMs);
+            window->show();
+            window->raise();
+            window->activateWindow();
+            mainWindow_.setCaptureStatus(
+                QStringLiteral("OCR 完成：%1，%2 ms，识别 %3 个字符。")
+                    .arg(languageTag)
+                    .arg(elapsedMs)
+                    .arg(text.size()));
+        });
+    connect(&ocrService_, &OcrService::failed, this, [this](const QString& message) {
+        mainWindow_.setCaptureStatus(message);
+        mainWindow_.showNotification(QStringLiteral("OCR 失败"), message);
+    });
 }
 
 void CaptureController::startCapture()
@@ -69,6 +86,7 @@ void CaptureController::captureAfterUiSettles()
     overlay_ = overlay;
     overlay->setGeometry(screen->geometry());
     connect(overlay, &CaptureOverlay::copyRequested, this, &CaptureController::copyImage);
+    connect(overlay, &CaptureOverlay::ocrRequested, this, &CaptureController::recognizeImage);
     connect(overlay, &CaptureOverlay::pinRequested, this, &CaptureController::pinImage);
     connect(overlay, &CaptureOverlay::saveRequested, this, &CaptureController::saveImage);
     connect(overlay, &CaptureOverlay::canceled, this, [this]() {
@@ -81,6 +99,21 @@ void CaptureController::captureAfterUiSettles()
         QStringLiteral("已捕获 %1，耗时 %2 ms。拖出选区后复制或保存。")
             .arg(screen->name())
             .arg(timer.elapsed()));
+}
+
+void CaptureController::recognizeImage(const QImage& image)
+{
+    finishCapture(mainWindowWasVisible_);
+    if (!ocrService_.recognize(image)) {
+        const QString message = QStringLiteral("已有 OCR 任务正在运行，请稍后再试。");
+        mainWindow_.setCaptureStatus(message);
+        mainWindow_.showNotification(QStringLiteral("OCR 忙碌"), message);
+        return;
+    }
+    mainWindow_.setCaptureStatus(
+        QStringLiteral("正在本地识别 %1 × %2 像素图像……")
+            .arg(image.width())
+            .arg(image.height()));
 }
 
 void CaptureController::pinImage(const QImage& image)

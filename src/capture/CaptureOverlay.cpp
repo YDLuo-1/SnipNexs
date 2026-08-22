@@ -47,6 +47,8 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     auto* arrowButton = new QPushButton(QStringLiteral("箭头"), toolbar_);
     undoButton_ = new QPushButton(QStringLiteral("撤销"), toolbar_);
     redoButton_ = new QPushButton(QStringLiteral("重做"), toolbar_);
+    auto* ocrButton = new QPushButton(QStringLiteral("识字"), toolbar_);
+    ocrButton->setObjectName(QStringLiteral("ocrButton"));
     auto* pinButton = new QPushButton(QStringLiteral("贴图"), toolbar_);
     auto* copyButton = new QPushButton(QStringLiteral("复制"), toolbar_);
     auto* saveButton = new QPushButton(QStringLiteral("保存"), toolbar_);
@@ -66,6 +68,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     layout->addWidget(arrowButton);
     layout->addWidget(undoButton_);
     layout->addWidget(redoButton_);
+    layout->addWidget(ocrButton);
     layout->addWidget(pinButton);
     layout->addWidget(copyButton);
     layout->addWidget(saveButton);
@@ -84,6 +87,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     )"));
 
     connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
+    connect(ocrButton, &QPushButton::clicked, this, &CaptureOverlay::acceptOcr);
     connect(pinButton, &QPushButton::clicked, this, &CaptureOverlay::acceptPin);
     connect(saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
     connect(cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
@@ -315,6 +319,14 @@ void CaptureOverlay::acceptCopy()
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit copyRequested(image);
+    }
+}
+
+void CaptureOverlay::acceptOcr()
+{
+    const QImage image = selectedImage();
+    if (!image.isNull()) {
+        emit ocrRequested(image);
     }
 }
 

@@ -11,8 +11,8 @@ app
  ├─ capture ── platform/windows
  ├─ editor
  ├─ pin
- ├─ ocr ────── runtime/onnx（后续）
- ├─ translate ─ network（后续）
+ ├─ ocr ────── Windows.Media.Ocr
+ ├─ translate ─ browser
  └─ recorder ─ platform/windows + media（后续）
 ```
 
@@ -20,20 +20,23 @@ app
 - `capture`：屏幕/窗口/区域采集及捕获会话状态。
 - `editor`：选区、绘制命令、撤销重做与导出。
 - `pin`：贴图窗口及其交互，不复制编辑器内部状态。
-- `ocr`：OCR 请求与结果模型；运行时实现放在边界之后。
-- `translate`：翻译服务接口、凭据配置和网络实现。
+- `ocr`：OCR 请求、后台调度和系统 OCR 适配。
+- `translate`：只生成显式浏览器翻译 URL；当前没有内置网络客户端或凭据。
 - `recorder`：帧采集、队列、编码与封装。
 - `platform/windows`：Win32、D3D11、Windows Graphics Capture 等平台代码。
 
 目录在功能落地时才创建；不会为路线图中的假想实现预建空类。
 
-## 当前实现（0.3.0）
+## 当前实现（0.4.0）
 
 - `app/MainWindow` 只负责主窗口、托盘和状态展示，通过 `captureRequested` 信号请求截图。
 - `capture/CaptureController` 协调窗口隐藏、显示器采集、剪贴板和文件保存。
 - `capture/CaptureOverlay` 负责选区状态、标注交互与轻量绘制；原始 `QPixmap` 保持隐式共享，用户确认后才转换和裁剪为 `QImage`。
 - `editor/AnnotationDocument` 保存画笔、矩形和箭头数据及撤销游标；复制、保存或贴图时才合成标注。
 - `pin/PinWindow` 是仅持有一份隐式共享 `QPixmap` 的置顶窗口，支持移动和有界缩放。
+- `ocr/OcrService` 复用一个工作线程，避免 OCR 阻塞 UI；同一时刻只接受一个识别任务。
+- `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型。
+- `translate/BrowserTranslation` 只构造文本翻译 URL；结果窗口在打开浏览器前明确提示传输边界。
 - `platform/windows/GlobalHotkey` 是唯一的 Win32 快捷键边界，使用 `RegisterHotKey`，未引入第三方热键库。
 - 当前选区限定在鼠标所在显示器，已处理显示缩放比例；跨显示器单次选区尚未实现。
 
@@ -42,7 +45,7 @@ app
 1. 模块通过窄的数据结构或 Qt 信号连接，不直接访问其他模块的窗口控件。
 2. 只有当一个边界已存在两个实现，或必须隔离第三方运行时时，才引入抽象接口。
 3. 内置功能保持静态编译；脚本/二进制插件系统必须有真实用例和稳定 API 后再评估。
-4. UI 线程只处理交互与轻量绘制；OCR、翻译和编码放入有界工作队列。
+4. UI 线程只处理交互与轻量绘制；OCR 和编码放入有界工作队列，未来的内置网络翻译也必须遵守此规则。
 5. 图像默认使用隐式共享的 `QImage`，写入前才分离，避免无意义深拷贝。
 
 ## 性能与验证

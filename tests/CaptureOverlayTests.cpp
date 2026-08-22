@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QImage>
 #include <QPixmap>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QTextStream>
 #include <QTest>
@@ -68,6 +69,18 @@ int main(int argc, char* argv[])
     QTest::keyClick(&annotationOverlay, Qt::Key_Z, Qt::ControlModifier);
     const QImage undone = annotationOverlay.selectedImage();
     ok &= undone.pixelColor(10, 10) == QColor(160, 120, 80);
+
+    QSignalSpy ocrSpy(&annotationOverlay, &snipnexs::CaptureOverlay::ocrRequested);
+    auto* ocrButton = annotationOverlay.findChild<QPushButton*>(QStringLiteral("ocrButton"));
+    ok &= ocrButton != nullptr;
+    if (ocrButton != nullptr) {
+        QTest::mouseClick(ocrButton, Qt::LeftButton);
+        ok &= ocrSpy.count() == 1;
+        if (ocrSpy.count() == 1) {
+            const QImage ocrImage = qvariant_cast<QImage>(ocrSpy.takeFirst().at(0));
+            ok &= ocrImage.size() == QSize(160, 120);
+        }
+    }
 
     QTextStream(stdout) << (ok ? "capture overlay: ok\n" : "capture overlay: failed\n");
     return ok ? 0 : 1;

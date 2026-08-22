@@ -81,11 +81,11 @@ void MainWindow::setupUi()
     cardLayout->setContentsMargins(24, 22, 24, 22);
     cardLayout->setSpacing(10);
 
-    auto* stage = new QLabel(QStringLiteral("阶段 3 · 标注与贴图"), card);
+    auto* stage = new QLabel(QStringLiteral("阶段 4 · 本地 OCR"), card);
     stage->setObjectName(QStringLiteral("stage"));
     statusLabel_ = new QLabel(
-        QStringLiteral("按 Ctrl+Shift+A 开始截图。选区支持画笔、矩形、箭头和撤销重做。\n"
-                       "可复制、保存或创建置顶贴图。"),
+        QStringLiteral("按 Ctrl+Shift+A 开始截图。选区支持标注、贴图和本地文字识别。\n"
+                       "识别结果可复制；联网翻译只在确认后发送文字。"),
         card);
     statusLabel_->setWordWrap(true);
     cardLayout->addWidget(stage);

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.3.0
+    VERSION 0.4.0
     DESCRIPTION "A lightweight and extensible screenshot toolkit for Windows"
     LANGUAGES CXX
 )
@@ -26,10 +26,18 @@ qt_add_executable(SnipNexs WIN32
     src/capture/CaptureOverlay.h
     src/editor/AnnotationDocument.cpp
     src/editor/AnnotationDocument.h
+    src/ocr/OcrResultWindow.cpp
+    src/ocr/OcrResultWindow.h
+    src/ocr/OcrService.cpp
+    src/ocr/OcrService.h
+    src/ocr/WindowsOcr.cpp
+    src/ocr/WindowsOcr.h
     src/pin/PinWindow.cpp
     src/pin/PinWindow.h
     src/platform/windows/GlobalHotkey.cpp
     src/platform/windows/GlobalHotkey.h
+    src/translate/BrowserTranslation.cpp
+    src/translate/BrowserTranslation.h
 )
 
 target_include_directories(SnipNexs PRIVATE src)
@@ -39,6 +47,7 @@ target_link_libraries(SnipNexs PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    windowsapp
 )
 
 target_compile_definitions(SnipNexs PRIVATE
@@ -129,6 +138,36 @@ if(BUILD_TESTING)
     target_link_libraries(AnnotationDocumentTests PRIVATE Qt6::Core Qt6::Gui)
     add_test(NAME AnnotationDocumentTests COMMAND AnnotationDocumentTests)
     set_tests_properties(AnnotationDocumentTests PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(BrowserTranslationTests
+        tests/BrowserTranslationTests.cpp
+        src/translate/BrowserTranslation.cpp
+        src/translate/BrowserTranslation.h
+    )
+    target_include_directories(BrowserTranslationTests PRIVATE src)
+    target_link_libraries(BrowserTranslationTests PRIVATE Qt6::Core)
+    add_test(NAME BrowserTranslationTests COMMAND BrowserTranslationTests)
+    set_tests_properties(BrowserTranslationTests PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(WindowsOcrTests
+        tests/WindowsOcrTests.cpp
+        src/ocr/WindowsOcr.cpp
+        src/ocr/WindowsOcr.h
+    )
+    target_include_directories(WindowsOcrTests PRIVATE src)
+    target_link_libraries(WindowsOcrTests PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets windowsapp)
+    target_compile_definitions(WindowsOcrTests PRIVATE UNICODE _UNICODE NOMINMAX)
+    if(MSVC)
+        target_compile_options(WindowsOcrTests PRIVATE /W4 /permissive- /utf-8 /EHsc)
+    endif()
+    add_test(NAME WindowsOcrTests COMMAND WindowsOcrTests)
+    set_tests_properties(WindowsOcrTests PROPERTIES
+        SKIP_RETURN_CODE 77
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 endif()
