@@ -1,5 +1,6 @@
 #include "NativeScreenRecorder.h"
 
+#include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QDir>
 #include <QFileInfo>
@@ -172,11 +173,14 @@ QString transcodeFailure(TranscodeFailureReason reason)
 {
     switch (reason) {
     case TranscodeFailureReason::CodecNotFound:
-        return QStringLiteral("系统中没有可用的 H.264 编码器。");
+        return QCoreApplication::translate(
+            "NativeScreenRecorder", "系统中没有可用的 H.264 编码器。");
     case TranscodeFailureReason::InvalidProfile:
-        return QStringLiteral("系统不支持当前 H.264 编码参数。");
+        return QCoreApplication::translate(
+            "NativeScreenRecorder", "系统不支持当前 H.264 编码参数。");
     default:
-        return QStringLiteral("系统无法准备 MP4 编码器。");
+        return QCoreApplication::translate(
+            "NativeScreenRecorder", "系统无法准备 MP4 编码器。");
     }
 }
 
@@ -330,13 +334,16 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     elapsed.start();
 
     if (settings.outputPath.isEmpty() || settings.sourceRect.isEmpty()) {
-        result.error = QStringLiteral("录屏输出路径或选区无效。");
+        result.error = QCoreApplication::translate(
+            "NativeScreenRecorder", "录屏输出路径或选区无效。");
         return result;
     }
-    stage = QStringLiteral("检查 Windows Graphics Capture");
+    stage = QCoreApplication::translate(
+        "NativeScreenRecorder", "检查 Windows Graphics Capture");
     if (!GraphicsCaptureSession::IsSupported()) {
         result.unavailable = true;
-        result.error = QStringLiteral("当前 Windows 或显卡驱动不支持 Windows Graphics Capture。");
+        result.error = QCoreApplication::translate(
+            "NativeScreenRecorder", "当前 Windows 或显卡驱动不支持 Windows Graphics Capture。");
         return result;
     }
 
@@ -344,15 +351,16 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         ? reinterpret_cast<HMONITOR>(settings.monitorHandle)
         : monitorForName(settings.screenName);
     if (monitor == nullptr) {
-        result.error = QStringLiteral("找不到录屏显示器：%1").arg(settings.screenName);
+        result.error = QCoreApplication::translate(
+            "NativeScreenRecorder", "找不到录屏显示器：%1").arg(settings.screenName);
         return result;
     }
 
-    stage = QStringLiteral("创建 D3D11 设备");
+    stage = QCoreApplication::translate("NativeScreenRecorder", "创建 D3D11 设备");
     ComPtr<ID3D11Device> d3dDevice;
     ComPtr<ID3D11DeviceContext> context;
     const IDirect3DDevice winrtDevice = createDirect3DDevice(d3dDevice, context);
-    stage = QStringLiteral("创建显示器捕获目标");
+    stage = QCoreApplication::translate("NativeScreenRecorder", "创建显示器捕获目标");
     const GraphicsCaptureItem item = createCaptureItem(monitor);
     const SizeInt32 itemSize = item.Size();
 
@@ -360,11 +368,12 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     region.setWidth(region.width() & ~1);
     region.setHeight(region.height() & ~1);
     if (region.width() < 2 || region.height() < 2) {
-        result.error = QStringLiteral("录屏选区超出显示器范围或尺寸过小。");
+        result.error = QCoreApplication::translate(
+            "NativeScreenRecorder", "录屏选区超出显示器范围或尺寸过小。");
         return result;
     }
 
-    stage = QStringLiteral("启动 GPU 帧池");
+    stage = QCoreApplication::translate("NativeScreenRecorder", "启动 GPU 帧池");
     CaptureFrameSource frameSource(
         winrtDevice,
         d3dDevice.Get(),
@@ -374,7 +383,7 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         stopRequested,
         settings.maximumDurationMs);
 
-    stage = QStringLiteral("创建媒体流");
+    stage = QCoreApplication::translate("NativeScreenRecorder", "创建媒体流");
     const auto inputProperties = VideoEncodingProperties::CreateUncompressed(
         MediaEncodingSubtypes::Bgra8(),
         static_cast<uint32_t>(region.width()),
@@ -437,7 +446,9 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     profile.Video().PixelAspectRatio().Numerator(1);
     profile.Video().PixelAspectRatio().Denominator(1);
 
-    stage = QStringLiteral("打开输出文件 %1").arg(QDir::toNativeSeparators(settings.outputPath));
+    stage = QCoreApplication::translate(
+        "NativeScreenRecorder", "打开输出文件 %1")
+                .arg(QDir::toNativeSeparators(settings.outputPath));
     const std::wstring outputPath = settings.outputPath.toStdWString();
     winrt::Windows::Storage::Streams::IRandomAccessStream stream{nullptr};
     check_hresult(CreateRandomAccessStreamOnFile(
@@ -447,7 +458,7 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         put_abi(stream)));
     stream.Size(0);
 
-    stage = QStringLiteral("准备 H.264 编码器");
+    stage = QCoreApplication::translate("NativeScreenRecorder", "准备 H.264 编码器");
     MediaTranscoder transcoder;
     transcoder.HardwareAccelerationEnabled(true);
     const PrepareTranscodeResult preparation = transcoder
@@ -463,7 +474,7 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     if (ready) {
         ready();
     }
-    stage = QStringLiteral("写入 MP4");
+    stage = QCoreApplication::translate("NativeScreenRecorder", "写入 MP4");
     preparation.TranscodeAsync().get();
     stream.FlushAsync().get();
     stream.Close();
@@ -477,8 +488,10 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     result.succeeded = callbackError.isEmpty() && result.outputBytes > 0 && result.submittedFrames > 0;
     if (!result.succeeded) {
         result.error = callbackError.isEmpty()
-            ? QStringLiteral("录屏未产生有效视频帧。")
-            : QStringLiteral("录屏帧处理失败：%1").arg(callbackError);
+            ? QCoreApplication::translate(
+                  "NativeScreenRecorder", "录屏未产生有效视频帧。")
+            : QCoreApplication::translate(
+                  "NativeScreenRecorder", "录屏帧处理失败：%1").arg(callbackError);
     }
     return result;
 }
@@ -492,7 +505,7 @@ RecordingResult recordScreenNative(
 {
     try {
         ApartmentGuard apartment;
-        QString stage = QStringLiteral("初始化 WinRT");
+        QString stage = QCoreApplication::translate("NativeScreenRecorder", "初始化 WinRT");
         try {
             return record(settings, stopRequested, ready, stage);
         } catch (const hresult_error& error) {
@@ -500,7 +513,8 @@ RecordingResult recordScreenNative(
             result.unavailable = error.code() == hresult(HRESULT_FROM_WIN32(ERROR_SERVICE_DOES_NOT_EXIST))
                 || error.code() == hresult(E_ACCESSDENIED)
                 || error.code() == hresult(DXGI_ERROR_UNSUPPORTED);
-            result.error = QStringLiteral("%1失败：%2 (0x%3)")
+            result.error = QCoreApplication::translate(
+                "NativeScreenRecorder", "%1失败：%2 (0x%3)")
                 .arg(stage)
                 .arg(QString::fromWCharArray(error.message().c_str()))
                 .arg(static_cast<quint32>(error.code().value), 8, 16, QLatin1Char('0'));
@@ -511,13 +525,15 @@ RecordingResult recordScreenNative(
         result.unavailable = error.code() == hresult(HRESULT_FROM_WIN32(ERROR_SERVICE_DOES_NOT_EXIST))
             || error.code() == hresult(E_ACCESSDENIED)
             || error.code() == hresult(DXGI_ERROR_UNSUPPORTED);
-        result.error = QStringLiteral("Windows 录屏失败：%1 (0x%2)")
+        result.error = QCoreApplication::translate(
+            "NativeScreenRecorder", "Windows 录屏失败：%1 (0x%2)")
             .arg(QString::fromWCharArray(error.message().c_str()))
             .arg(static_cast<quint32>(error.code().value), 8, 16, QLatin1Char('0'));
         return result;
     } catch (const std::exception& error) {
         RecordingResult result;
-        result.error = QStringLiteral("录屏失败：%1").arg(QString::fromUtf8(error.what()));
+        result.error = QCoreApplication::translate(
+            "NativeScreenRecorder", "录屏失败：%1").arg(QString::fromUtf8(error.what()));
         return result;
     }
 }

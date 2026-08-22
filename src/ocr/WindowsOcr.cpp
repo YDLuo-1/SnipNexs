@@ -1,5 +1,6 @@
 #include "WindowsOcr.h"
 
+#include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QImage>
 #include <QStringList>
@@ -105,7 +106,7 @@ Result recognize(const QImage& input)
     timer.start();
 
     if (input.isNull()) {
-        output.error = QStringLiteral("OCR 输入图像为空。");
+        output.error = QCoreApplication::translate("WindowsOcr", "OCR 输入图像为空。");
         return output;
     }
 
@@ -115,7 +116,8 @@ Result recognize(const QImage& input)
 
         const OcrEngine engine = OcrEngine::TryCreateFromUserProfileLanguages();
         if (!engine) {
-            output.error = QStringLiteral("未安装与当前用户语言匹配的 Windows OCR 语言包。");
+            output.error = QCoreApplication::translate(
+                "WindowsOcr", "未安装与当前用户语言匹配的 Windows OCR 语言包。");
             return output;
         }
 
@@ -132,10 +134,10 @@ Result recognize(const QImage& input)
         output.elapsedMs = timer.elapsed();
         return output;
     } catch (const winrt::hresult_error& error) {
-        output.error = QStringLiteral("Windows OCR 调用失败：%1")
+        output.error = QCoreApplication::translate("WindowsOcr", "Windows OCR 调用失败：%1")
                            .arg(fromHString(error.message()));
     } catch (const std::exception& error) {
-        output.error = QStringLiteral("OCR 处理失败：%1")
+        output.error = QCoreApplication::translate("WindowsOcr", "OCR 处理失败：%1")
                            .arg(QString::fromUtf8(error.what()));
     }
     output.elapsedMs = timer.elapsed();

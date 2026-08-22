@@ -23,7 +23,7 @@ RecorderController::RecorderController(MainWindow& mainWindow, QObject* parent)
         if (indicator_ != nullptr) {
             indicator_->setRecordingReady();
         }
-        mainWindow_.setCaptureStatus(QStringLiteral("正在录制区域视频。点击悬浮条停止并完成 MP4。"));
+        mainWindow_.setCaptureStatus(tr("正在录制区域视频。点击悬浮条停止并完成 MP4。"));
     });
     connect(&service_, &ScreenRecorderService::completed,
         this, &RecorderController::handleCompleted);
@@ -43,7 +43,7 @@ void RecorderController::startRegion(
 {
     if (service_.isRunning()) {
         mainWindow_.showNotification(
-            QStringLiteral("正在录屏"), QStringLiteral("请先停止当前录制。"));
+            tr("正在录屏"), tr("请先停止当前录制。"));
         return;
     }
 
@@ -52,9 +52,9 @@ void RecorderController::startRegion(
         .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss")));
     finalPath_ = QFileDialog::getSaveFileName(
         nullptr,
-        QStringLiteral("保存区域录屏"),
+        tr("保存区域录屏"),
         QDir(videos).filePath(suggestedName),
-        QStringLiteral("MP4 视频 (*.mp4)"));
+        tr("MP4 视频 (*.mp4)"));
     if (finalPath_.isEmpty()) {
         mainWindow_.showAndActivate();
         return;
@@ -69,7 +69,7 @@ void RecorderController::startRegion(
     QFile partial(partialPath_);
     if (!partial.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         mainWindow_.setCaptureStatus(
-            QStringLiteral("无法创建录屏文件：%1").arg(QDir::toNativeSeparators(partialPath_)));
+            tr("无法创建录屏文件：%1").arg(QDir::toNativeSeparators(partialPath_)));
         mainWindow_.showAndActivate();
         return;
     }
@@ -85,7 +85,7 @@ void RecorderController::startRegion(
     if (!service_.start(settings)) {
         QFile::remove(partialPath_);
         mainWindow_.showNotification(
-            QStringLiteral("正在录屏"), QStringLiteral("请先停止当前录制。"));
+            tr("正在录屏"), tr("请先停止当前录制。"));
         return;
     }
 
@@ -96,7 +96,7 @@ void RecorderController::startRegion(
     indicator->show();
     indicator->move(QCursor::pos() + QPoint(18, 18));
     mainWindow_.hide();
-    mainWindow_.setCaptureStatus(QStringLiteral("正在启动 Windows GPU 录屏与 H.264 编码器…"));
+    mainWindow_.setCaptureStatus(tr("正在启动 Windows GPU 录屏与 H.264 编码器…"));
 }
 
 void RecorderController::stop()
@@ -117,7 +117,7 @@ void RecorderController::handleCompleted(const RecordingResult& result)
     if (!result.succeeded) {
         QFile::remove(partialPath_);
         mainWindow_.setCaptureStatus(result.error);
-        mainWindow_.showNotification(QStringLiteral("录屏失败"), result.error);
+        mainWindow_.showNotification(tr("录屏失败"), result.error);
         mainWindow_.showAndActivate();
         return;
     }
@@ -128,24 +128,24 @@ void RecorderController::handleCompleted(const RecordingResult& result)
             partialNative.c_str(),
             finalNative.c_str(),
             MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        const QString message = QStringLiteral(
+        const QString message = tr(
             "MP4 已生成，但无法原子移动到目标路径（错误 %1）。临时文件保留在：%2")
             .arg(GetLastError())
             .arg(QDir::toNativeSeparators(partialPath_));
         mainWindow_.setCaptureStatus(message);
-        mainWindow_.showNotification(QStringLiteral("录屏文件未移动"), message);
+        mainWindow_.showNotification(tr("录屏文件未移动"), message);
         mainWindow_.showAndActivate();
         return;
     }
 
     const QString nativePath = QDir::toNativeSeparators(finalPath_);
     mainWindow_.setCaptureStatus(
-        QStringLiteral("录屏完成：处理 %1 帧，%2 秒，%3 MiB。%4")
+        tr("录屏完成：处理 %1 帧，%2 秒，%3 MiB。%4")
             .arg(result.submittedFrames)
             .arg(result.elapsedMs / 1000.0, 0, 'f', 1)
             .arg(result.outputBytes / 1024.0 / 1024.0, 0, 'f', 1)
             .arg(nativePath));
-    mainWindow_.showNotification(QStringLiteral("录屏已保存"), nativePath);
+    mainWindow_.showNotification(tr("录屏已保存"), nativePath);
     mainWindow_.showAndActivate();
 }
 

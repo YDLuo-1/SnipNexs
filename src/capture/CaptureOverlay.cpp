@@ -34,7 +34,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     , devicePixelRatio_(screenshot_.devicePixelRatio())
 {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-    setWindowTitle(QStringLiteral("SnipNexs Capture"));
+    setWindowTitle(tr("SnipNexs Capture"));
     setAttribute(Qt::WA_DeleteOnClose);
     setCursor(Qt::CrossCursor);
     setFocusPolicy(Qt::StrongFocus);
@@ -52,19 +52,19 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     layout->setSpacing(7);
 
     sizeLabel_ = new QLabel(toolbar_);
-    auto* penButton = new QPushButton(QStringLiteral("画笔"), toolbar_);
-    auto* rectangleButton = new QPushButton(QStringLiteral("矩形"), toolbar_);
-    auto* arrowButton = new QPushButton(QStringLiteral("箭头"), toolbar_);
-    undoButton_ = new QPushButton(QStringLiteral("撤销"), toolbar_);
-    redoButton_ = new QPushButton(QStringLiteral("重做"), toolbar_);
-    auto* ocrButton = new QPushButton(QStringLiteral("识字"), toolbar_);
+    auto* penButton = new QPushButton(tr("画笔"), toolbar_);
+    auto* rectangleButton = new QPushButton(tr("矩形"), toolbar_);
+    auto* arrowButton = new QPushButton(tr("箭头"), toolbar_);
+    undoButton_ = new QPushButton(tr("撤销"), toolbar_);
+    redoButton_ = new QPushButton(tr("重做"), toolbar_);
+    auto* ocrButton = new QPushButton(tr("识字"), toolbar_);
     ocrButton->setObjectName(QStringLiteral("ocrButton"));
-    auto* pinButton = new QPushButton(QStringLiteral("贴图"), toolbar_);
-    auto* recordButton = new QPushButton(QStringLiteral("录屏"), toolbar_);
+    auto* pinButton = new QPushButton(tr("贴图"), toolbar_);
+    auto* recordButton = new QPushButton(tr("录屏"), toolbar_);
     recordButton->setObjectName(QStringLiteral("recordButton"));
-    auto* copyButton = new QPushButton(QStringLiteral("复制"), toolbar_);
-    auto* saveButton = new QPushButton(QStringLiteral("保存"), toolbar_);
-    auto* cancelButton = new QPushButton(QStringLiteral("取消"), toolbar_);
+    auto* copyButton = new QPushButton(tr("复制"), toolbar_);
+    auto* saveButton = new QPushButton(tr("保存"), toolbar_);
+    auto* cancelButton = new QPushButton(tr("取消"), toolbar_);
     copyButton->setObjectName(QStringLiteral("accentButton"));
     toolButtons_ = new QButtonGroup(this);
     toolButtons_->setExclusive(true);
@@ -297,7 +297,7 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
     painter.drawPixmap(rect(), dimmedScreenshot_);
 
     if (!selection_.isValid()) {
-        const QString hint = QStringLiteral("拖动鼠标选择区域 · Esc 或右键取消");
+        const QString hint = tr("拖动鼠标选择区域 · Esc 或右键取消");
         const QRect hintRect = fontMetrics().boundingRect(hint).adjusted(-14, -9, 14, 9);
         QRect centered = hintRect;
         centered.moveCenter(QPoint(width() / 2, 42));
