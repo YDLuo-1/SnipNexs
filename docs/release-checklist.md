@@ -7,6 +7,7 @@
 3. CTest 必须零失败；输出中被跳过的项目必须逐项记录，不能把“执行通过”和“跳过”合并成 11/11。
 4. ZIP 必须包含 Qt Core/Gui/Widgets/Network、Windows 平台插件、MSVC CRT、GPL/LGPL/MIT 文本、Qt 人类可读声明和 `qtbase-6.11.2.spdx`。
 5. `qtbase-everywhere-src-6.11.2.tar.xz` 的 SHA-256 必须是 `5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22`。
+6. GitHub Release 说明必须在同一页面依次提供 `English` 和 `简体中文` 两个内容对应的章节；附件说明也必须双语。
 
 ## 桌面验收
 
