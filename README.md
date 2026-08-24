@@ -40,9 +40,9 @@ Current version: `0.7.1`. It includes Chinese/English UI switching, tray-first s
 
 See [Architecture](docs/architecture.md), [Dependencies and licenses](docs/dependencies.md), and the pinned [source review](docs/source-review.md) for the current technical boundaries.
 
-## AI-assisted development
+## Open source, development, and use notice
 
-Generative AI tools assisted with parts of the requirements analysis, design, documentation, code, and testing. AI output is not a substitute for human review, security assessment, or license checks. See the [AI-assisted development notice](docs/ai-assisted-development.md) for responsibilities and privacy precautions.
+Generative AI tools assisted with parts of the requirements analysis, design, documentation, code, and testing. The [open source, development, and use notice](docs/ai-assisted-development.md) explains the GPL and third-party license scope, AI-assisted development responsibilities, testing boundaries, warranty terms, privacy precautions, and feedback channel.
 
 ## Recording implementation notes
 
