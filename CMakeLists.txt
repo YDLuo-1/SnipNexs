@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.7.1
+    VERSION 0.8.0
     DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )
@@ -302,6 +302,7 @@ if(BUILD_TESTING)
     target_link_libraries(AnnotationDocumentTests PRIVATE Qt6::Core Qt6::Gui)
     add_test(NAME AnnotationDocumentTests COMMAND AnnotationDocumentTests)
     set_tests_properties(AnnotationDocumentTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 

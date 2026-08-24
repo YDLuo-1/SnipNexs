@@ -317,6 +317,18 @@ You can still click the Region Capture button.</translation>
         <translation>Arrow</translation>
     </message>
     <message>
+        <source>文字</source>
+        <translation>Text</translation>
+    </message>
+    <message>
+        <source>取色</source>
+        <translation>Color picker</translation>
+    </message>
+    <message>
+        <source>输入文字，回车完成</source>
+        <translation>Type text and press Enter</translation>
+    </message>
+    <message>
         <location filename="../src/capture/CaptureOverlay.cpp" line="216"/>
         <source>撤销</source>
         <translation>Undo</translation>
@@ -370,6 +382,10 @@ You can still click the Region Capture button.</translation>
         <location filename="../src/capture/CaptureOverlay.cpp" line="583"/>
         <source>截图记录 %1/%2 · 按 , / . 切换</source>
         <translation>Capture history %1/%2 · Press , / . to switch</translation>
+    </message>
+    <message>
+        <source>按 C 复制 · Shift 切换 RGB/HEX</source>
+        <translation>Press C to copy · Shift toggles RGB/HEX</translation>
     </message>
 </context>
 <context>

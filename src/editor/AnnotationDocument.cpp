@@ -1,5 +1,6 @@
 #include "AnnotationDocument.h"
 
+#include <QFont>
 #include <QLineF>
 #include <QPainter>
 #include <QPainterPath>
@@ -12,7 +13,7 @@ namespace snipnexs {
 
 void AnnotationDocument::begin(AnnotationTool tool, const QPointF& point)
 {
-    if (tool == AnnotationTool::None) {
+    if (tool == AnnotationTool::None || tool == AnnotationTool::Text) {
         return;
     }
 
@@ -23,6 +24,23 @@ void AnnotationDocument::begin(AnnotationTool tool, const QPointF& point)
         annotation.points.append(point);
     }
     draft_ = std::move(annotation);
+}
+
+void AnnotationDocument::addText(const QString& text, const QPointF& point)
+{
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        return;
+    }
+
+    Annotation annotation;
+    annotation.tool = AnnotationTool::Text;
+    annotation.points = {point};
+    annotation.text = trimmed;
+    items_.resize(appliedCount_);
+    items_.append(std::move(annotation));
+    appliedCount_ = items_.size();
+    draft_.reset();
 }
 
 void AnnotationDocument::update(const QPointF& point)
@@ -123,6 +141,16 @@ void AnnotationDocument::paint(QPainter& painter) const
 void AnnotationDocument::paintAnnotation(QPainter& painter, const Annotation& annotation)
 {
     if (annotation.points.isEmpty()) {
+        return;
+    }
+
+    if (annotation.tool == AnnotationTool::Text) {
+        QFont font = painter.font();
+        font.setPixelSize(annotation.fontPixelSize);
+        font.setWeight(QFont::DemiBold);
+        painter.setFont(font);
+        painter.setPen(annotation.color);
+        painter.drawText(annotation.points.constFirst(), annotation.text);
         return;
     }
 

@@ -8,9 +8,11 @@
 #include "editor/AnnotationDocument.h"
 
 class QButtonGroup;
+class QEvent;
 class QFrame;
 class QLabel;
 class QKeyEvent;
+class QLineEdit;
 class QMouseEvent;
 class QPainter;
 class QPaintEvent;
@@ -43,6 +45,7 @@ signals:
     void canceled();
 
 protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -78,14 +81,22 @@ private:
     void acceptRecord();
     void acceptSave();
     void activateHistoryIndex(qsizetype index);
+    void cancelTextEditing();
+    [[nodiscard]] QColor colorAt(const QPoint& point, QPoint* sourcePoint = nullptr) const;
+    void commitTextEditing();
+    void copyPickedColor();
+    void drawColorPicker(QPainter& painter) const;
     void drawHistoryHint(QPainter& painter) const;
     [[nodiscard]] QRect handleRect(ResizeHandle handle) const;
     void positionCaptureHint();
+    void positionSelectionSizeLabel();
     [[nodiscard]] ResizeHandle resizeHandleAt(const QPoint& point) const;
     [[nodiscard]] bool selectionGeometryEditable() const;
     void positionToolbar();
     void rebuildDimmedScreenshot();
     void switchHistory(int offset);
+    void setColorPickerActive(bool active);
+    void startTextEditing(const QPoint& point);
     void updateCaptureHintVisibility(const QPoint& point);
     void updateCursorForPosition(const QPoint& point);
     void updateEditorActions();
@@ -113,11 +124,17 @@ private:
     AnnotationDocument annotations_;
     QLabel* captureHint_ = nullptr;
     QFrame* toolbar_ = nullptr;
-    QLabel* sizeLabel_ = nullptr;
+    QLabel* selectionSizeLabel_ = nullptr;
     QButtonGroup* toolButtons_ = nullptr;
+    QLineEdit* textEditor_ = nullptr;
+    QPushButton* colorPickerButton_ = nullptr;
     QPushButton* recordButton_ = nullptr;
     QPushButton* undoButton_ = nullptr;
     QPushButton* redoButton_ = nullptr;
+    QPoint textAnchor_;
+    QPoint colorPickerPoint_;
+    bool colorPickerActive_ = false;
+    bool colorPickerHex_ = false;
 };
 
 } // namespace snipnexs

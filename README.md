@@ -4,7 +4,7 @@
 
 SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.7.1`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, lightweight annotation, draggable and resizable image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
+Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
@@ -13,7 +13,8 @@ Current version: `0.7.1`. It includes Chinese/English UI switching, tray-first s
 - Choose **Simplified Chinese** or **English** from the language selector. The change takes effect immediately and is remembered for the next launch.
 - Hover a desktop window to preview a native child window, client area, or whole-window frame, then click to select it; drag instead to create a custom region. Visual elements without their own native window still fall back to the surrounding client area or window frame. Before annotating, drag inside the selection to move it, or drag any of its eight handles to resize it.
 - The main window stays hidden during capture. Successfully copied, saved, or pinned captures enter the current session history; press `,` for the previous image and `.` for the next one.
-- Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
+- The selection frame shows its physical pixel dimensions. Use **Pen**, **Rectangle**, **Arrow**, or **Text** to annotate; press `Enter` to commit inline text and `Esc` to cancel it. `Ctrl+Z` and `Ctrl+Y` undo and redo.
+- Use **Color picker** to inspect a 9 × 9 magnified pixel grid. Press `C` to copy the value, `Shift` to toggle RGB/HEX, or click to copy and close the picker.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
 - The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.
 - Click **Region Recording**, draw a region, then click **Record** in the selection toolbar. Choose an MP4 path and use the floating indicator to stop. The indicator starts at the bottom-right of the selected display and can be dragged from an empty area.
@@ -77,7 +78,7 @@ The deployed executable is `dist/SnipNexs/bin/SnipNexs.exe`.
 For a formal release, run this only from a clean commit carrying the matching version tag:
 
 ```powershell
-.\scripts\package-release.ps1 -Version 0.7.1
+.\scripts\package-release.ps1 -Version 0.8.0
 ```
 
 The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and prints its SHA-256. GitHub also displays the digest for every uploaded asset. Add `-IncludeQtSource` only when publishing the first SnipNexs release for a new Qt version; later application releases link to that publisher-controlled source copy. See the [release checklist](docs/release-checklist.md).
