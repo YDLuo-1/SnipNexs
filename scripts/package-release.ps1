@@ -51,7 +51,7 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer
 if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "Visual Studio Installer helper was not found: $vswhere"
 }
-$vsInstall = & $vswhere -latest -products '*' `
+$vsInstall = & $vswhere -latest -version '[17.0,18.0)' -products '*' `
     -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
     -property installationPath
 $vsDevCmd = Join-Path $vsInstall 'Common7\Tools\VsDevCmd.bat'
@@ -83,7 +83,7 @@ if (-not (Test-Path -LiteralPath $ctest)) {
     $ctest = (Get-Command ctest.exe -ErrorAction Stop).Source
 }
 
-& $cmake.Source --preset windows-release
+& $cmake.Source --fresh --preset windows-release
 if ($LASTEXITCODE -ne 0) { throw 'CMake configure failed.' }
 & $cmake.Source --build --preset windows-release
 if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
