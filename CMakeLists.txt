@@ -138,6 +138,7 @@ qt_generate_deploy_app_script(
         --no-system-d3d-compiler
         --no-system-dxc-compiler
         --no-opengl-sw
+        --no-compiler-runtime
         --skip-plugin-types generic,iconengines,networkinformation,tls
         --exclude-plugins qsvg
 )
