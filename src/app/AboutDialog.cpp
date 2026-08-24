@@ -1,12 +1,14 @@
 #include "AboutDialog.h"
 
 #include <QCoreApplication>
+#include <QColor>
 #include <QDialogButtonBox>
 #include <QEvent>
 #include <QFile>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
+#include <QPalette>
 #include <QPushButton>
 #include <QTabWidget>
 #include <QTextBrowser>
@@ -17,9 +19,58 @@ namespace snipnexs {
 namespace {
 
 constexpr auto kRepositoryUrl = "https://github.com/YDLuo-1/SnipNexs";
-constexpr auto kQtSourceUrl =
-    "https://github.com/YDLuo-1/SnipNexs/releases/download/v0.6.0/"
-    "qtbase-everywhere-src-6.11.2.tar.xz";
+
+constexpr auto kDarkDialogStyle = R"(
+    QDialog { background: #11161d; color: #f1f5f9; }
+    QLabel { background: transparent; color: #f1f5f9; }
+    QPushButton {
+        min-height: 34px; padding: 0 16px; color: #f1f5f9;
+        background: #1c2631; border: 1px solid #3b4a58;
+        border-radius: 6px; font-weight: 600;
+    }
+    QPushButton:hover { background: #273542; border-color: #617386; }
+    QPushButton:pressed { background: #18212a; }
+    QTabWidget::pane { border: 1px solid #344250; background: #0d1218; }
+    QTabBar::tab {
+        padding: 9px 16px; color: #cbd5df; background: #171e27;
+        border: 1px solid #344250; border-bottom: 0;
+    }
+    QTabBar::tab:selected { color: #ffffff; background: #263440; }
+    QTextBrowser {
+        color: #e7edf3; background: #0d1218;
+        border: 0; selection-background-color: #216b76;
+    }
+)";
+
+void applyDarkDialogTheme(QWidget* widget)
+{
+    QPalette palette = widget->palette();
+    palette.setColor(QPalette::Window, QColor(QStringLiteral("#11161d")));
+    palette.setColor(QPalette::WindowText, QColor(QStringLiteral("#f1f5f9")));
+    palette.setColor(QPalette::Base, QColor(QStringLiteral("#0d1218")));
+    palette.setColor(QPalette::Text, QColor(QStringLiteral("#e7edf3")));
+    palette.setColor(QPalette::Button, QColor(QStringLiteral("#1c2631")));
+    palette.setColor(QPalette::ButtonText, QColor(QStringLiteral("#f1f5f9")));
+    palette.setColor(QPalette::Link, QColor(QStringLiteral("#75dbff")));
+    palette.setColor(QPalette::LinkVisited, QColor(QStringLiteral("#b9a7ff")));
+    widget->setPalette(palette);
+    widget->setStyleSheet(QString::fromLatin1(kDarkDialogStyle));
+}
+
+QString sourceLink(const QString& url)
+{
+    return QStringLiteral(
+        "<a style='color:#75dbff; text-decoration:none' href='%1'>%1</a>")
+        .arg(url.toHtmlEscaped());
+}
+
+QString qtSourceUrl()
+{
+    return QStringLiteral(
+        "https://github.com/YDLuo-1/SnipNexs/releases/download/v%1/"
+        "qtbase-everywhere-src-6.11.2.tar.xz")
+        .arg(QStringLiteral(SNIPNEXS_VERSION));
+}
 
 QString resourceText(const QString& path)
 {
@@ -35,6 +86,10 @@ QTextBrowser* createLicenseBrowser(const QString& heading, const QString& summar
     auto* browser = new QTextBrowser(parent);
     browser->setObjectName(QStringLiteral("licenseBrowser"));
     browser->setOpenExternalLinks(true);
+    QPalette palette = browser->palette();
+    palette.setColor(QPalette::Link, QColor(QStringLiteral("#75dbff")));
+    palette.setColor(QPalette::LinkVisited, QColor(QStringLiteral("#b9a7ff")));
+    browser->setPalette(palette);
     browser->setHtml(QStringLiteral(
         "<h2>%1</h2><p>%2</p><pre style='white-space:pre-wrap'>%3</pre>")
             .arg(heading.toHtmlEscaped(), summary, licenseText.toHtmlEscaped()));
@@ -46,6 +101,7 @@ QTextBrowser* createLicenseBrowser(const QString& heading, const QString& summar
 OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
     : QDialog(parent)
 {
+    applyDarkDialogTheme(this);
     setWindowTitle(tr("开源许可"));
     setMinimumSize(720, 520);
     resize(820, 620);
@@ -54,18 +110,17 @@ OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
     tabs_ = new QTabWidget(this);
     tabs_->setObjectName(QStringLiteral("licenseTabs"));
 
-    const QString sourceLink = QStringLiteral("<a href='%1'>%1</a>")
-                                   .arg(QString::fromLatin1(kRepositoryUrl));
+    const QString repositoryLink = sourceLink(QString::fromLatin1(kRepositoryUrl));
     tabs_->addTab(
         createLicenseBrowser(
             QStringLiteral("SnipNexs"),
-            tr("SnipNexs 采用 GPL-3.0-or-later。对应版本源码：%1").arg(sourceLink),
+            tr("SnipNexs 采用 GPL-3.0-or-later。对应版本源码：%1")
+                .arg(repositoryLink),
             resourceText(QStringLiteral(":/licenses/LICENSE")),
             tabs_),
         tr("SnipNexs"));
 
-    const QString qtSourceLink = QStringLiteral("<a href='%1'>%1</a>")
-                                     .arg(QString::fromLatin1(kQtSourceUrl));
+    const QString qtSourceLink = sourceLink(qtSourceUrl());
     const QString qtSummary = tr(
         "本发行版动态链接 Qt 6.11.2 Core、Gui、Widgets 与 Network，采用 "
         "LGPL-3.0-only。用户可以替换兼容的 Qt DLL；SnipNexs 未修改 Qt。"
@@ -104,6 +159,7 @@ OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
 AboutDialog::AboutDialog(QWidget* parent)
     : QDialog(parent)
 {
+    applyDarkDialogTheme(this);
     setModal(true);
     setMinimumWidth(500);
     setWindowIcon(parent != nullptr ? parent->windowIcon() : windowIcon());
@@ -119,7 +175,9 @@ AboutDialog::AboutDialog(QWidget* parent)
     licenseLabel_ = new QLabel(this);
     licenseLabel_->setWordWrap(true);
     sourceLabel_ = new QLabel(this);
+    sourceLabel_->setObjectName(QStringLiteral("sourceLink"));
     sourceLabel_->setOpenExternalLinks(true);
+    sourceLabel_->setWordWrap(true);
 
     root->addWidget(productLabel_);
     root->addWidget(copyrightLabel_);
@@ -164,8 +222,8 @@ void AboutDialog::retranslateUi()
     licenseLabel_->setText(tr(
         "本程序采用 GPL-3.0-or-later，不提供任何担保。"
         "你可以在许可证允许的范围内使用、研究、修改和再分发。"));
-    sourceLabel_->setText(tr("项目源码：<a href='%1'>%1</a>")
-        .arg(QString::fromLatin1(kRepositoryUrl)));
+    sourceLabel_->setText(tr("项目源码：%1")
+        .arg(sourceLink(QString::fromLatin1(kRepositoryUrl))));
     licensesButton_->setText(tr("开源许可"));
     aboutQtButton_->setText(tr("关于 Qt"));
     closeButton_->setText(tr("关闭"));

@@ -239,10 +239,11 @@ void MainWindow::setupUi()
         QMainWindow, QWidget { background: #12161c; color: #e8edf2; }
         QLabel { background: transparent; }
         QLabel#title { font-size: 22px; font-weight: 700; color: #ffffff; }
-        QLabel#subtitle { font-size: 13px; color: #8b98a5; }
-        QLabel#languageLabel { font-size: 13px; color: #8b98a5; }
+        QLabel#subtitle { font-size: 13px; color: #bdc8d2; }
+        QLabel#languageLabel { font-size: 13px; color: #bdc8d2; }
         QComboBox { min-height: 30px; padding: 0 10px; color: #e8edf2; background: #181f27; border: 1px solid #2c3947; border-radius: 6px; }
         QComboBox:hover { border-color: #3c4c5c; }
+        QComboBox QAbstractItemView { color: #f1f5f9; background: #181f27; selection-background-color: #2c5960; selection-color: #ffffff; }
         QPushButton { min-height: 42px; padding: 0 18px; border-radius: 8px; font-weight: 600; font-size: 14px; }
         QPushButton#primaryButton { background: #39d0be; color: #0b2622; border: 0; }
         QPushButton#primaryButton:hover { background: #4fdccd; }
@@ -250,10 +251,10 @@ void MainWindow::setupUi()
         QPushButton#recordButton { background: #1c2530; color: #e8edf2; border: 1px solid #2c3947; }
         QPushButton#recordButton:hover { background: #243040; border-color: #3c4c5c; }
         QPushButton#recordButton:pressed { background: #1a222c; }
-        QPushButton#secondaryButton, QPushButton#aboutButton { min-height: 32px; padding: 0 14px; background: transparent; color: #93a1af; border: 1px solid #2c3947; font-weight: 400; font-size: 13px; }
-        QPushButton#secondaryButton:hover, QPushButton#aboutButton:hover { background: #1a222c; color: #c6d0da; }
+        QPushButton#secondaryButton, QPushButton#aboutButton { min-height: 32px; padding: 0 14px; background: transparent; color: #c2ccd6; border: 1px solid #3a4856; font-weight: 400; font-size: 13px; }
+        QPushButton#secondaryButton:hover, QPushButton#aboutButton:hover { background: #1a222c; color: #ffffff; }
         QFrame#card { background: #181f27; border: 1px solid #263039; border-radius: 10px; }
-        QFrame#card QLabel { font-size: 13px; color: #aab6c2; }
+        QFrame#card QLabel { font-size: 13px; color: #cbd4dc; }
     )"));
 }
 

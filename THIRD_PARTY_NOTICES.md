@@ -5,7 +5,7 @@
 SnipNexs dynamically links the Qt Core, Gui, Widgets, and Network modules and deploys the required Qt platform, style, and image-format plugins.
 
 - Project: <https://www.qt.io/>
-- Corresponding source copy for v0.6.0: <https://github.com/YDLuo-1/SnipNexs/releases/download/v0.6.0/qtbase-everywhere-src-6.11.2.tar.xz>
+- Corresponding source copy for v0.7.0: <https://github.com/YDLuo-1/SnipNexs/releases/download/v0.7.0/qtbase-everywhere-src-6.11.2.tar.xz>
 - Source archive SHA-256: `5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22`
 - License used by this distribution: GNU Lesser General Public License version 3
 - License text: [licenses/LGPL-3.0-only.txt](licenses/LGPL-3.0-only.txt)

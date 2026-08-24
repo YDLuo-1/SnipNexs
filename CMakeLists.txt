@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.6.0
+    VERSION 0.7.0
     DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )
@@ -225,6 +225,8 @@ if(BUILD_TESTING)
         tests/AboutDialogTests.cpp
         src/app/AboutDialog.cpp
         src/app/AboutDialog.h
+        src/app/AppIcon.cpp
+        src/app/AppIcon.h
     )
     target_include_directories(AboutDialogTests PRIVATE src)
     target_link_libraries(AboutDialogTests PRIVATE
@@ -243,6 +245,51 @@ if(BUILD_TESTING)
     add_test(NAME AboutDialogTests COMMAND AboutDialogTests)
     set_tests_properties(AboutDialogTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(RecordingIndicatorTests
+        tests/RecordingIndicatorTests.cpp
+        src/recorder/RecordingIndicator.cpp
+        src/recorder/RecordingIndicator.h
+    )
+    target_include_directories(RecordingIndicatorTests PRIVATE src)
+    target_link_libraries(RecordingIndicatorTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        user32
+    )
+    target_compile_definitions(RecordingIndicatorTests PRIVATE
+        UNICODE
+        _UNICODE
+        NOMINMAX
+    )
+    add_test(NAME RecordingIndicatorTests COMMAND RecordingIndicatorTests)
+    set_tests_properties(RecordingIndicatorTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(WindowTargetingTests
+        tests/WindowTargetingTests.cpp
+        src/platform/windows/WindowTargeting.cpp
+        src/platform/windows/WindowTargeting.h
+        src/capture/CaptureGeometry.h
+    )
+    target_include_directories(WindowTargetingTests PRIVATE src)
+    target_link_libraries(WindowTargetingTests PRIVATE
+        Qt6::Core
+        dwmapi
+        user32
+    )
+    target_compile_definitions(WindowTargetingTests PRIVATE
+        UNICODE
+        _UNICODE
+        NOMINMAX
+    )
+    add_test(NAME WindowTargetingTests COMMAND WindowTargetingTests)
+    set_tests_properties(WindowTargetingTests PROPERTIES
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
