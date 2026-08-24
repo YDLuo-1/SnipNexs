@@ -114,7 +114,7 @@ IDirect3DDevice createDirect3DDevice(ComPtr<ID3D11Device>& d3dDevice, ComPtr<ID3
 
     ComPtr<IDXGIDevice> dxgiDevice;
     check_hresult(d3dDevice.As(&dxgiDevice));
-    com_ptr<IInspectable> inspectable;
+    com_ptr<::IInspectable> inspectable;
     check_hresult(CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice.Get(), inspectable.put()));
     return inspectable.as<IDirect3DDevice>();
 }
@@ -164,7 +164,7 @@ IDirect3DSurface copyRegion(
 
     ComPtr<IDXGISurface> dxgiSurface;
     check_hresult(destination.As(&dxgiSurface));
-    com_ptr<IInspectable> inspectable;
+    com_ptr<::IInspectable> inspectable;
     check_hresult(CreateDirect3D11SurfaceFromDXGISurface(dxgiSurface.Get(), inspectable.put()));
     return inspectable.as<IDirect3DSurface>();
 }
