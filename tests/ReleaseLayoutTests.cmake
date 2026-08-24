@@ -39,5 +39,9 @@ foreach(relative_path IN LISTS required_files)
     endif()
 endforeach()
 
+if(EXISTS "${SNIPNEXS_STAGE_DIR}/bin/vc_redist.x64.exe")
+    message(FATAL_ERROR "Redundant VC++ installer must not be included with app-local runtime DLLs")
+endif()
+
 message(STATUS "Release layout contains all required runtime and license files")
 file(REMOVE_RECURSE "${SNIPNEXS_STAGE_DIR}")
