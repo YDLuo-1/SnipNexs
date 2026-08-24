@@ -358,8 +358,8 @@ You can still click the Region Capture button.</translation>
     </message>
     <message>
         <location filename="../src/capture/CaptureOverlay.cpp" line="314"/>
-        <source>拖动鼠标选择区域 · Esc 或右键取消</source>
-        <translation>Drag to select a region · Esc or right-click to cancel</translation>
+        <source>拖动自定义区域 · 单击自动选择窗口 · Esc 或右键取消</source>
+        <translation>Drag a custom region · Click to select a window · Esc or right-click to cancel</translation>
     </message>
     <message>
         <location filename="../src/capture/CaptureOverlay.cpp" line="411"/>

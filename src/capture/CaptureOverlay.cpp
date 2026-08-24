@@ -2,7 +2,9 @@
 
 #include "CaptureGeometry.h"
 
+#include <QApplication>
 #include <QButtonGroup>
+#include <QCursor>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -11,6 +13,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QShowEvent>
 
 #include <algorithm>
@@ -51,8 +54,18 @@ CaptureOverlay::CaptureOverlay(
 
     rebuildDimmedScreenshot();
 
+    captureHint_ = new QLabel(
+        tr("拖动自定义区域 · 单击自动选择窗口 · Esc 或右键取消"), this);
+    captureHint_->setObjectName(QStringLiteral("captureHint"));
+    captureHint_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    captureHint_->setStyleSheet(QStringLiteral(
+        "color: #ebf0f5; background: rgba(15, 20, 26, 210); "
+        "border: 1px solid #34414e; border-radius: 6px; padding: 7px 12px;"));
+    captureHint_->adjustSize();
+
     toolbar_ = new QFrame(this);
     toolbar_->setObjectName(QStringLiteral("captureToolbar"));
+    toolbar_->setCursor(Qt::ArrowCursor);
     auto* layout = new QHBoxLayout(toolbar_);
     layout->setContentsMargins(9, 7, 9, 7);
     layout->setSpacing(7);
@@ -131,6 +144,8 @@ CaptureOverlay::CaptureOverlay(
 
 void CaptureOverlay::setSelection(const QRect& selection)
 {
+    hoveredWindowTarget_ = {};
+    pressedWindowTarget_ = {};
     selection_ = selection.normalized().intersected(rect());
     interaction_ = Interaction::None;
     activeResizeHandle_ = ResizeHandle::None;
@@ -143,6 +158,12 @@ void CaptureOverlay::setSelection(const QRect& selection)
         toolbar_->hide();
     }
     update();
+}
+
+void CaptureOverlay::setWindowTargets(QList<QRect> targets)
+{
+    windowTargets_ = std::move(targets);
+    updateWindowTarget(mapFromGlobal(QCursor::pos()));
 }
 
 void CaptureOverlay::setAnnotationTool(AnnotationTool tool)
@@ -222,16 +243,18 @@ void CaptureOverlay::mouseDoubleClickEvent(QMouseEvent* event)
 
 void CaptureOverlay::mouseMoveEvent(QMouseEvent* event)
 {
+    const QPoint point = event->position().toPoint();
+    updateCaptureHintVisibility(point);
     if (annotationDrawing_) {
         annotations_.update(event->position());
         update();
         return;
     }
-    const QPoint point = event->position().toPoint();
     if (interaction_ != Interaction::None) {
         updateInteraction(point);
         return;
     }
+    updateWindowTarget(point);
     updateCursorForPosition(point);
 }
 
@@ -245,8 +268,10 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+    const QPoint point = event->position().toPoint();
+    updateCaptureHintVisibility(point);
     if (annotationTool_ != AnnotationTool::None) {
-        if (selection_.contains(event->position().toPoint())) {
+        if (selection_.contains(point)) {
             annotationDrawing_ = true;
             toolbar_->hide();
             annotations_.begin(annotationTool_, event->position());
@@ -255,7 +280,6 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    const QPoint point = event->position().toPoint();
     if (selectionGeometryEditable()) {
         activeResizeHandle_ = resizeHandleAt(point);
         if (activeResizeHandle_ != ResizeHandle::None) {
@@ -264,6 +288,9 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
             interaction_ = Interaction::Move;
         }
     }
+
+    pressedWindowTarget_ = selection_.isValid() ? QRect() : windowTargetAt(point);
+    hoveredWindowTarget_ = {};
 
     toolbar_->hide();
     interactionOrigin_ = point;
@@ -298,9 +325,18 @@ void CaptureOverlay::mouseReleaseEvent(QMouseEvent* event)
     }
 
     const QPoint point = event->position().toPoint();
-    updateInteraction(point);
+    const bool useWindowTarget = interaction_ == Interaction::Create
+        && pressedWindowTarget_.isValid()
+        && (point - interactionOrigin_).manhattanLength()
+            < QApplication::startDragDistance();
+    if (useWindowTarget) {
+        selection_ = pressedWindowTarget_;
+    } else {
+        updateInteraction(point);
+    }
     interaction_ = Interaction::None;
     activeResizeHandle_ = ResizeHandle::None;
+    pressedWindowTarget_ = {};
     setSelection(selection_);
     updateCursorForPosition(point);
 }
@@ -310,29 +346,20 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
     QPainter painter(this);
     painter.drawPixmap(rect(), dimmedScreenshot_);
 
-    if (!selection_.isValid()) {
-        const QString hint = tr("拖动鼠标选择区域 · Esc 或右键取消");
-        const QRect hintRect = fontMetrics().boundingRect(hint).adjusted(-14, -9, 14, 9);
-        QRect centered = hintRect;
-        centered.moveCenter(QPoint(width() / 2, 42));
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(15, 20, 26, 210));
-        painter.drawRoundedRect(centered, 6, 6);
-        painter.setPen(QColor(235, 240, 245));
-        painter.drawText(centered, Qt::AlignCenter, hint);
-        drawHistoryHint(painter);
-        return;
+    const QRect previewRect = selection_.isValid() ? selection_ : hoveredWindowTarget_;
+    if (previewRect.isValid()) {
+        painter.save();
+        painter.setClipRect(previewRect);
+        painter.drawPixmap(rect(), screenshot_);
+        if (selection_.isValid()) {
+            annotations_.paint(painter);
+        }
+        painter.restore();
+
+        painter.setPen(QPen(QColor(57, 208, 190), 2));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRect(previewRect.adjusted(0, 0, -1, -1));
     }
-
-    painter.save();
-    painter.setClipRect(selection_);
-    painter.drawPixmap(rect(), screenshot_);
-    annotations_.paint(painter);
-    painter.restore();
-
-    painter.setPen(QPen(QColor(57, 208, 190), 2));
-    painter.setBrush(Qt::NoBrush);
-    painter.drawRect(selection_.adjusted(0, 0, -1, -1));
 
     if (selectionGeometryEditable()) {
         static constexpr std::array handles {
@@ -354,6 +381,12 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
     drawHistoryHint(painter);
 }
 
+void CaptureOverlay::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    positionCaptureHint();
+}
+
 void CaptureOverlay::activateHistoryIndex(qsizetype index)
 {
     if (index < 0 || index > history_.size()) {
@@ -371,8 +404,10 @@ void CaptureOverlay::activateHistoryIndex(qsizetype index)
         devicePixelRatio_ = screenshot_.devicePixelRatio();
         recordButton_->setEnabled(true);
         selection_ = {};
+        hoveredWindowTarget_ = {};
         toolbar_->hide();
         rebuildDimmedScreenshot();
+        updateWindowTarget(mapFromGlobal(QCursor::pos()));
         update();
         return;
     }
@@ -442,9 +477,13 @@ void CaptureOverlay::switchHistory(int offset)
 void CaptureOverlay::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
+    positionCaptureHint();
     raise();
     activateWindow();
     setFocus(Qt::ActiveWindowFocusReason);
+    const QPoint cursorPosition = mapFromGlobal(QCursor::pos());
+    updateCaptureHintVisibility(cursorPosition);
+    updateWindowTarget(cursorPosition);
 }
 
 QImage CaptureOverlay::selectedImage() const
@@ -603,6 +642,12 @@ bool CaptureOverlay::selectionGeometryEditable() const
         && !annotations_.canRedo();
 }
 
+void CaptureOverlay::positionCaptureHint()
+{
+    captureHint_->adjustSize();
+    captureHint_->move(16, std::max(16, height() - captureHint_->height() - 16));
+}
+
 void CaptureOverlay::positionToolbar()
 {
     const QSize pixelSize = activeHistoryImage_.isNull()
@@ -627,6 +672,11 @@ void CaptureOverlay::updateEditorActions()
 {
     undoButton_->setEnabled(annotations_.canUndo());
     redoButton_->setEnabled(annotations_.canRedo());
+}
+
+void CaptureOverlay::updateCaptureHintVisibility(const QPoint& point)
+{
+    captureHint_->setVisible(!captureHint_->geometry().contains(point));
 }
 
 void CaptureOverlay::updateCursorForPosition(const QPoint& point)
@@ -725,6 +775,31 @@ void CaptureOverlay::updateInteraction(const QPoint& point)
         }
     }
     update();
+}
+
+void CaptureOverlay::updateWindowTarget(const QPoint& point)
+{
+    const QRect target = !selection_.isValid()
+            && activeHistoryImage_.isNull()
+            && annotationTool_ == AnnotationTool::None
+            && interaction_ == Interaction::None
+        ? windowTargetAt(point)
+        : QRect();
+    if (hoveredWindowTarget_ == target) {
+        return;
+    }
+    hoveredWindowTarget_ = target;
+    update();
+}
+
+QRect CaptureOverlay::windowTargetAt(const QPoint& point) const
+{
+    for (const QRect& target : windowTargets_) {
+        if (target.contains(point)) {
+            return target;
+        }
+    }
+    return {};
 }
 
 } // namespace snipnexs

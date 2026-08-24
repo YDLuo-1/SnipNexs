@@ -15,6 +15,7 @@ class QMouseEvent;
 class QPainter;
 class QPaintEvent;
 class QPushButton;
+class QResizeEvent;
 class QShowEvent;
 
 namespace snipnexs {
@@ -29,6 +30,7 @@ public:
         QPixmap screenshot, QList<QImage> history, QWidget* parent = nullptr);
     void setSelection(const QRect& selection);
     void setAnnotationTool(AnnotationTool tool);
+    void setWindowTargets(QList<QRect> targets);
     [[nodiscard]] QImage selectedImage() const;
     [[nodiscard]] QRect selectedPixelRect() const;
 
@@ -47,6 +49,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
 
 private:
@@ -77,14 +80,18 @@ private:
     void activateHistoryIndex(qsizetype index);
     void drawHistoryHint(QPainter& painter) const;
     [[nodiscard]] QRect handleRect(ResizeHandle handle) const;
+    void positionCaptureHint();
     [[nodiscard]] ResizeHandle resizeHandleAt(const QPoint& point) const;
     [[nodiscard]] bool selectionGeometryEditable() const;
     void positionToolbar();
     void rebuildDimmedScreenshot();
     void switchHistory(int offset);
+    void updateCaptureHintVisibility(const QPoint& point);
     void updateCursorForPosition(const QPoint& point);
     void updateEditorActions();
     void updateInteraction(const QPoint& point);
+    void updateWindowTarget(const QPoint& point);
+    [[nodiscard]] QRect windowTargetAt(const QPoint& point) const;
 
     QPixmap liveScreenshot_;
     QPixmap screenshot_;
@@ -92,6 +99,9 @@ private:
     QList<QImage> history_;
     QImage activeHistoryImage_;
     qsizetype historyIndex_ = 0;
+    QList<QRect> windowTargets_;
+    QRect hoveredWindowTarget_;
+    QRect pressedWindowTarget_;
     QRect selection_;
     QRect interactionStartSelection_;
     QPoint interactionOrigin_;
@@ -101,6 +111,7 @@ private:
     bool annotationDrawing_ = false;
     AnnotationTool annotationTool_ = AnnotationTool::None;
     AnnotationDocument annotations_;
+    QLabel* captureHint_ = nullptr;
     QFrame* toolbar_ = nullptr;
     QLabel* sizeLabel_ = nullptr;
     QButtonGroup* toolButtons_ = nullptr;

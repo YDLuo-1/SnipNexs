@@ -47,6 +47,8 @@ qt_add_executable(SnipNexs WIN32
     src/platform/windows/GlobalHotkey.h
     src/platform/windows/CaptureExclusion.cpp
     src/platform/windows/CaptureExclusion.h
+    src/platform/windows/WindowTargeting.cpp
+    src/platform/windows/WindowTargeting.h
     src/recorder/NativeScreenRecorder.cpp
     src/recorder/NativeScreenRecorder.h
     src/recorder/RecorderController.cpp
