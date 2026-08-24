@@ -1,10 +1,12 @@
 #include "capture/CaptureOverlay.h"
 
 #include <QApplication>
+#include <QClipboard>
 #include <QColor>
 #include <QFrame>
 #include <QImage>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -45,6 +47,11 @@ int main(int argc, char* argv[])
 
     const QImage cropped = overlay.selectedImage();
     bool ok = cropped.size() == QSize(100, 60) && cropped.devicePixelRatio() == 2.0;
+    auto* selectionSizeLabel = overlay.findChild<QLabel*>(
+        QStringLiteral("selectionSizeLabel"));
+    ok &= selectionSizeLabel != nullptr
+        && selectionSizeLabel->isVisible()
+        && selectionSizeLabel->text() == QStringLiteral("100 × 60 px");
 
     QImage rendered(overlay.size(), QImage::Format_ARGB32_Premultiplied);
     rendered.fill(Qt::transparent);
@@ -128,7 +135,13 @@ int main(int argc, char* argv[])
                     && button->accessibleName() == button->toolTip();
             }
         }
-        toolbarButtonsOk &= toolbarButtonCount == 11;
+        toolbarButtonsOk &= toolbarButtonCount == 13;
+        const auto* textButton = captureToolbar->findChild<QPushButton*>(
+            QStringLiteral("textButton"));
+        const auto* colorPickerButton = captureToolbar->findChild<QPushButton*>(
+            QStringLiteral("colorPickerButton"));
+        const auto* ocrButton = captureToolbar->findChild<QPushButton*>(
+            QStringLiteral("ocrButton"));
         const auto* pinButton = captureToolbar->findChild<QPushButton*>(
             QStringLiteral("pinButton"));
         const auto* copyButton = captureToolbar->findChild<QPushButton*>(
@@ -136,12 +149,17 @@ int main(int argc, char* argv[])
         const auto* saveButton = captureToolbar->findChild<QPushButton*>(
             QStringLiteral("saveButton"));
         toolbarButtonsOk &= pinButton != nullptr
+            && textButton != nullptr
+            && colorPickerButton != nullptr
+            && ocrButton != nullptr
             && copyButton != nullptr
             && saveButton != nullptr
             && pinButton->icon().pixmap(QSize(22, 22)).toImage()
                 != copyButton->icon().pixmap(QSize(22, 22)).toImage()
             && copyButton->icon().pixmap(QSize(22, 22)).toImage()
-                != saveButton->icon().pixmap(QSize(22, 22)).toImage();
+                != saveButton->icon().pixmap(QSize(22, 22)).toImage()
+            && textButton->icon().pixmap(QSize(22, 22)).toImage()
+                != ocrButton->icon().pixmap(QSize(22, 22)).toImage();
     }
     ok &= toolbarButtonsOk;
     if (!hintLayoutOk || !toolbarCursorOk || !toolbarButtonsOk) {
@@ -156,6 +174,25 @@ int main(int argc, char* argv[])
     QTest::mouseMove(&targetOverlay, QPoint(25, 25));
     QTest::mouseClick(&targetOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(25, 25));
     ok &= targetOverlay.selectedPixelRect() == QRect(20, 20, 160, 120);
+    const QString qaImagePath = qEnvironmentVariable("SNIPNEXS_CAPTURE_QA_IMAGE");
+    if (!qaImagePath.isEmpty()) {
+        QImage qaImage(targetOverlay.size(), QImage::Format_ARGB32_Premultiplied);
+        qaImage.fill(Qt::transparent);
+        targetOverlay.render(&qaImage);
+        ok &= qaImage.save(qaImagePath);
+        auto* qaPickerButton = targetOverlay.findChild<QPushButton*>(
+            QStringLiteral("colorPickerButton"));
+        if (qaPickerButton != nullptr) {
+            QTest::mouseClick(qaPickerButton, Qt::LeftButton);
+            QTest::mouseMove(&targetOverlay, QPoint(40, 40));
+            QImage pickerQaImage(
+                targetOverlay.size(), QImage::Format_ARGB32_Premultiplied);
+            pickerQaImage.fill(Qt::transparent);
+            targetOverlay.render(&pickerQaImage);
+            ok &= pickerQaImage.save(qaImagePath + QStringLiteral(".picker.png"));
+            QTest::keyClick(&targetOverlay, Qt::Key_Escape);
+        }
+    }
 
     snipnexs::CaptureOverlay annotationOverlay(pixmap);
     annotationOverlay.resize(200, 150);
@@ -175,6 +212,37 @@ int main(int argc, char* argv[])
     QTest::keyClick(&annotationOverlay, Qt::Key_Z, Qt::ControlModifier);
     const QImage undone = annotationOverlay.selectedImage();
     ok &= undone.pixelColor(10, 10) == QColor(160, 120, 80);
+
+    annotationOverlay.setAnnotationTool(snipnexs::AnnotationTool::Text);
+    QTest::mouseClick(
+        &annotationOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(30, 30));
+    auto* textEditor = annotationOverlay.findChild<QLineEdit*>(
+        QStringLiteral("textEditor"));
+    ok &= textEditor != nullptr && textEditor->isVisible();
+    if (textEditor != nullptr) {
+        textEditor->setText(QStringLiteral("SnipNexs"));
+        QTest::keyClick(textEditor, Qt::Key_Return);
+        QApplication::processEvents();
+        ok &= !textEditor->isVisible();
+        ok &= containsAnnotationColor(annotationOverlay.selectedImage());
+    }
+
+    auto* colorPickerButton = annotationOverlay.findChild<QPushButton*>(
+        QStringLiteral("colorPickerButton"));
+    ok &= colorPickerButton != nullptr;
+    if (colorPickerButton != nullptr) {
+        QTest::mouseClick(colorPickerButton, Qt::LeftButton);
+        QTest::mouseMove(&annotationOverlay, QPoint(40, 40));
+        QTest::keyClick(&annotationOverlay, Qt::Key_C);
+        ok &= QApplication::clipboard()->text() == QStringLiteral("160, 120, 80");
+        QTest::keyPress(&annotationOverlay, Qt::Key_Shift);
+        QTest::keyRelease(&annotationOverlay, Qt::Key_Shift);
+        QTest::keyClick(&annotationOverlay, Qt::Key_C);
+        ok &= QApplication::clipboard()->text() == QStringLiteral("#A07850");
+        QTest::mouseClick(
+            &annotationOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(40, 40));
+        ok &= !colorPickerButton->isChecked();
+    }
 
     QSignalSpy ocrSpy(&annotationOverlay, &snipnexs::CaptureOverlay::ocrRequested);
     auto* ocrButton = annotationOverlay.findChild<QPushButton*>(QStringLiteral("ocrButton"));

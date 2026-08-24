@@ -4,15 +4,19 @@
 
 #include <QApplication>
 #include <QButtonGroup>
+#include <QClipboard>
 #include <QCursor>
+#include <QEvent>
 #include <QFrame>
 #include <QFont>
 #include <QFontMetrics>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -20,6 +24,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QSignalBlocker>
 
 #include <algorithm>
 #include <array>
@@ -37,6 +42,8 @@ enum class ToolbarIcon {
     Pen,
     Rectangle,
     Arrow,
+    Text,
+    ColorPicker,
     Undo,
     Redo,
     Ocr,
@@ -54,7 +61,7 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(color, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setPen(QPen(color, 2.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter.setBrush(Qt::NoBrush);
 
     switch (icon) {
@@ -72,19 +79,28 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
         break;
     }
     case ToolbarIcon::Rectangle:
-        painter.drawRoundedRect(QRectF(8, 11, 32, 26), 3, 3);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(color);
-        for (const QPointF corner : {
-                 QPointF(8, 11), QPointF(40, 11), QPointF(8, 37), QPointF(40, 37)}) {
-            painter.drawRoundedRect(QRectF(corner - QPointF(2.5, 2.5), QSizeF(5, 5)), 1, 1);
-        }
+        painter.drawRoundedRect(QRectF(9, 11, 30, 26), 2, 2);
         break;
     case ToolbarIcon::Arrow:
         painter.drawLine(QPointF(9, 39), QPointF(39, 9));
         painter.drawLine(QPointF(26, 9), QPointF(39, 9));
         painter.drawLine(QPointF(39, 9), QPointF(39, 22));
         break;
+    case ToolbarIcon::Text:
+        painter.drawLine(QPointF(11, 11), QPointF(37, 11));
+        painter.drawLine(QPointF(24, 11), QPointF(24, 38));
+        painter.drawLine(QPointF(18, 38), QPointF(30, 38));
+        break;
+    case ToolbarIcon::ColorPicker: {
+        painter.save();
+        painter.translate(24, 24);
+        painter.rotate(-45);
+        painter.drawRoundedRect(QRectF(-6, -18, 12, 23), 3, 3);
+        painter.drawLine(QPointF(-6, 0), QPointF(6, 0));
+        painter.drawLine(QPointF(0, 5), QPointF(0, 15));
+        painter.restore();
+        break;
+    }
     case ToolbarIcon::Undo:
     case ToolbarIcon::Redo: {
         painter.save();
@@ -110,12 +126,9 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
         painter.drawLine(QPointF(8, 40), QPointF(17, 40));
         painter.drawLine(QPointF(31, 40), QPointF(40, 40));
         painter.drawLine(QPointF(40, 40), QPointF(40, 31));
-        QFont font = painter.font();
-        font.setPixelSize(21);
-        font.setWeight(QFont::DemiBold);
-        painter.setFont(font);
-        painter.setPen(color);
-        painter.drawText(QRect(12, 10, 24, 28), Qt::AlignCenter, QStringLiteral("T"));
+        painter.drawLine(QPointF(14, 18), QPointF(34, 18));
+        painter.drawLine(QPointF(14, 24), QPointF(30, 24));
+        painter.drawLine(QPointF(14, 30), QPointF(34, 30));
         break;
     }
     case ToolbarIcon::Pin: {
@@ -140,54 +153,47 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
         painter.drawLine(QPointF(41, 32), QPointF(34, 28));
         break;
     case ToolbarIcon::Copy:
-        painter.drawRoundedRect(QRectF(9, 14, 23, 26), 3, 3);
-        painter.drawRoundedRect(QRectF(16, 8, 23, 26), 3, 3);
-        painter.drawLine(QPointF(22, 15), QPointF(33, 15));
-        painter.drawLine(QPointF(22, 21), QPointF(33, 21));
+        painter.drawRoundedRect(QRectF(8, 14, 25, 26), 2, 2);
+        painter.drawRoundedRect(QRectF(15, 8, 25, 26), 2, 2);
         break;
     case ToolbarIcon::Save:
-        painter.drawLine(QPointF(24, 7), QPointF(24, 29));
-        painter.drawLine(QPointF(15, 21), QPointF(24, 30));
-        painter.drawLine(QPointF(24, 30), QPointF(33, 21));
-        painter.drawLine(QPointF(10, 34), QPointF(10, 40));
-        painter.drawLine(QPointF(10, 40), QPointF(38, 40));
-        painter.drawLine(QPointF(38, 40), QPointF(38, 34));
+        painter.drawRoundedRect(QRectF(9, 8, 30, 32), 2, 2);
+        painter.drawRect(QRectF(15, 8, 17, 11));
+        painter.drawRoundedRect(QRectF(15, 27, 18, 13), 2, 2);
         break;
     case ToolbarIcon::Cancel:
-        painter.drawEllipse(QRectF(8, 8, 32, 32));
-        painter.drawLine(QPointF(17, 17), QPointF(31, 31));
-        painter.drawLine(QPointF(31, 17), QPointF(17, 31));
+        painter.drawLine(QPointF(13, 13), QPointF(35, 35));
+        painter.drawLine(QPointF(35, 13), QPointF(13, 35));
         break;
     }
     painter.end();
     return pixmap;
 }
 
-QIcon makeToolbarIcon(ToolbarIcon icon, bool darkByDefault = false)
+QIcon makeToolbarIcon(ToolbarIcon icon)
 {
     QIcon result;
-    const QColor light(232, 238, 244);
-    const QColor active(255, 255, 255);
-    const QColor dark(9, 40, 36);
-    result.addPixmap(drawToolbarIcon(icon, darkByDefault ? dark : light), QIcon::Normal, QIcon::Off);
-    result.addPixmap(drawToolbarIcon(icon, darkByDefault ? dark : active), QIcon::Active, QIcon::Off);
-    result.addPixmap(drawToolbarIcon(icon, QColor(103, 116, 128)), QIcon::Disabled, QIcon::Off);
-    result.addPixmap(drawToolbarIcon(icon, dark), QIcon::Normal, QIcon::On);
-    result.addPixmap(drawToolbarIcon(icon, dark), QIcon::Active, QIcon::On);
+    const QColor normal(53, 65, 76);
+    const QColor active(20, 29, 37);
+    const QColor checked(255, 255, 255);
+    result.addPixmap(drawToolbarIcon(icon, normal), QIcon::Normal, QIcon::Off);
+    result.addPixmap(drawToolbarIcon(icon, active), QIcon::Active, QIcon::Off);
+    result.addPixmap(drawToolbarIcon(icon, QColor(158, 168, 177)), QIcon::Disabled, QIcon::Off);
+    result.addPixmap(drawToolbarIcon(icon, checked), QIcon::Normal, QIcon::On);
+    result.addPixmap(drawToolbarIcon(icon, checked), QIcon::Active, QIcon::On);
     return result;
 }
 
 void configureToolbarButton(
     QPushButton* button,
     ToolbarIcon icon,
-    const QString& tooltip,
-    bool darkByDefault = false)
+    const QString& tooltip)
 {
-    button->setIcon(makeToolbarIcon(icon, darkByDefault));
-    button->setIconSize(QSize(22, 22));
+    button->setIcon(makeToolbarIcon(icon));
+    button->setIconSize(QSize(23, 23));
     button->setToolTip(tooltip);
     button->setAccessibleName(tooltip);
-    button->setFixedSize(38, 34);
+    button->setFixedSize(36, 34);
 }
 
 }
@@ -233,13 +239,16 @@ CaptureOverlay::CaptureOverlay(
     toolbar_->setObjectName(QStringLiteral("captureToolbar"));
     toolbar_->setCursor(Qt::ArrowCursor);
     auto* layout = new QHBoxLayout(toolbar_);
-    layout->setContentsMargins(9, 7, 9, 7);
-    layout->setSpacing(7);
+    layout->setContentsMargins(5, 5, 5, 5);
+    layout->setSpacing(2);
 
-    sizeLabel_ = new QLabel(toolbar_);
     auto* penButton = new QPushButton(toolbar_);
     auto* rectangleButton = new QPushButton(toolbar_);
     auto* arrowButton = new QPushButton(toolbar_);
+    auto* textButton = new QPushButton(toolbar_);
+    textButton->setObjectName(QStringLiteral("textButton"));
+    colorPickerButton_ = new QPushButton(toolbar_);
+    colorPickerButton_->setObjectName(QStringLiteral("colorPickerButton"));
     undoButton_ = new QPushButton(toolbar_);
     redoButton_ = new QPushButton(toolbar_);
     auto* ocrButton = new QPushButton(toolbar_);
@@ -256,12 +265,15 @@ CaptureOverlay::CaptureOverlay(
     configureToolbarButton(penButton, ToolbarIcon::Pen, tr("画笔"));
     configureToolbarButton(rectangleButton, ToolbarIcon::Rectangle, tr("矩形"));
     configureToolbarButton(arrowButton, ToolbarIcon::Arrow, tr("箭头"));
+    configureToolbarButton(textButton, ToolbarIcon::Text, tr("文字"));
+    configureToolbarButton(colorPickerButton_, ToolbarIcon::ColorPicker, tr("取色"));
+    colorPickerButton_->setCheckable(true);
     configureToolbarButton(undoButton_, ToolbarIcon::Undo, tr("撤销"));
     configureToolbarButton(redoButton_, ToolbarIcon::Redo, tr("重做"));
     configureToolbarButton(ocrButton, ToolbarIcon::Ocr, tr("识字"));
     configureToolbarButton(pinButton, ToolbarIcon::Pin, tr("贴图"));
     configureToolbarButton(recordButton_, ToolbarIcon::Record, tr("录屏"));
-    configureToolbarButton(copyButton, ToolbarIcon::Copy, tr("复制"), true);
+    configureToolbarButton(copyButton, ToolbarIcon::Copy, tr("复制"));
     configureToolbarButton(saveButton, ToolbarIcon::Save, tr("保存"));
     configureToolbarButton(cancelButton, ToolbarIcon::Cancel, tr("取消"));
     toolButtons_ = new QButtonGroup(this);
@@ -269,13 +281,15 @@ CaptureOverlay::CaptureOverlay(
     toolButtons_->addButton(penButton, static_cast<int>(AnnotationTool::Pen));
     toolButtons_->addButton(rectangleButton, static_cast<int>(AnnotationTool::Rectangle));
     toolButtons_->addButton(arrowButton, static_cast<int>(AnnotationTool::Arrow));
+    toolButtons_->addButton(textButton, static_cast<int>(AnnotationTool::Text));
     for (auto* button : toolButtons_->buttons()) {
         button->setCheckable(true);
     }
-    layout->addWidget(sizeLabel_);
     layout->addWidget(penButton);
     layout->addWidget(rectangleButton);
     layout->addWidget(arrowButton);
+    layout->addWidget(textButton);
+    layout->addWidget(colorPickerButton_);
     layout->addWidget(undoButton_);
     layout->addWidget(redoButton_);
     layout->addWidget(ocrButton);
@@ -287,15 +301,37 @@ CaptureOverlay::CaptureOverlay(
     toolbar_->hide();
 
     toolbar_->setStyleSheet(QStringLiteral(R"(
-        QFrame#captureToolbar { background: #151b22; border: 1px solid #34414e; border-radius: 7px; }
-        QLabel { color: #b9c5d0; padding: 0 5px; }
-        QPushButton { padding: 0; color: #eaf0f5; background: #27323e; border: 0; border-radius: 5px; }
-        QPushButton:hover { background: #344351; }
-        QPushButton:checked { color: #092824; background: #f0ba45; font-weight: 600; }
-        QPushButton:disabled { color: #667380; background: #202832; }
-        QPushButton#copyButton { color: #092824; background: #39d0be; font-weight: 600; }
-        QPushButton#copyButton:hover { background: #52dfce; }
+        QFrame#captureToolbar { background: #f7f9fb; border: 1px solid #b8c3cd; border-radius: 5px; }
+        QPushButton { padding: 0; background: transparent; border: 0; border-radius: 4px; }
+        QPushButton:hover { background: #e6edf3; }
+        QPushButton:pressed { background: #d8e2e9; }
+        QPushButton:checked { background: #238bda; }
+        QPushButton:disabled { background: transparent; }
     )"));
+
+    selectionSizeLabel_ = new QLabel(this);
+    selectionSizeLabel_->setObjectName(QStringLiteral("selectionSizeLabel"));
+    selectionSizeLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    QFont sizeFont = selectionSizeLabel_->font();
+    sizeFont.setPixelSize(15);
+    sizeFont.setWeight(QFont::DemiBold);
+    selectionSizeLabel_->setFont(sizeFont);
+    selectionSizeLabel_->setStyleSheet(QStringLiteral(
+        "color: #ffffff; background: rgba(24, 31, 38, 220); "
+        "border-radius: 4px; padding: 5px 9px;"));
+    selectionSizeLabel_->hide();
+
+    textEditor_ = new QLineEdit(this);
+    textEditor_->setObjectName(QStringLiteral("textEditor"));
+    textEditor_->setPlaceholderText(tr("输入文字，回车完成"));
+    textEditor_->setMinimumWidth(220);
+    textEditor_->setFixedHeight(38);
+    textEditor_->setStyleSheet(QStringLiteral(
+        "QLineEdit { color: #1a242d; background: #ffffff; "
+        "border: 2px solid #238bda; border-radius: 4px; padding: 4px 8px; "
+        "font-size: 16px; selection-background-color: #238bda; }"));
+    textEditor_->installEventFilter(this);
+    textEditor_->hide();
 
     connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
     connect(ocrButton, &QPushButton::clicked, this, &CaptureOverlay::acceptOcr);
@@ -303,6 +339,11 @@ CaptureOverlay::CaptureOverlay(
     connect(recordButton_, &QPushButton::clicked, this, &CaptureOverlay::acceptRecord);
     connect(saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
     connect(cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
+    connect(colorPickerButton_, &QPushButton::clicked, this, [this](bool checked) {
+        setColorPickerActive(checked);
+    });
+    connect(textEditor_, &QLineEdit::returnPressed, this, &CaptureOverlay::commitTextEditing);
+    connect(textEditor_, &QLineEdit::editingFinished, this, &CaptureOverlay::commitTextEditing);
     connect(toolButtons_, &QButtonGroup::idClicked, this, [this](int id) {
         setAnnotationTool(static_cast<AnnotationTool>(id));
     });
@@ -330,11 +371,13 @@ void CaptureOverlay::setSelection(const QRect& selection)
     activeResizeHandle_ = ResizeHandle::None;
     if (selection_.width() >= kMinimumSelectionSize
         && selection_.height() >= kMinimumSelectionSize) {
+        positionSelectionSizeLabel();
         positionToolbar();
         toolbar_->show();
     } else {
         selection_ = {};
         toolbar_->hide();
+        positionSelectionSizeLabel();
     }
     update();
 }
@@ -347,6 +390,14 @@ void CaptureOverlay::setWindowTargets(QList<QRect> targets)
 
 void CaptureOverlay::setAnnotationTool(AnnotationTool tool)
 {
+    if (textEditor_->isVisible() && tool != AnnotationTool::Text) {
+        commitTextEditing();
+    }
+    if (colorPickerActive_) {
+        colorPickerActive_ = false;
+        const QSignalBlocker blocker(colorPickerButton_);
+        colorPickerButton_->setChecked(false);
+    }
     annotationTool_ = tool;
     if (tool == AnnotationTool::None) {
         toolButtons_->setExclusive(false);
@@ -365,8 +416,35 @@ void CaptureOverlay::setAnnotationTool(AnnotationTool tool)
     update();
 }
 
+bool CaptureOverlay::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == textEditor_ && event->type() == QEvent::KeyPress) {
+        const auto* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Escape) {
+            cancelTextEditing();
+            return true;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
 void CaptureOverlay::keyPressEvent(QKeyEvent* event)
 {
+    if (colorPickerActive_) {
+        if (event->key() == Qt::Key_Escape) {
+            setColorPickerActive(false);
+            return;
+        }
+        if (event->key() == Qt::Key_Shift) {
+            colorPickerHex_ = !colorPickerHex_;
+            update();
+            return;
+        }
+        if (event->key() == Qt::Key_C) {
+            copyPickedColor();
+            return;
+        }
+    }
     if (event->modifiers() == Qt::NoModifier && event->key() == Qt::Key_Comma) {
         switchHistory(-1);
         return;
@@ -413,7 +491,10 @@ void CaptureOverlay::keyPressEvent(QKeyEvent* event)
 
 void CaptureOverlay::mouseDoubleClickEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton && selection_.contains(event->position().toPoint())) {
+    if (event->button() == Qt::LeftButton
+        && annotationTool_ == AnnotationTool::None
+        && !colorPickerActive_
+        && selection_.contains(event->position().toPoint())) {
         acceptCopy();
         return;
     }
@@ -424,6 +505,14 @@ void CaptureOverlay::mouseMoveEvent(QMouseEvent* event)
 {
     const QPoint point = event->position().toPoint();
     updateCaptureHintVisibility(point);
+    if (colorPickerActive_) {
+        if (selection_.contains(point)) {
+            colorPickerPoint_ = point;
+            update();
+        }
+        setCursor(Qt::CrossCursor);
+        return;
+    }
     if (annotationDrawing_) {
         annotations_.update(event->position());
         update();
@@ -440,6 +529,10 @@ void CaptureOverlay::mouseMoveEvent(QMouseEvent* event)
 void CaptureOverlay::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::RightButton) {
+        if (colorPickerActive_) {
+            setColorPickerActive(false);
+            return;
+        }
         emit canceled();
         return;
     }
@@ -449,6 +542,20 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
 
     const QPoint point = event->position().toPoint();
     updateCaptureHintVisibility(point);
+    if (colorPickerActive_) {
+        if (selection_.contains(point)) {
+            colorPickerPoint_ = point;
+            copyPickedColor();
+            setColorPickerActive(false);
+        }
+        return;
+    }
+    if (annotationTool_ == AnnotationTool::Text) {
+        if (selection_.contains(point)) {
+            startTextEditing(point);
+        }
+        return;
+    }
     if (annotationTool_ != AnnotationTool::None) {
         if (selection_.contains(point)) {
             annotationDrawing_ = true;
@@ -480,6 +587,7 @@ void CaptureOverlay::mousePressEvent(QMouseEvent* event)
         interaction_ = Interaction::Create;
         selection_ = QRect(interactionOrigin_, QSize(1, 1));
     }
+    positionSelectionSizeLabel();
     update();
 }
 
@@ -558,12 +666,17 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
         }
     }
     drawHistoryHint(painter);
+    drawColorPicker(painter);
 }
 
 void CaptureOverlay::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
     positionCaptureHint();
+    positionSelectionSizeLabel();
+    if (toolbar_->isVisible()) {
+        positionToolbar();
+    }
 }
 
 void CaptureOverlay::activateHistoryIndex(qsizetype index)
@@ -573,6 +686,8 @@ void CaptureOverlay::activateHistoryIndex(qsizetype index)
     }
 
     historyIndex_ = index;
+    cancelTextEditing();
+    setColorPickerActive(false);
     annotations_.clear();
     updateEditorActions();
     setAnnotationTool(AnnotationTool::None);
@@ -585,6 +700,7 @@ void CaptureOverlay::activateHistoryIndex(qsizetype index)
         selection_ = {};
         hoveredWindowTarget_ = {};
         toolbar_->hide();
+        positionSelectionSizeLabel();
         rebuildDimmedScreenshot();
         updateWindowTarget(mapFromGlobal(QCursor::pos()));
         update();
@@ -659,10 +775,69 @@ void CaptureOverlay::switchHistory(int offset)
         historyIndex_ + offset, 0, history_.size()));
 }
 
+void CaptureOverlay::setColorPickerActive(bool active)
+{
+    if (active && !selection_.isValid()) {
+        const QSignalBlocker blocker(colorPickerButton_);
+        colorPickerButton_->setChecked(false);
+        return;
+    }
+    if (colorPickerActive_ == active) {
+        return;
+    }
+
+    if (active) {
+        commitTextEditing();
+        setAnnotationTool(AnnotationTool::None);
+        colorPickerActive_ = true;
+        const QPoint cursor = mapFromGlobal(QCursor::pos());
+        colorPickerPoint_ = selection_.contains(cursor) ? cursor : selection_.center();
+        toolbar_->hide();
+    } else {
+        colorPickerActive_ = false;
+        if (selection_.isValid()) {
+            positionToolbar();
+            toolbar_->show();
+        }
+    }
+    {
+        const QSignalBlocker blocker(colorPickerButton_);
+        colorPickerButton_->setChecked(colorPickerActive_);
+    }
+    updateCursorForPosition(colorPickerPoint_);
+    update();
+}
+
+void CaptureOverlay::startTextEditing(const QPoint& point)
+{
+    if (!selection_.isValid() || !selection_.contains(point)) {
+        return;
+    }
+    commitTextEditing();
+    textAnchor_ = point;
+    const int editorWidth = std::min(280, std::max(160, width() - point.x() - 8));
+    int editorX = point.x();
+    if (editorX + editorWidth > width() - 8) {
+        editorX = std::max(8, width() - editorWidth - 8);
+    }
+    int editorY = point.y();
+    if (editorY + textEditor_->height() > height() - 8) {
+        editorY = std::max(8, point.y() - textEditor_->height());
+    }
+    textEditor_->setFixedWidth(editorWidth);
+    textEditor_->move(editorX, editorY);
+    textEditor_->clear();
+    toolbar_->hide();
+    textEditor_->show();
+    textEditor_->raise();
+    textEditor_->setFocus(Qt::MouseFocusReason);
+}
+
 void CaptureOverlay::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
     positionCaptureHint();
+    positionSelectionSizeLabel();
     raise();
     activateWindow();
     setFocus(Qt::ActiveWindowFocusReason);
@@ -719,6 +894,7 @@ QRect CaptureOverlay::selectedPixelRect() const
 
 void CaptureOverlay::acceptCopy()
 {
+    commitTextEditing();
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit copyRequested(image);
@@ -727,6 +903,7 @@ void CaptureOverlay::acceptCopy()
 
 void CaptureOverlay::acceptOcr()
 {
+    commitTextEditing();
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit ocrRequested(image);
@@ -735,6 +912,7 @@ void CaptureOverlay::acceptOcr()
 
 void CaptureOverlay::acceptPin()
 {
+    commitTextEditing();
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit pinRequested(image);
@@ -751,10 +929,196 @@ void CaptureOverlay::acceptRecord()
 
 void CaptureOverlay::acceptSave()
 {
+    commitTextEditing();
     const QImage image = selectedImage();
     if (!image.isNull()) {
         emit saveRequested(image);
     }
+}
+
+void CaptureOverlay::cancelTextEditing()
+{
+    if (textEditor_ == nullptr || !textEditor_->isVisible()) {
+        return;
+    }
+    const QSignalBlocker blocker(textEditor_);
+    textEditor_->hide();
+    textEditor_->clear();
+    if (selection_.isValid()) {
+        positionToolbar();
+        toolbar_->show();
+    }
+    setFocus(Qt::OtherFocusReason);
+    update();
+}
+
+QColor CaptureOverlay::colorAt(const QPoint& point, QPoint* sourcePoint) const
+{
+    if (!selection_.isValid() || !selection_.contains(point)) {
+        return {};
+    }
+
+    QImage source;
+    QPoint pixel;
+    if (activeHistoryImage_.isNull()) {
+        source = screenshot_.toImage();
+        pixel = QPoint(
+            qFloor(point.x() * devicePixelRatio_),
+            qFloor(point.y() * devicePixelRatio_));
+    } else {
+        source = activeHistoryImage_;
+        const qreal relativeX = qreal(point.x() - selection_.left())
+            / std::max(1, selection_.width());
+        const qreal relativeY = qreal(point.y() - selection_.top())
+            / std::max(1, selection_.height());
+        pixel = QPoint(
+            qFloor(relativeX * source.width()),
+            qFloor(relativeY * source.height()));
+    }
+    if (source.isNull()) {
+        return {};
+    }
+
+    pixel.setX(std::clamp(pixel.x(), 0, source.width() - 1));
+    pixel.setY(std::clamp(pixel.y(), 0, source.height() - 1));
+    if (sourcePoint != nullptr) {
+        *sourcePoint = pixel;
+    }
+    return source.pixelColor(pixel);
+}
+
+void CaptureOverlay::commitTextEditing()
+{
+    if (textEditor_ == nullptr || !textEditor_->isVisible()) {
+        return;
+    }
+
+    const QString text = textEditor_->text();
+    const QPoint baseline(
+        textAnchor_.x(),
+        std::min(selection_.bottom(), textAnchor_.y() + 22));
+    {
+        const QSignalBlocker blocker(textEditor_);
+        textEditor_->hide();
+        textEditor_->clear();
+    }
+    annotations_.addText(text, baseline);
+    updateEditorActions();
+    if (selection_.isValid()) {
+        positionToolbar();
+        toolbar_->show();
+    }
+    setFocus(Qt::OtherFocusReason);
+    update();
+}
+
+void CaptureOverlay::copyPickedColor()
+{
+    const QColor color = colorAt(colorPickerPoint_);
+    if (!color.isValid()) {
+        return;
+    }
+    const QString value = colorPickerHex_
+        ? color.name(QColor::HexRgb).toUpper()
+        : QStringLiteral("%1, %2, %3")
+              .arg(color.red())
+              .arg(color.green())
+              .arg(color.blue());
+    QGuiApplication::clipboard()->setText(value);
+}
+
+void CaptureOverlay::drawColorPicker(QPainter& painter) const
+{
+    if (!colorPickerActive_) {
+        return;
+    }
+
+    QPoint sourcePoint;
+    const QColor selectedColor = colorAt(colorPickerPoint_, &sourcePoint);
+    if (!selectedColor.isValid()) {
+        return;
+    }
+    const QImage source = activeHistoryImage_.isNull()
+        ? screenshot_.toImage()
+        : activeHistoryImage_;
+
+    constexpr int cellSize = 9;
+    constexpr int sampleCount = 9;
+    constexpr int gridSize = cellSize * sampleCount;
+    const QSize panelSize(250, 126);
+    QPoint panelPosition = colorPickerPoint_ + QPoint(18, 18);
+    if (panelPosition.x() + panelSize.width() > width() - 8) {
+        panelPosition.setX(colorPickerPoint_.x() - panelSize.width() - 18);
+    }
+    if (panelPosition.y() + panelSize.height() > height() - 8) {
+        panelPosition.setY(colorPickerPoint_.y() - panelSize.height() - 18);
+    }
+    panelPosition.setX(std::clamp(panelPosition.x(), 8, std::max(8, width() - panelSize.width() - 8)));
+    panelPosition.setY(std::clamp(panelPosition.y(), 8, std::max(8, height() - panelSize.height() - 8)));
+    const QRect panelRect(panelPosition, panelSize);
+    const QPoint gridOrigin = panelPosition + QPoint(10, 10);
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    painter.setPen(QPen(QColor(90, 102, 113), 1));
+    painter.setBrush(QColor(20, 26, 32, 238));
+    painter.drawRoundedRect(panelRect, 6, 6);
+
+    for (int y = 0; y < sampleCount; ++y) {
+        for (int x = 0; x < sampleCount; ++x) {
+            const QPoint sample(
+                std::clamp(sourcePoint.x() + x - sampleCount / 2, 0, source.width() - 1),
+                std::clamp(sourcePoint.y() + y - sampleCount / 2, 0, source.height() - 1));
+            painter.fillRect(
+                QRect(gridOrigin + QPoint(x * cellSize, y * cellSize), QSize(cellSize, cellSize)),
+                source.pixelColor(sample));
+        }
+    }
+    const QRect centerCell(
+        gridOrigin + QPoint((sampleCount / 2) * cellSize, (sampleCount / 2) * cellSize),
+        QSize(cellSize, cellSize));
+    painter.setPen(QPen(Qt::white, 2));
+    painter.drawRect(centerCell.adjusted(0, 0, -1, -1));
+    painter.setPen(QPen(QColor(35, 139, 218), 1));
+    painter.drawRect(centerCell.adjusted(-2, -2, 1, 1));
+
+    const int textLeft = gridOrigin.x() + gridSize + 12;
+    QFont valueFont = painter.font();
+    valueFont.setPixelSize(14);
+    valueFont.setWeight(QFont::DemiBold);
+    painter.setFont(valueFont);
+    painter.setPen(Qt::white);
+    painter.drawText(
+        QRect(textLeft, panelPosition.y() + 12, 135, 24),
+        Qt::AlignLeft | Qt::AlignVCenter,
+        QStringLiteral("(%1, %2)").arg(sourcePoint.x()).arg(sourcePoint.y()));
+    painter.fillRect(
+        QRect(textLeft, panelPosition.y() + 43, 20, 20),
+        selectedColor);
+    painter.setPen(QPen(QColor(220, 228, 235), 1));
+    painter.drawRect(QRect(textLeft, panelPosition.y() + 43, 20, 20));
+    painter.setPen(Qt::white);
+    const QString value = colorPickerHex_
+        ? selectedColor.name(QColor::HexRgb).toUpper()
+        : QStringLiteral("%1, %2, %3")
+              .arg(selectedColor.red())
+              .arg(selectedColor.green())
+              .arg(selectedColor.blue());
+    painter.drawText(
+        QRect(textLeft + 28, panelPosition.y() + 40, 105, 26),
+        Qt::AlignLeft | Qt::AlignVCenter,
+        value);
+
+    QFont hintFont = painter.font();
+    hintFont.setPixelSize(12);
+    hintFont.setWeight(QFont::Normal);
+    painter.setFont(hintFont);
+    painter.setPen(QColor(203, 213, 222));
+    painter.drawText(
+        QRect(panelPosition.x() + 10, panelPosition.y() + 96, panelSize.width() - 20, 20),
+        Qt::AlignCenter,
+        tr("按 C 复制 · Shift 切换 RGB/HEX"));
+    painter.restore();
 }
 
 QRect CaptureOverlay::handleRect(ResizeHandle handle) const
@@ -823,6 +1187,7 @@ bool CaptureOverlay::selectionGeometryEditable() const
     return selection_.isValid()
         && activeHistoryImage_.isNull()
         && annotationTool_ == AnnotationTool::None
+        && !colorPickerActive_
         && annotations_.itemCount() == 0
         && !annotations_.canRedo();
 }
@@ -833,14 +1198,40 @@ void CaptureOverlay::positionCaptureHint()
     captureHint_->move(16, std::max(16, height() - captureHint_->height() - 16));
 }
 
-void CaptureOverlay::positionToolbar()
+void CaptureOverlay::positionSelectionSizeLabel()
 {
+    const QRect target = selection_.isValid() ? selection_ : hoveredWindowTarget_;
+    if (!target.isValid()) {
+        selectionSizeLabel_->hide();
+        return;
+    }
+
     const QSize pixelSize = activeHistoryImage_.isNull()
-        ? logicalToPixelRect(selection_, devicePixelRatio_, screenshot_.size()).size()
+        ? logicalToPixelRect(target, devicePixelRatio_, screenshot_.size()).size()
         : activeHistoryImage_.size();
-    sizeLabel_->setText(QStringLiteral("%1 × %2")
+    if (!pixelSize.isValid()) {
+        selectionSizeLabel_->hide();
+        return;
+    }
+    selectionSizeLabel_->setText(QStringLiteral("%1 × %2 px")
         .arg(pixelSize.width())
         .arg(pixelSize.height()));
+    selectionSizeLabel_->adjustSize();
+
+    int x = target.left();
+    int y = target.top() - selectionSizeLabel_->height() - 7;
+    if (y < 8) {
+        y = target.top() + 7;
+    }
+    x = std::clamp(x, 8, std::max(8, width() - selectionSizeLabel_->width() - 8));
+    y = std::clamp(y, 8, std::max(8, height() - selectionSizeLabel_->height() - 8));
+    selectionSizeLabel_->move(x, y);
+    selectionSizeLabel_->show();
+    selectionSizeLabel_->raise();
+}
+
+void CaptureOverlay::positionToolbar()
+{
     toolbar_->adjustSize();
 
     const int maximumX = std::max(8, width() - toolbar_->width() - 8);
@@ -866,6 +1257,10 @@ void CaptureOverlay::updateCaptureHintVisibility(const QPoint& point)
 
 void CaptureOverlay::updateCursorForPosition(const QPoint& point)
 {
+    if (colorPickerActive_) {
+        setCursor(Qt::CrossCursor);
+        return;
+    }
     if (!selectionGeometryEditable()) {
         setCursor(Qt::CrossCursor);
         return;
@@ -959,6 +1354,7 @@ void CaptureOverlay::updateInteraction(const QPoint& point)
             break;
         }
     }
+    positionSelectionSizeLabel();
     update();
 }
 
@@ -974,6 +1370,7 @@ void CaptureOverlay::updateWindowTarget(const QPoint& point)
         return;
     }
     hoveredWindowTarget_ = target;
+    positionSelectionSizeLabel();
     update();
 }
 

@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QPointF>
+#include <QString>
 #include <QVector>
 
 #include <optional>
@@ -15,19 +16,23 @@ enum class AnnotationTool {
     Pen,
     Rectangle,
     Arrow,
+    Text,
 };
 
 struct Annotation {
     AnnotationTool tool = AnnotationTool::None;
     QVector<QPointF> points;
+    QString text;
     QColor color = QColor(245, 74, 74);
     qreal width = 3.0;
+    int fontPixelSize = 20;
 };
 
 class AnnotationDocument final
 {
 public:
     void begin(AnnotationTool tool, const QPointF& point);
+    void addText(const QString& text, const QPointF& point);
     void update(const QPointF& point);
     void commit();
     void cancel();
