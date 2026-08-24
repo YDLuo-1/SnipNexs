@@ -80,7 +80,7 @@ For a formal release, run this only from a clean commit carrying the matching ve
 .\scripts\package-release.ps1 -Version 0.7.1
 ```
 
-The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and downloads and verifies the separate Qt source Release asset. See the [release checklist](docs/release-checklist.md).
+The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and prints its SHA-256. GitHub also displays the digest for every uploaded asset. Add `-IncludeQtSource` only when publishing the first SnipNexs release for a new Qt version; later application releases link to that publisher-controlled source copy. See the [release checklist](docs/release-checklist.md).
 
 ## License
 

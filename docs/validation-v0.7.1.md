@@ -4,7 +4,7 @@
 - 系统：Windows 本机，MSVC 2022 x64
 - Qt / 编译器：Qt 6.11.2 MSVC 2022 x64 / MSVC 19.44
 - 显示缩放：未记录；本轮没有做混合 DPI 桌面验收
-- 发布包校验：以同一 Release 附件 `SHA256SUMS.txt` 为准
+- 发布包 SHA-256：`0925e11b2745522caa89996a1bbb8430ef2d21a658c14deeed5719f6b11f8a9c`；发布后与 GitHub 附件自动显示的摘要复核
 
 ## 自动验证
 

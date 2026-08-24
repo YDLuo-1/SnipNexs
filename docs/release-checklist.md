@@ -3,11 +3,12 @@
 ## 自动门禁
 
 1. `CMakeLists.txt` 版本为 `0.7.1`，HEAD 精确带有 `v0.7.1` 标签，工作树干净。
-2. 运行 `scripts/package-release.ps1 -Version 0.7.1`。脚本必须完成配置、构建、CTest、安装、部署自检、ZIP 和校验文件生成，并在成功后清理本地 `dist` 旧版应用目录与 ZIP。
+2. 运行 `scripts/package-release.ps1 -Version 0.7.1`。脚本必须完成配置、构建、CTest、安装、部署自检和 ZIP 生成，输出 ZIP 的 SHA-256，并在成功后清理本地 `dist` 旧版应用目录与 ZIP。
 3. CTest 必须零失败；输出中被跳过的项目必须逐项记录，不能把“执行通过”和“跳过”合并成 11/11。
 4. ZIP 必须包含 Qt Core/Gui/Widgets/Network、Windows 平台插件、MSVC CRT、GPL/LGPL/MIT 文本、Qt 人类可读声明和 `qtbase-6.11.2.spdx`。
-5. `qtbase-everywhere-src-6.11.2.tar.xz` 的 SHA-256 必须是 `5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22`。
-6. GitHub Release 说明必须在同一页面依次提供 `English` 和 `简体中文` 两个内容对应的章节；附件说明也必须双语。
+5. 包内 `THIRD_PARTY_NOTICES.md` 指向的 Qt 对应源码必须由本仓库控制且可下载。Qt 6.11.2 当前复用 `v0.7.0` 中的 `qtbase-everywhere-src-6.11.2.tar.xz`，其 SHA-256 必须是 `5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22`。
+6. 只有首次发布某个 Qt 版本时才运行 `scripts/package-release.ps1 -Version <版本> -IncludeQtSource` 并上传源码附件；使用同一 Qt 版本的后续应用 Release 不重复上传。
+7. GitHub Release 说明必须提供双语下载说明、更新内容、验证结果、未验证项、开源合规和完整变更链接。
 
 ## 桌面验收
 
@@ -32,9 +33,9 @@ git push origin main
 git push origin v0.7.1
 gh release create v0.7.1 `
   dist\SnipNexs-0.7.1-win64.zip `
-  dist\qtbase-everywhere-src-6.11.2.tar.xz `
-  dist\SHA256SUMS.txt `
   --title "SnipNexs v0.7.1" --notes-file docs\release-notes-v0.7.1.md
 ```
+
+普通用户只需下载应用 ZIP；GitHub 会在附件旁直接显示 SHA-256 摘要。Qt 6.11.2 源码复用本仓库 [`v0.7.0` Release](https://github.com/YDLuo-1/SnipNexs/releases/tag/v0.7.0) 中已发布且校验一致的副本。
 
 若 `gh auth status` 或 Git 推送认证失败，停止上传并如实报告“本地完成、尚未发布”。
