@@ -61,9 +61,21 @@ if (-not (Test-Path -LiteralPath $vsDevCmd)) {
 $environmentLines = & cmd.exe /d /s /c "`"$vsDevCmd`" -arch=x64 >nul && set"
 foreach ($environmentLine in $environmentLines) {
     if ($environmentLine -match '^([^=]+)=(.*)$') {
-        [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
+        $environmentName = $matches[1]
+        $environmentValue = $matches[2]
+        if ($environmentName -ine 'PATH') {
+            [Environment]::SetEnvironmentVariable(
+                $environmentName, $environmentValue, 'Process')
+        }
     }
 }
+$developerPathLine = $environmentLines | Where-Object {
+    $_ -match '^PATH=.*\\VC\\Tools\\MSVC\\.*\\bin\\HostX64\\x64'
+} | Select-Object -First 1
+if (-not $developerPathLine) {
+    throw 'Visual Studio developer PATH was not produced by VsDevCmd.bat.'
+}
+$env:Path = $developerPathLine.Substring($developerPathLine.IndexOf('=') + 1)
 
 $cmake = Get-Command cmake.exe -ErrorAction Stop
 $ctest = Join-Path (Split-Path -Parent $cmake.Source) 'ctest.exe'
