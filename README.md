@@ -11,7 +11,7 @@ Current version: `0.6.0`. It includes Chinese/English UI switching, tray-first s
 - When a system tray is available, SnipNexs starts in the background without showing the main window. Double-click the tray icon, choose **Open SnipNexs**, or launch the program again to open it. The main window is shown automatically if no tray is available.
 - Press `F1`, or click **Region Capture** in the main window. If F1 is already in use, SnipNexs falls back to `Ctrl+Shift+A` and shows the active shortcut.
 - Choose **Simplified Chinese** or **English** from the language selector. The change takes effect immediately and is remembered for the next launch.
-- Drag a region on the monitor under the mouse pointer. Before annotating, drag inside the selection to move it, or drag any of its eight handles to resize it.
+- Hover a desktop window to preview its visible frame, then click to select it; drag instead to create a custom region. Before annotating, drag inside the selection to move it, or drag any of its eight handles to resize it.
 - The main window stays hidden during capture. Successfully copied, saved, or pinned captures enter the current session history; press `,` for the previous image and `.` for the next one.
 - Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.

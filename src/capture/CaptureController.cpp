@@ -5,6 +5,7 @@
 #include "ocr/OcrResultWindow.h"
 #include "pin/PinWindow.h"
 #include "platform/windows/CaptureExclusion.h"
+#include "platform/windows/WindowTargeting.h"
 
 #include <QClipboard>
 #include <QCoreApplication>
@@ -103,15 +104,17 @@ void CaptureController::captureAfterUiSettles()
     }
 
     setMainWindowCaptureExclusion(false);
-    auto* overlay = new CaptureOverlay(std::move(screenshot), captureHistory_);
     activeScreenName_ = screen->name();
     if (const auto* nativeScreen = screen->nativeInterface<QNativeInterface::QWindowsScreen>()) {
         activeMonitorHandle_ = reinterpret_cast<quintptr>(nativeScreen->handle());
     } else {
         activeMonitorHandle_ = 0;
     }
+    auto* overlay = new CaptureOverlay(std::move(screenshot), captureHistory_);
     overlay_ = overlay;
     overlay->setGeometry(screen->geometry());
+    overlay->setWindowTargets(visibleTopLevelWindowTargets(
+        activeMonitorHandle_, screen->geometry().size()));
     connect(overlay, &CaptureOverlay::copyRequested, this, &CaptureController::copyImage);
     connect(overlay, &CaptureOverlay::ocrRequested, this, &CaptureController::recognizeImage);
     connect(overlay, &CaptureOverlay::pinRequested, this, &CaptureController::pinImage);

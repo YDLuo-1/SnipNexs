@@ -2,7 +2,9 @@
 
 #include <QApplication>
 #include <QColor>
+#include <QFrame>
 #include <QImage>
+#include <QLabel>
 #include <QPixmap>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -65,6 +67,7 @@ int main(int argc, char* argv[])
 
     snipnexs::CaptureOverlay interactionOverlay(pixmap);
     interactionOverlay.resize(200, 150);
+    interactionOverlay.setWindowTargets({QRect(10, 10, 120, 100)});
     interactionOverlay.show();
     QApplication::processEvents();
 
@@ -79,6 +82,37 @@ int main(int argc, char* argv[])
         const QImage copied = qvariant_cast<QImage>(copySpy.takeFirst().at(0));
         ok &= copied.size() == QSize(100, 60);
     }
+
+    snipnexs::CaptureOverlay targetOverlay(pixmap);
+    targetOverlay.resize(640, 300);
+    targetOverlay.setWindowTargets({
+        QRect(10, 10, 80, 60),
+        QRect(20, 20, 30, 20),
+    });
+    targetOverlay.show();
+    QApplication::processEvents();
+
+    auto* captureHint = targetOverlay.findChild<QLabel*>(
+        QStringLiteral("captureHint"));
+    auto* captureToolbar = targetOverlay.findChild<QFrame*>(
+        QStringLiteral("captureToolbar"));
+    ok &= captureHint != nullptr
+        && captureHint->x() == 16
+        && captureHint->geometry().bottom() == targetOverlay.height() - 17;
+    ok &= captureToolbar != nullptr
+        && captureToolbar->cursor().shape() == Qt::ArrowCursor;
+    if (captureHint != nullptr) {
+        QTest::mouseMove(&targetOverlay, captureHint->geometry().center());
+        QApplication::processEvents();
+        ok &= !captureHint->isVisible();
+        QTest::mouseMove(&targetOverlay, QPoint(targetOverlay.width() - 4, 4));
+        QApplication::processEvents();
+        ok &= captureHint->isVisible();
+    }
+
+    QTest::mouseMove(&targetOverlay, QPoint(25, 25));
+    QTest::mouseClick(&targetOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(25, 25));
+    ok &= targetOverlay.selectedPixelRect() == QRect(20, 20, 160, 120);
 
     snipnexs::CaptureOverlay annotationOverlay(pixmap);
     annotationOverlay.resize(200, 150);
