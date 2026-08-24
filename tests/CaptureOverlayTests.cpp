@@ -96,11 +96,15 @@ int main(int argc, char* argv[])
         QStringLiteral("captureHint"));
     auto* captureToolbar = targetOverlay.findChild<QFrame*>(
         QStringLiteral("captureToolbar"));
-    ok &= captureHint != nullptr
+    const bool hintPointerOk = captureHint != nullptr;
+    const int hintFontPixels = captureHint == nullptr
+        ? -1
+        : captureHint->font().pixelSize();
+    const bool hintLayoutOk = hintPointerOk
         && captureHint->x() == 16
-        && captureHint->geometry().bottom() == targetOverlay.height() - 17;
-    ok &= captureToolbar != nullptr
-        && captureToolbar->cursor().shape() == Qt::ArrowCursor;
+        && captureHint->geometry().bottom() == targetOverlay.height() - 17
+        && hintFontPixels >= 16;
+    ok &= hintLayoutOk;
     if (captureHint != nullptr) {
         QTest::mouseMove(&targetOverlay, captureHint->geometry().center());
         QApplication::processEvents();
@@ -108,6 +112,32 @@ int main(int argc, char* argv[])
         QTest::mouseMove(&targetOverlay, QPoint(targetOverlay.width() - 4, 4));
         QApplication::processEvents();
         ok &= captureHint->isVisible();
+    }
+    const bool toolbarCursorOk = captureToolbar != nullptr
+        && captureToolbar->cursor().shape() == Qt::ArrowCursor;
+    ok &= toolbarCursorOk;
+    bool toolbarButtonsOk = captureToolbar != nullptr;
+    if (captureToolbar != nullptr) {
+        int toolbarButtonCount = 0;
+        for (auto* child : captureToolbar->children()) {
+            if (const auto* button = qobject_cast<QPushButton*>(child)) {
+                ++toolbarButtonCount;
+                toolbarButtonsOk &= button->text().isEmpty()
+                    && !button->icon().isNull()
+                    && !button->toolTip().isEmpty()
+                    && button->accessibleName() == button->toolTip();
+            }
+        }
+        toolbarButtonsOk &= toolbarButtonCount == 11;
+    }
+    ok &= toolbarButtonsOk;
+    if (!hintLayoutOk || !toolbarCursorOk || !toolbarButtonsOk) {
+        QTextStream(stdout)
+            << "capture chrome: hint=" << hintLayoutOk
+            << " hintPointer=" << hintPointerOk
+            << " hintFont=" << hintFontPixels
+            << " cursor=" << toolbarCursorOk
+            << " buttons=" << toolbarButtonsOk << '\n';
     }
 
     QTest::mouseMove(&targetOverlay, QPoint(25, 25));

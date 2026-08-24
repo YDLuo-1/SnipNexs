@@ -6,12 +6,17 @@
 #include <QButtonGroup>
 #include <QCursor>
 #include <QFrame>
+#include <QFont>
+#include <QFontMetrics>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
+#include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShowEvent>
@@ -27,6 +32,122 @@ namespace {
 constexpr int kHandleSize = 8;
 constexpr int kHandleHitPadding = 3;
 constexpr int kMinimumSelectionSize = 3;
+
+enum class ToolbarIcon {
+    Pen,
+    Rectangle,
+    Arrow,
+    Undo,
+    Redo,
+    Ocr,
+    Pin,
+    Record,
+    Copy,
+    Save,
+    Cancel,
+};
+
+QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
+{
+    QPixmap pixmap(40, 40);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(color, 3.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setBrush(Qt::NoBrush);
+
+    switch (icon) {
+    case ToolbarIcon::Pen:
+        painter.drawLine(QPointF(10, 30), QPointF(27, 13));
+        painter.drawLine(QPointF(8, 32), QPointF(15, 29));
+        painter.drawLine(QPointF(25, 11), QPointF(29, 15));
+        break;
+    case ToolbarIcon::Rectangle:
+        painter.drawRoundedRect(QRectF(8, 10, 24, 20), 2, 2);
+        break;
+    case ToolbarIcon::Arrow:
+        painter.drawLine(QPointF(9, 31), QPointF(30, 10));
+        painter.drawLine(QPointF(20, 10), QPointF(30, 10));
+        painter.drawLine(QPointF(30, 10), QPointF(30, 20));
+        break;
+    case ToolbarIcon::Undo:
+    case ToolbarIcon::Redo: {
+        painter.save();
+        if (icon == ToolbarIcon::Redo) {
+            painter.translate(40, 0);
+            painter.scale(-1, 1);
+        }
+        QPainterPath path;
+        path.moveTo(32, 28);
+        path.cubicTo(30, 15, 18, 12, 9, 21);
+        painter.drawPath(path);
+        painter.drawLine(QPointF(9, 21), QPointF(10, 12));
+        painter.drawLine(QPointF(9, 21), QPointF(18, 20));
+        painter.restore();
+        break;
+    }
+    case ToolbarIcon::Ocr: {
+        QFont font = painter.font();
+        font.setPixelSize(17);
+        font.setWeight(QFont::DemiBold);
+        painter.setFont(font);
+        painter.setPen(color);
+        painter.drawText(QRect(4, 5, 32, 30), Qt::AlignCenter, QStringLiteral("Aa"));
+        break;
+    }
+    case ToolbarIcon::Pin:
+        painter.drawLine(QPointF(20, 21), QPointF(20, 33));
+        painter.drawLine(QPointF(15, 31), QPointF(20, 36));
+        painter.drawLine(QPointF(20, 36), QPointF(25, 31));
+        painter.drawRoundedRect(QRectF(11, 8, 18, 14), 2, 2);
+        painter.drawLine(QPointF(14, 22), QPointF(26, 22));
+        break;
+    case ToolbarIcon::Record:
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(color);
+        painter.drawEllipse(QPointF(20, 20), 9, 9);
+        break;
+    case ToolbarIcon::Copy:
+        painter.drawRoundedRect(QRectF(13, 9, 19, 22), 2, 2);
+        painter.drawRoundedRect(QRectF(8, 14, 19, 19), 2, 2);
+        break;
+    case ToolbarIcon::Save:
+        painter.drawRoundedRect(QRectF(9, 7, 22, 26), 2, 2);
+        painter.drawRect(QRectF(14, 8, 12, 8));
+        painter.drawRect(QRectF(14, 23, 12, 9));
+        break;
+    case ToolbarIcon::Cancel:
+        painter.drawLine(QPointF(11, 11), QPointF(29, 29));
+        painter.drawLine(QPointF(29, 11), QPointF(11, 29));
+        break;
+    }
+    painter.end();
+    return pixmap;
+}
+
+QIcon makeToolbarIcon(ToolbarIcon icon, bool darkByDefault = false)
+{
+    QIcon result;
+    const QColor light(234, 240, 245);
+    const QColor dark(9, 40, 36);
+    result.addPixmap(drawToolbarIcon(icon, darkByDefault ? dark : light), QIcon::Normal, QIcon::Off);
+    result.addPixmap(drawToolbarIcon(icon, dark), QIcon::Normal, QIcon::On);
+    return result;
+}
+
+void configureToolbarButton(
+    QPushButton* button,
+    ToolbarIcon icon,
+    const QString& tooltip,
+    bool darkByDefault = false)
+{
+    button->setIcon(makeToolbarIcon(icon, darkByDefault));
+    button->setIconSize(QSize(20, 20));
+    button->setToolTip(tooltip);
+    button->setAccessibleName(tooltip);
+    button->setFixedSize(36, 32);
+}
 
 }
 
@@ -58,9 +179,13 @@ CaptureOverlay::CaptureOverlay(
         tr("拖动自定义区域 · 单击自动选择窗口 · Esc 或右键取消"), this);
     captureHint_->setObjectName(QStringLiteral("captureHint"));
     captureHint_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    QFont captureHintFont = captureHint_->font();
+    captureHintFont.setPixelSize(16);
+    captureHintFont.setWeight(QFont::Medium);
+    captureHint_->setFont(captureHintFont);
     captureHint_->setStyleSheet(QStringLiteral(
         "color: #ebf0f5; background: rgba(15, 20, 26, 210); "
-        "border: 1px solid #34414e; border-radius: 6px; padding: 7px 12px;"));
+        "border: 1px solid #34414e; border-radius: 6px; padding: 8px 13px;"));
     captureHint_->adjustSize();
 
     toolbar_ = new QFrame(this);
@@ -71,20 +196,31 @@ CaptureOverlay::CaptureOverlay(
     layout->setSpacing(7);
 
     sizeLabel_ = new QLabel(toolbar_);
-    auto* penButton = new QPushButton(tr("画笔"), toolbar_);
-    auto* rectangleButton = new QPushButton(tr("矩形"), toolbar_);
-    auto* arrowButton = new QPushButton(tr("箭头"), toolbar_);
-    undoButton_ = new QPushButton(tr("撤销"), toolbar_);
-    redoButton_ = new QPushButton(tr("重做"), toolbar_);
-    auto* ocrButton = new QPushButton(tr("识字"), toolbar_);
+    auto* penButton = new QPushButton(toolbar_);
+    auto* rectangleButton = new QPushButton(toolbar_);
+    auto* arrowButton = new QPushButton(toolbar_);
+    undoButton_ = new QPushButton(toolbar_);
+    redoButton_ = new QPushButton(toolbar_);
+    auto* ocrButton = new QPushButton(toolbar_);
     ocrButton->setObjectName(QStringLiteral("ocrButton"));
-    auto* pinButton = new QPushButton(tr("贴图"), toolbar_);
-    recordButton_ = new QPushButton(tr("录屏"), toolbar_);
+    auto* pinButton = new QPushButton(toolbar_);
+    recordButton_ = new QPushButton(toolbar_);
     recordButton_->setObjectName(QStringLiteral("recordButton"));
-    auto* copyButton = new QPushButton(tr("复制"), toolbar_);
-    auto* saveButton = new QPushButton(tr("保存"), toolbar_);
-    auto* cancelButton = new QPushButton(tr("取消"), toolbar_);
+    auto* copyButton = new QPushButton(toolbar_);
+    auto* saveButton = new QPushButton(toolbar_);
+    auto* cancelButton = new QPushButton(toolbar_);
     copyButton->setObjectName(QStringLiteral("accentButton"));
+    configureToolbarButton(penButton, ToolbarIcon::Pen, tr("画笔"));
+    configureToolbarButton(rectangleButton, ToolbarIcon::Rectangle, tr("矩形"));
+    configureToolbarButton(arrowButton, ToolbarIcon::Arrow, tr("箭头"));
+    configureToolbarButton(undoButton_, ToolbarIcon::Undo, tr("撤销"));
+    configureToolbarButton(redoButton_, ToolbarIcon::Redo, tr("重做"));
+    configureToolbarButton(ocrButton, ToolbarIcon::Ocr, tr("识字"));
+    configureToolbarButton(pinButton, ToolbarIcon::Pin, tr("贴图"));
+    configureToolbarButton(recordButton_, ToolbarIcon::Record, tr("录屏"));
+    configureToolbarButton(copyButton, ToolbarIcon::Copy, tr("复制"), true);
+    configureToolbarButton(saveButton, ToolbarIcon::Save, tr("保存"));
+    configureToolbarButton(cancelButton, ToolbarIcon::Cancel, tr("取消"));
     toolButtons_ = new QButtonGroup(this);
     toolButtons_->setExclusive(true);
     toolButtons_->addButton(penButton, static_cast<int>(AnnotationTool::Pen));
@@ -110,7 +246,7 @@ CaptureOverlay::CaptureOverlay(
     toolbar_->setStyleSheet(QStringLiteral(R"(
         QFrame#captureToolbar { background: #151b22; border: 1px solid #34414e; border-radius: 7px; }
         QLabel { color: #b9c5d0; padding: 0 5px; }
-        QPushButton { min-height: 28px; padding: 0 12px; color: #eaf0f5; background: #27323e; border: 0; border-radius: 5px; }
+        QPushButton { padding: 0; color: #eaf0f5; background: #27323e; border: 0; border-radius: 5px; }
         QPushButton:hover { background: #344351; }
         QPushButton:checked { color: #092824; background: #f0ba45; font-weight: 600; }
         QPushButton:disabled { color: #667380; background: #202832; }
@@ -447,13 +583,19 @@ void CaptureOverlay::drawHistoryHint(QPainter& painter) const
         : tr("截图记录 %1/%2 · 按 , / . 切换")
               .arg(historyIndex_ + 1)
               .arg(history_.size());
-    QRect hintRect = fontMetrics().boundingRect(hint).adjusted(-12, -7, 12, 7);
+    painter.save();
+    QFont hintFont = painter.font();
+    hintFont.setPixelSize(16);
+    hintFont.setWeight(QFont::Medium);
+    painter.setFont(hintFont);
+    QRect hintRect = QFontMetrics(hintFont).boundingRect(hint).adjusted(-13, -8, 13, 8);
     hintRect.moveTopRight(QPoint(width() - 16, 16));
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(15, 20, 26, 210));
     painter.drawRoundedRect(hintRect, 6, 6);
     painter.setPen(QColor(235, 240, 245));
     painter.drawText(hintRect, Qt::AlignCenter, hint);
+    painter.restore();
 }
 
 void CaptureOverlay::rebuildDimmedScreenshot()

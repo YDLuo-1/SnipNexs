@@ -80,8 +80,8 @@ void PinWindow::paintEvent(QPaintEvent*)
 
     const QRectF target = imageRect();
     painter.setPen(Qt::NoPen);
-    for (int spread = 12; spread >= 2; spread -= 2) {
-        painter.setBrush(QColor(0, 0, 0, 7 + (12 - spread) * 2));
+    for (int spread = 10; spread >= 2; spread -= 2) {
+        painter.setBrush(QColor(0, 0, 0, 3 + (10 - spread)));
         painter.drawRoundedRect(
             target.adjusted(-spread, -spread, spread, spread),
             6 + spread,

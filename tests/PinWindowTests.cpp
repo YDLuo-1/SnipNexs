@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
     const QColor imageEdgePixel = grabImage.pixelColor(
         grabImage.width() - kMarginTotal / 2 - 2,
         grabImage.height() / 2);
-    const bool shadowOk = shadowPixel.alpha() > 0;
+    const bool shadowOk = shadowPixel.alpha() > 0 && shadowPixel.alpha() <= 24;
     const bool imageOk = imagePixel == QColor(40, 160, 200)
         && imageEdgePixel == QColor(40, 160, 200);
     ok &= shadowOk;
