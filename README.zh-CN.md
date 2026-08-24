@@ -80,7 +80,7 @@ cmake --install build/release --prefix $installRoot
 .\scripts\package-release.ps1 -Version 0.7.1
 ```
 
-脚本会重新构建、通过 CTest、部署 Qt 与 MSVC 应用本地运行库、复制许可和 Qt SBOM、验证部署程序、生成 ZIP，并下载和校验作为 Release 独立附件的 Qt 源码包。发布验收要求见[发布清单](docs/release-checklist.md)。
+脚本会重新构建、通过 CTest、部署 Qt 与 MSVC 应用本地运行库、复制许可和 Qt SBOM、验证部署程序、生成 ZIP，并输出其 SHA-256；GitHub 也会为每个上传附件直接显示摘要。仅当某个 Qt 版本第一次用于 SnipNexs 发布时才添加 `-IncludeQtSource`；后续应用版本统一链接到这份由发布者控制的源码副本。发布验收要求见[发布清单](docs/release-checklist.md)。
 
 ## 许可证
 

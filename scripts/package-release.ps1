@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '0.7.1'
+    [string]$Version = '0.7.1',
+    [switch]$IncludeQtSource
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,7 +15,6 @@ $archivePath = [IO.Path]::GetFullPath(
     (Join-Path $distRoot "SnipNexs-$Version-win64.zip"))
 $qtSourceName = 'qtbase-everywhere-src-6.11.2.tar.xz'
 $qtSourcePath = [IO.Path]::GetFullPath((Join-Path $distRoot $qtSourceName))
-$checksumsPath = [IO.Path]::GetFullPath((Join-Path $distRoot 'SHA256SUMS.txt'))
 $qtSourceHash = '5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22'
 $qtSourceUrl =
     'https://download.qt.io/official_releases/qt/6.11/6.11.2/submodules/' + $qtSourceName
@@ -101,8 +101,8 @@ if (Test-Path -LiteralPath $stageDir) {
 if (Test-Path -LiteralPath $archivePath) {
     Remove-Item -LiteralPath $archivePath -Force
 }
-if (Test-Path -LiteralPath $checksumsPath) {
-    Remove-Item -LiteralPath $checksumsPath -Force
+if (Test-Path -LiteralPath (Join-Path $distRoot 'SHA256SUMS.txt')) {
+    Remove-Item -LiteralPath (Join-Path $distRoot 'SHA256SUMS.txt') -Force
 }
 
 & $cmake.Source --install build/release --config Release --prefix $stageDir
@@ -124,28 +124,24 @@ try {
 Compress-Archive -Path (Join-Path $stageDir '*') `
     -DestinationPath $archivePath -CompressionLevel Optimal
 
-if (-not (Test-Path -LiteralPath $qtSourcePath)) {
-    $downloadPath = "$qtSourcePath.download"
-    Invoke-WebRequest -Uri $qtSourceUrl -OutFile $downloadPath
-    $downloadHash = (Get-FileHash -LiteralPath $downloadPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($downloadHash -ne $qtSourceHash) {
-        Remove-Item -LiteralPath $downloadPath -Force
-        throw "Qt source SHA-256 mismatch: $downloadHash"
+if ($IncludeQtSource) {
+    if (-not (Test-Path -LiteralPath $qtSourcePath)) {
+        $downloadPath = "$qtSourcePath.download"
+        Invoke-WebRequest -Uri $qtSourceUrl -OutFile $downloadPath
+        $downloadHash = (Get-FileHash -LiteralPath $downloadPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($downloadHash -ne $qtSourceHash) {
+            Remove-Item -LiteralPath $downloadPath -Force
+            throw "Qt source SHA-256 mismatch: $downloadHash"
+        }
+        Move-Item -LiteralPath $downloadPath -Destination $qtSourcePath
     }
-    Move-Item -LiteralPath $downloadPath -Destination $qtSourcePath
-}
 
-$actualQtHash = (Get-FileHash -LiteralPath $qtSourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($actualQtHash -ne $qtSourceHash) {
-    throw "Existing Qt source SHA-256 mismatch: $actualQtHash"
+    $actualQtHash = (Get-FileHash -LiteralPath $qtSourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actualQtHash -ne $qtSourceHash) {
+        throw "Existing Qt source SHA-256 mismatch: $actualQtHash"
+    }
 }
 $archiveHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
-$checksumLines = @(
-    "$archiveHash  $([IO.Path]::GetFileName($archivePath))"
-    "$actualQtHash  $qtSourceName"
-)
-[IO.File]::WriteAllLines(
-    $checksumsPath, $checksumLines, [Text.UTF8Encoding]::new($false))
 
 $staleArtifacts = Get-ChildItem -LiteralPath $distRoot -Force | Where-Object {
     ($_.PSIsContainer -and $_.Name -like 'SnipNexs-*') -or
@@ -168,5 +164,8 @@ foreach ($artifact in $staleArtifacts) {
 }
 
 Write-Host "Release package: $archivePath"
-Write-Host "Qt source:      $qtSourcePath"
-Write-Host "Checksums:      $checksumsPath"
+Write-Host "Package SHA-256: $archiveHash"
+if ($IncludeQtSource) {
+    Write-Host "Qt source:      $qtSourcePath"
+    Write-Host "Qt SHA-256:     $actualQtHash"
+}
