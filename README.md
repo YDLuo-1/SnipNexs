@@ -4,20 +4,23 @@
 
 SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.5.0` (Stage 5). It includes a runnable main window, Chinese/English UI switching, system tray integration, single-instance activation, region capture, lightweight annotation, image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
+Current version: `0.6.0`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, region capture and session history, lightweight annotation, draggable and resizable image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
-- Press `Ctrl+Shift+A`, or click **Region Capture** in the main window.
+- When a system tray is available, SnipNexs starts in the background without showing the main window. Double-click the tray icon, choose **Open SnipNexs**, or launch the program again to open it. The main window is shown automatically if no tray is available.
+- Press `F1`, or click **Region Capture** in the main window. If F1 is already in use, SnipNexs falls back to `Ctrl+Shift+A` and shows the active shortcut.
 - Choose **Simplified Chinese** or **English** from the language selector. The change takes effect immediately and is remembered for the next launch.
 - Drag a region on the monitor under the mouse pointer. Before annotating, drag inside the selection to move it, or drag any of its eight handles to resize it.
+- The main window stays hidden during capture. Successfully copied, saved, or pinned captures enter the current session history; press `,` for the previous image and `.` for the next one.
 - Use **Pen**, **Rectangle**, or **Arrow** to annotate. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
 - The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.
 - Click **Region Recording**, draw a region, then click **Record** in the selection toolbar. Choose an MP4 path and use the floating indicator to stop.
-- Recording captures the pointer and writes H.264/MP4 through Windows media APIs. Stage 5 records video only; system audio and microphone input are not included yet.
+- Recording captures the pointer and writes H.264/MP4 through Windows media APIs. Recording is currently video-only; system audio and microphone input are not included yet.
 - Press `Enter` or double-click the selection to copy it, or use **Pin**, **Copy**, and **Save** next to the selection.
-- Pinned images stay on top: drag to move, use the mouse wheel to resize, and right-click to close.
+- Pinned images stay on top: drag to move, use the mouse wheel for cumulative cursor-anchored resizing, and right-click to close.
+- Open **About SnipNexs** from the main-window footer or tray menu to read the application, Qt, and recording-reference licenses and source locations offline.
 - Press `Esc` or right-click to cancel.
 
 ## Privacy
@@ -56,12 +59,12 @@ Requirements:
 - Visual Studio 2022 C++ toolchain with Windows SDK `10.0.22621.0` or newer (C++/WinRT included)
 - CMake 3.25+
 - Ninja
-- Qt 6.8.x for MSVC 2022 x64, shared-library build
+- Qt 6.11.2 for MSVC 2022 x64, shared-library build
 
-PowerShell, from an x64 Visual Studio developer environment:
+For a development build, use PowerShell from an x64 Visual Studio developer environment:
 
 ```powershell
-$env:SNIPNEXS_QT_DIR = 'C:\Qt\6.8.3\msvc2022_64'
+$env:SNIPNEXS_QT_DIR = 'D:\Qt\6.11.2\msvc2022_64'
 cmake --preset windows-release
 cmake --build --preset windows-release
 ctest --preset windows-release
@@ -71,8 +74,16 @@ cmake --install build/release --prefix $installRoot
 
 The deployed executable is `dist/SnipNexs/bin/SnipNexs.exe`.
 
+For a formal release, run this only from a clean commit carrying the matching version tag:
+
+```powershell
+.\scripts\package-release.ps1 -Version 0.6.0
+```
+
+The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and downloads and verifies the separate Qt source Release asset. See the [release checklist](docs/release-checklist.md).
+
 ## License
 
-SnipNexs is licensed under the [GNU GPL v3.0 or later](LICENSE). Qt is dynamically linked under its LGPL terms. Distributed packages must retain the applicable Qt license notices and allow users to replace the Qt DLLs.
+SnipNexs is licensed under the [GNU GPL v3.0 or later](LICENSE). Qt 6.11.2 is dynamically linked under LGPL-3.0-only. Release packages retain the license, SBOM, corresponding-source location, and instructions for replacing the Qt DLLs.
 
 See [Third-party notices](THIRD_PARTY_NOTICES.md) for exact deployed components and license sources.

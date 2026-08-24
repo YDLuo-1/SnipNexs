@@ -4,20 +4,23 @@
 
 SnipNexs 是面向 Windows 10/11 的轻量截图与录屏工具，使用 C++20 与 Qt 6 Widgets 开发。
 
-当前版本：`0.5.0`（阶段 5）。已具备可运行主窗口、中英界面切换、系统托盘、单实例唤醒、区域截图、轻量标注、贴图、本地 Windows OCR、显式浏览器翻译、原生 GPU 区域录屏、复制/保存和独立部署能力。
+当前版本：`0.6.0`。已具备中英界面切换、托盘化启动、单实例唤醒、区域截图、截图历史、轻量标注、可拖动缩放贴图、本地 Windows OCR、显式浏览器翻译、原生 GPU 区域录屏、复制/保存和独立部署能力。
 
 ## 使用
 
-- 按 `Ctrl+Shift+A`，或点击主窗口的“区域截图”。
+- 有系统托盘时程序默认在后台启动，不显示主界面；双击托盘图标、选择“打开 SnipNexs”或再次运行程序可打开主界面。托盘不可用时自动显示主界面。
+- 按 `F1`，或点击主窗口的“区域截图”。如果 F1 已被占用，SnipNexs 会回退到 `Ctrl+Shift+A`，并显示实际生效的快捷键。
 - 可在主窗口选择“简体中文”或“English”；切换立即生效，并在下次启动时保持。
 - 在鼠标所在显示器拖出选区；开始标注前，可拖动选区内部来移动，也可拖动四周八个控制点缩放。
+- 截图期间主窗口保持隐藏；成功复制、保存或贴出的截图会进入本次运行的历史，按 `,` 查看上一张、按 `.` 查看下一张。
 - 可用“画笔”“矩形”“箭头”标注；`Ctrl+Z` 与 `Ctrl+Y` 撤销和重做。
 - 点击“识字”可使用已安装的 Windows OCR 语言包在本机识别选区。
 - 结果窗口可复制文字，或在浏览器中翻译成中文/英文；只有确认后才发送文字，不发送图片。
 - 点击主窗口“区域录屏”，拖出区域后点击选区工具栏的“录屏”；选择 MP4 路径，再用悬浮条停止。
-- 录屏包含鼠标指针，通过 Windows 媒体 API 写入 H.264/MP4。阶段 5 只录视频，暂不包含系统声音或麦克风。
+- 录屏包含鼠标指针，通过 Windows 媒体 API 写入 H.264/MP4。当前只录视频，暂不包含系统声音或麦克风。
 - 按 `Enter` 或双击选区可复制；也可使用选区旁的“贴图”“复制”“保存”按钮。
-- 贴图保持置顶：拖动可移动，滚轮可缩放，右键可关闭。
+- 贴图保持置顶：拖动可移动，滚轮以鼠标所指内容为锚点连续缩放，右键可关闭。
+- 主界面底部和托盘菜单均可打开“关于 SnipNexs”，离线查看程序、Qt 与录屏参考代码的许可证及源码位置。
 - 按 `Esc` 或右键取消。
 
 ## 隐私
@@ -56,12 +59,12 @@ SnipNexs 是面向 Windows 10/11 的轻量截图与录屏工具，使用 C++20 �
 - Visual Studio 2022 C++ 工具链，以及 Windows SDK `10.0.22621.0` 或更高版本（包含 C++/WinRT）
 - CMake 3.25+
 - Ninja
-- Qt 6.8.x MSVC 2022 x64（动态库版本）
+- Qt 6.11.2 MSVC 2022 x64（动态库版本）
 
-请在 x64 Visual Studio 开发环境中运行 PowerShell：
+开发构建请在 x64 Visual Studio 开发环境中运行 PowerShell：
 
 ```powershell
-$env:SNIPNEXS_QT_DIR = 'C:\Qt\6.8.3\msvc2022_64'
+$env:SNIPNEXS_QT_DIR = 'D:\Qt\6.11.2\msvc2022_64'
 cmake --preset windows-release
 cmake --build --preset windows-release
 ctest --preset windows-release
@@ -71,8 +74,16 @@ cmake --install build/release --prefix $installRoot
 
 部署后的程序位于 `dist/SnipNexs/bin/SnipNexs.exe`。
 
+正式发布必须在干净且已打对应版本标签的提交上运行：
+
+```powershell
+.\scripts\package-release.ps1 -Version 0.6.0
+```
+
+脚本会重新构建、通过 CTest、部署 Qt 与 MSVC 应用本地运行库、复制许可和 Qt SBOM、验证部署程序、生成 ZIP，并下载和校验作为 Release 独立附件的 Qt 源码包。发布验收要求见[发布清单](docs/release-checklist.md)。
+
 ## 许可证
 
-SnipNexs 采用 [GNU GPL v3.0 or later](LICENSE)。Qt 以动态链接方式使用，遵循 Qt LGPL 的相关要求；发布包不得移除 Qt 的许可文本，且必须允许用户替换 Qt 动态库。
+SnipNexs 采用 [GNU GPL v3.0 or later](LICENSE)。Qt 6.11.2 以动态链接方式使用，遵循 LGPL-3.0-only；发布包保留许可、SBOM、对应源码副本位置和替换 Qt DLL 的方法。
 
 精确的发布组件和许可证来源见[第三方声明](THIRD_PARTY_NOTICES.md)。
