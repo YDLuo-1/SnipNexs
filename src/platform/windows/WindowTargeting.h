@@ -6,7 +6,10 @@
 
 namespace snipnexs {
 
-[[nodiscard]] QList<QRect> visibleTopLevelWindowTargets(
+[[nodiscard]] QList<QRect> prioritizeWindowTargetGroup(
+    QList<QRect> detailTargets, const QRect& clientTarget, const QRect& frameTarget);
+
+[[nodiscard]] QList<QRect> visibleWindowTargets(
     quintptr monitorHandle, const QSize& logicalScreenSize);
 
 } // namespace snipnexs

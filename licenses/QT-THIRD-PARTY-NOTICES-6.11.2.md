@@ -25,7 +25,7 @@ license texts and corresponding source are preserved in the unmodified
 `qtbase-everywhere-src-6.11.2.tar.xz` attached to the matching GitHub Release.
 
 Qt source copy:
-<https://github.com/YDLuo-1/SnipNexs/releases/download/v0.6.0/qtbase-everywhere-src-6.11.2.tar.xz>
+<https://github.com/YDLuo-1/SnipNexs/releases/download/v0.7.0/qtbase-everywhere-src-6.11.2.tar.xz>
 
 Official Qt third-party license index:
 <https://doc.qt.io/qt-6.11/licenses-used-in-qt.html>

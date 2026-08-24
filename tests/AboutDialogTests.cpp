@@ -1,7 +1,10 @@
 #include "app/AboutDialog.h"
+#include "app/AppIcon.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QLabel>
+#include <QPalette>
 #include <QTabWidget>
 #include <QTextBrowser>
 #include <QTextStream>
@@ -22,6 +25,20 @@ int main(int argc, char* argv[])
     }
     ok &= allAboutText.contains(QStringLiteral("GPL-3.0-or-later"));
     ok &= allAboutText.contains(QStringLiteral("github.com/YDLuo-1/SnipNexs"));
+    const auto* sourceLink = about.findChild<QLabel*>(QStringLiteral("sourceLink"));
+    const QColor aboutBackground = about.palette().color(QPalette::Window);
+    const QColor aboutText = about.palette().color(QPalette::WindowText);
+    const QColor linkColor = sourceLink == nullptr
+        ? QColor()
+        : sourceLink->palette().color(QPalette::Link);
+    ok &= sourceLink != nullptr
+        && aboutText.lightnessF() - aboutBackground.lightnessF() > 0.55
+        && linkColor.lightnessF() - aboutBackground.lightnessF() > 0.45;
+
+    const QIcon appIcon = snipnexs::createAppIcon();
+    ok &= !appIcon.isNull()
+        && !appIcon.pixmap(QSize(16, 16)).isNull()
+        && !appIcon.pixmap(QSize(64, 64)).isNull();
 
     snipnexs::OpenSourceLicensesDialog licenses;
     const auto* tabs = licenses.findChild<QTabWidget*>(QStringLiteral("licenseTabs"));
@@ -40,6 +57,7 @@ int main(int argc, char* argv[])
     QTextStream(stdout)
         << "about dialog: " << (ok ? "ok" : "failed")
         << " version=" << SNIPNEXS_VERSION
+        << " contrast=" << (aboutText.lightnessF() - aboutBackground.lightnessF())
         << " tabs=" << (tabs != nullptr ? tabs->count() : 0)
         << " text-bytes=" << allLicenseText.toUtf8().size() << '\n';
     return ok ? 0 : 1;

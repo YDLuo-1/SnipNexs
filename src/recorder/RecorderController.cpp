@@ -8,7 +8,6 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QCursor>
 #include <QStandardPaths>
 
 #include <Windows.h>
@@ -93,8 +92,8 @@ void RecorderController::startRegion(
     indicator_ = indicator;
     connect(indicator, &RecordingIndicator::stopRequested, this, &RecorderController::stop);
     connect(indicator, &QObject::destroyed, this, [this]() { indicator_ = nullptr; });
+    indicator->moveToBottomRight(screenName);
     indicator->show();
-    indicator->move(QCursor::pos() + QPoint(18, 18));
     mainWindow_.hide();
     mainWindow_.setCaptureStatus(tr("正在启动 Windows GPU 录屏与 H.264 编码器…"));
 }

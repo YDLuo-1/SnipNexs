@@ -113,7 +113,7 @@ void CaptureController::captureAfterUiSettles()
     auto* overlay = new CaptureOverlay(std::move(screenshot), captureHistory_);
     overlay_ = overlay;
     overlay->setGeometry(screen->geometry());
-    overlay->setWindowTargets(visibleTopLevelWindowTargets(
+    overlay->setWindowTargets(visibleWindowTargets(
         activeMonitorHandle_, screen->geometry().size()));
     connect(overlay, &CaptureOverlay::copyRequested, this, &CaptureController::copyImage);
     connect(overlay, &CaptureOverlay::ocrRequested, this, &CaptureController::recognizeImage);
