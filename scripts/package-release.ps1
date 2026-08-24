@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '0.7.0'
+    [string]$Version = '0.7.1'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -146,6 +146,26 @@ $checksumLines = @(
 )
 [IO.File]::WriteAllLines(
     $checksumsPath, $checksumLines, [Text.UTF8Encoding]::new($false))
+
+$staleArtifacts = Get-ChildItem -LiteralPath $distRoot -Force | Where-Object {
+    ($_.PSIsContainer -and $_.Name -like 'SnipNexs-*') -or
+    (-not $_.PSIsContainer -and $_.Name -like 'SnipNexs-*-win64.zip')
+}
+foreach ($artifact in $staleArtifacts) {
+    $artifactPath = [IO.Path]::GetFullPath($artifact.FullName)
+    if ($artifactPath -ieq $stageDir -or $artifactPath -ieq $archivePath) {
+        continue
+    }
+    if (-not $artifactPath.StartsWith($distPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove a stale artifact outside $distRoot."
+    }
+    if ($artifact.PSIsContainer) {
+        Remove-Item -LiteralPath $artifactPath -Recurse -Force
+    } else {
+        Remove-Item -LiteralPath $artifactPath -Force
+    }
+    Write-Host "Removed stale dist artifact: $artifactPath"
+}
 
 Write-Host "Release package: $archivePath"
 Write-Host "Qt source:      $qtSourcePath"

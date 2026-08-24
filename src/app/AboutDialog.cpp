@@ -1,5 +1,6 @@
 #include "AboutDialog.h"
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QColor>
 #include <QDialogButtonBox>
@@ -42,9 +43,8 @@ constexpr auto kDarkDialogStyle = R"(
     }
 )";
 
-void applyDarkDialogTheme(QWidget* widget)
+QPalette darkDialogPalette(QPalette palette)
 {
-    QPalette palette = widget->palette();
     palette.setColor(QPalette::Window, QColor(QStringLiteral("#11161d")));
     palette.setColor(QPalette::WindowText, QColor(QStringLiteral("#f1f5f9")));
     palette.setColor(QPalette::Base, QColor(QStringLiteral("#0d1218")));
@@ -53,8 +53,21 @@ void applyDarkDialogTheme(QWidget* widget)
     palette.setColor(QPalette::ButtonText, QColor(QStringLiteral("#f1f5f9")));
     palette.setColor(QPalette::Link, QColor(QStringLiteral("#75dbff")));
     palette.setColor(QPalette::LinkVisited, QColor(QStringLiteral("#b9a7ff")));
-    widget->setPalette(palette);
+    return palette;
+}
+
+void applyDarkDialogTheme(QWidget* widget)
+{
+    widget->setPalette(darkDialogPalette(widget->palette()));
     widget->setStyleSheet(QString::fromLatin1(kDarkDialogStyle));
+}
+
+void showDarkAboutQt(QWidget* parent, const QString& title)
+{
+    const QPalette originalPalette = qApp->palette();
+    qApp->setPalette(darkDialogPalette(originalPalette));
+    QMessageBox::aboutQt(parent, title);
+    qApp->setPalette(originalPalette);
 }
 
 QString sourceLink(const QString& url)
@@ -189,6 +202,7 @@ AboutDialog::AboutDialog(QWidget* parent)
     licensesButton_ = new QPushButton(this);
     licensesButton_->setObjectName(QStringLiteral("licensesButton"));
     aboutQtButton_ = new QPushButton(this);
+    aboutQtButton_->setObjectName(QStringLiteral("aboutQtButton"));
     closeButton_ = new QPushButton(this);
     actions->addWidget(licensesButton_);
     actions->addWidget(aboutQtButton_);
@@ -199,7 +213,7 @@ AboutDialog::AboutDialog(QWidget* parent)
     connect(licensesButton_, &QPushButton::clicked,
         this, &AboutDialog::showOpenSourceLicenses);
     connect(aboutQtButton_, &QPushButton::clicked, this, [this]() {
-        QMessageBox::aboutQt(this, tr("关于 Qt"));
+        showDarkAboutQt(this, tr("关于 Qt"));
     });
     connect(closeButton_, &QPushButton::clicked, this, &QDialog::accept);
     retranslateUi();

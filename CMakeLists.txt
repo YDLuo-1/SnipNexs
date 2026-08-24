@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.7.0
+    VERSION 0.7.1
     DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )

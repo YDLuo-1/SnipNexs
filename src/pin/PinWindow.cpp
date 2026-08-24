@@ -34,14 +34,7 @@ PinWindow::PinWindow(const QImage& image, QWidget* parent)
     setAttribute(Qt::WA_TranslucentBackground);
     setCursor(Qt::OpenHandCursor);
 
-    QSize target = pixmap_.deviceIndependentSize().toSize();
-    if (QScreen* screen = QGuiApplication::screenAt(QCursor::pos())) {
-        const QSizeF limit = QSizeF(screen->availableGeometry().size()) * 0.8
-            - QSizeF(kShadowMargin * 2, kShadowMargin * 2);
-        if (target.width() > limit.width() || target.height() > limit.height()) {
-            target.scale(limit.toSize(), Qt::KeepAspectRatio);
-        }
-    }
+    const QSize target = pixmap_.deviceIndependentSize().toSize();
     resize(target + QSize(kShadowMargin * 2, kShadowMargin * 2));
 }
 
@@ -135,7 +128,7 @@ void PinWindow::resizeBy(qreal factor, const QPointF& anchorPosition)
         const qreal maximumFactor = std::min(
             limit.width() / current.width(),
             limit.height() / current.height());
-        factor = std::min(factor, maximumFactor);
+        factor = std::min(factor, std::max<qreal>(1.0, maximumFactor));
     }
 
     const QSizeF target = current.size() * factor;

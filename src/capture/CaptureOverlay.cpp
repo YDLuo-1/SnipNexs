@@ -49,77 +49,114 @@ enum class ToolbarIcon {
 
 QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
 {
-    QPixmap pixmap(40, 40);
+    QPixmap pixmap(48, 48);
     pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(color, 3.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setPen(QPen(color, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter.setBrush(Qt::NoBrush);
 
     switch (icon) {
-    case ToolbarIcon::Pen:
-        painter.drawLine(QPointF(10, 30), QPointF(27, 13));
-        painter.drawLine(QPointF(8, 32), QPointF(15, 29));
-        painter.drawLine(QPointF(25, 11), QPointF(29, 15));
+    case ToolbarIcon::Pen: {
+        QPainterPath nib;
+        nib.moveTo(10, 38);
+        nib.lineTo(15, 25);
+        nib.lineTo(32, 8);
+        nib.lineTo(40, 16);
+        nib.lineTo(23, 33);
+        nib.closeSubpath();
+        painter.drawPath(nib);
+        painter.drawLine(QPointF(15, 25), QPointF(23, 33));
+        painter.drawLine(QPointF(10, 38), QPointF(18, 35));
         break;
+    }
     case ToolbarIcon::Rectangle:
-        painter.drawRoundedRect(QRectF(8, 10, 24, 20), 2, 2);
+        painter.drawRoundedRect(QRectF(8, 11, 32, 26), 3, 3);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(color);
+        for (const QPointF corner : {
+                 QPointF(8, 11), QPointF(40, 11), QPointF(8, 37), QPointF(40, 37)}) {
+            painter.drawRoundedRect(QRectF(corner - QPointF(2.5, 2.5), QSizeF(5, 5)), 1, 1);
+        }
         break;
     case ToolbarIcon::Arrow:
-        painter.drawLine(QPointF(9, 31), QPointF(30, 10));
-        painter.drawLine(QPointF(20, 10), QPointF(30, 10));
-        painter.drawLine(QPointF(30, 10), QPointF(30, 20));
+        painter.drawLine(QPointF(9, 39), QPointF(39, 9));
+        painter.drawLine(QPointF(26, 9), QPointF(39, 9));
+        painter.drawLine(QPointF(39, 9), QPointF(39, 22));
         break;
     case ToolbarIcon::Undo:
     case ToolbarIcon::Redo: {
         painter.save();
         if (icon == ToolbarIcon::Redo) {
-            painter.translate(40, 0);
+            painter.translate(48, 0);
             painter.scale(-1, 1);
         }
         QPainterPath path;
-        path.moveTo(32, 28);
-        path.cubicTo(30, 15, 18, 12, 9, 21);
+        path.moveTo(40, 34);
+        path.cubicTo(37, 17, 22, 12, 9, 25);
         painter.drawPath(path);
-        painter.drawLine(QPointF(9, 21), QPointF(10, 12));
-        painter.drawLine(QPointF(9, 21), QPointF(18, 20));
+        painter.drawLine(QPointF(9, 25), QPointF(10, 14));
+        painter.drawLine(QPointF(9, 25), QPointF(20, 24));
         painter.restore();
         break;
     }
     case ToolbarIcon::Ocr: {
+        painter.drawLine(QPointF(8, 17), QPointF(8, 8));
+        painter.drawLine(QPointF(8, 8), QPointF(17, 8));
+        painter.drawLine(QPointF(31, 8), QPointF(40, 8));
+        painter.drawLine(QPointF(40, 8), QPointF(40, 17));
+        painter.drawLine(QPointF(8, 31), QPointF(8, 40));
+        painter.drawLine(QPointF(8, 40), QPointF(17, 40));
+        painter.drawLine(QPointF(31, 40), QPointF(40, 40));
+        painter.drawLine(QPointF(40, 40), QPointF(40, 31));
         QFont font = painter.font();
-        font.setPixelSize(17);
+        font.setPixelSize(21);
         font.setWeight(QFont::DemiBold);
         painter.setFont(font);
         painter.setPen(color);
-        painter.drawText(QRect(4, 5, 32, 30), Qt::AlignCenter, QStringLiteral("Aa"));
+        painter.drawText(QRect(12, 10, 24, 28), Qt::AlignCenter, QStringLiteral("T"));
         break;
     }
-    case ToolbarIcon::Pin:
-        painter.drawLine(QPointF(20, 21), QPointF(20, 33));
-        painter.drawLine(QPointF(15, 31), QPointF(20, 36));
-        painter.drawLine(QPointF(20, 36), QPointF(25, 31));
-        painter.drawRoundedRect(QRectF(11, 8, 18, 14), 2, 2);
-        painter.drawLine(QPointF(14, 22), QPointF(26, 22));
+    case ToolbarIcon::Pin: {
+        QPainterPath pin;
+        pin.moveTo(16, 8);
+        pin.lineTo(32, 8);
+        pin.lineTo(30, 17);
+        pin.lineTo(36, 25);
+        pin.lineTo(26, 25);
+        pin.lineTo(24, 40);
+        pin.lineTo(22, 25);
+        pin.lineTo(12, 25);
+        pin.lineTo(18, 17);
+        pin.closeSubpath();
+        painter.drawPath(pin);
         break;
+    }
     case ToolbarIcon::Record:
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(color);
-        painter.drawEllipse(QPointF(20, 20), 9, 9);
+        painter.drawRoundedRect(QRectF(8, 13, 26, 22), 4, 4);
+        painter.drawLine(QPointF(34, 20), QPointF(41, 16));
+        painter.drawLine(QPointF(41, 16), QPointF(41, 32));
+        painter.drawLine(QPointF(41, 32), QPointF(34, 28));
         break;
     case ToolbarIcon::Copy:
-        painter.drawRoundedRect(QRectF(13, 9, 19, 22), 2, 2);
-        painter.drawRoundedRect(QRectF(8, 14, 19, 19), 2, 2);
+        painter.drawRoundedRect(QRectF(9, 14, 23, 26), 3, 3);
+        painter.drawRoundedRect(QRectF(16, 8, 23, 26), 3, 3);
+        painter.drawLine(QPointF(22, 15), QPointF(33, 15));
+        painter.drawLine(QPointF(22, 21), QPointF(33, 21));
         break;
     case ToolbarIcon::Save:
-        painter.drawRoundedRect(QRectF(9, 7, 22, 26), 2, 2);
-        painter.drawRect(QRectF(14, 8, 12, 8));
-        painter.drawRect(QRectF(14, 23, 12, 9));
+        painter.drawLine(QPointF(24, 7), QPointF(24, 29));
+        painter.drawLine(QPointF(15, 21), QPointF(24, 30));
+        painter.drawLine(QPointF(24, 30), QPointF(33, 21));
+        painter.drawLine(QPointF(10, 34), QPointF(10, 40));
+        painter.drawLine(QPointF(10, 40), QPointF(38, 40));
+        painter.drawLine(QPointF(38, 40), QPointF(38, 34));
         break;
     case ToolbarIcon::Cancel:
-        painter.drawLine(QPointF(11, 11), QPointF(29, 29));
-        painter.drawLine(QPointF(29, 11), QPointF(11, 29));
+        painter.drawEllipse(QRectF(8, 8, 32, 32));
+        painter.drawLine(QPointF(17, 17), QPointF(31, 31));
+        painter.drawLine(QPointF(31, 17), QPointF(17, 31));
         break;
     }
     painter.end();
@@ -129,10 +166,14 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
 QIcon makeToolbarIcon(ToolbarIcon icon, bool darkByDefault = false)
 {
     QIcon result;
-    const QColor light(234, 240, 245);
+    const QColor light(232, 238, 244);
+    const QColor active(255, 255, 255);
     const QColor dark(9, 40, 36);
     result.addPixmap(drawToolbarIcon(icon, darkByDefault ? dark : light), QIcon::Normal, QIcon::Off);
+    result.addPixmap(drawToolbarIcon(icon, darkByDefault ? dark : active), QIcon::Active, QIcon::Off);
+    result.addPixmap(drawToolbarIcon(icon, QColor(103, 116, 128)), QIcon::Disabled, QIcon::Off);
     result.addPixmap(drawToolbarIcon(icon, dark), QIcon::Normal, QIcon::On);
+    result.addPixmap(drawToolbarIcon(icon, dark), QIcon::Active, QIcon::On);
     return result;
 }
 
@@ -143,10 +184,10 @@ void configureToolbarButton(
     bool darkByDefault = false)
 {
     button->setIcon(makeToolbarIcon(icon, darkByDefault));
-    button->setIconSize(QSize(20, 20));
+    button->setIconSize(QSize(22, 22));
     button->setToolTip(tooltip);
     button->setAccessibleName(tooltip);
-    button->setFixedSize(36, 32);
+    button->setFixedSize(38, 34);
 }
 
 }
@@ -204,12 +245,14 @@ CaptureOverlay::CaptureOverlay(
     auto* ocrButton = new QPushButton(toolbar_);
     ocrButton->setObjectName(QStringLiteral("ocrButton"));
     auto* pinButton = new QPushButton(toolbar_);
+    pinButton->setObjectName(QStringLiteral("pinButton"));
     recordButton_ = new QPushButton(toolbar_);
     recordButton_->setObjectName(QStringLiteral("recordButton"));
     auto* copyButton = new QPushButton(toolbar_);
     auto* saveButton = new QPushButton(toolbar_);
+    saveButton->setObjectName(QStringLiteral("saveButton"));
     auto* cancelButton = new QPushButton(toolbar_);
-    copyButton->setObjectName(QStringLiteral("accentButton"));
+    copyButton->setObjectName(QStringLiteral("copyButton"));
     configureToolbarButton(penButton, ToolbarIcon::Pen, tr("画笔"));
     configureToolbarButton(rectangleButton, ToolbarIcon::Rectangle, tr("矩形"));
     configureToolbarButton(arrowButton, ToolbarIcon::Arrow, tr("箭头"));
@@ -250,8 +293,8 @@ CaptureOverlay::CaptureOverlay(
         QPushButton:hover { background: #344351; }
         QPushButton:checked { color: #092824; background: #f0ba45; font-weight: 600; }
         QPushButton:disabled { color: #667380; background: #202832; }
-        QPushButton#accentButton { color: #092824; background: #39d0be; font-weight: 600; }
-        QPushButton#accentButton:hover { background: #52dfce; }
+        QPushButton#copyButton { color: #092824; background: #39d0be; font-weight: 600; }
+        QPushButton#copyButton:hover { background: #52dfce; }
     )"));
 
     connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);

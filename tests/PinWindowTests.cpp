@@ -97,6 +97,15 @@ int main(int argc, char* argv[])
     const bool smallSizeOk = smallPin.size() == QSize(30 + kMarginTotal, 20 + kMarginTotal);
     ok &= smallSizeOk;
 
+    const QSize largeImageSize = QGuiApplication::primaryScreen()->availableGeometry().size();
+    QImage largeImage(largeImageSize, QImage::Format_ARGB32_Premultiplied);
+    largeImage.fill(QColor(45, 80, 120));
+    snipnexs::PinWindow largePin(largeImage);
+    largePin.show();
+    QApplication::processEvents();
+    const bool largeSizeOk = largePin.size() == largeImageSize + QSize(kMarginTotal, kMarginTotal);
+    ok &= largeSizeOk;
+
     sendWheel(pin, pin.mapToGlobal(pin.rect().center()), 120);
     const QImage grabImage = pin.grab().toImage().convertToFormat(QImage::Format_ARGB32);
     QColor shadowPixel(0, 0, 0, 0);
@@ -128,6 +137,7 @@ int main(int argc, char* argv[])
         << " restore=" << restoreOk
         << " hidpi=" << hidpiSizeOk
         << " small=" << smallSizeOk
+        << " large=" << largeSizeOk
         << " shadow=" << shadowOk
         << " image=" << imageOk
         << " position=" << pin.x() << ',' << pin.y()
