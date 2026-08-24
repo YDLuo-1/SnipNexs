@@ -109,12 +109,16 @@ if (Test-Path -LiteralPath $checksumsPath) {
 if ($LASTEXITCODE -ne 0) { throw 'Release install failed.' }
 
 $previousQpa = $env:QT_QPA_PLATFORM
+$previousQpaPluginPath = $env:QT_QPA_PLATFORM_PLUGIN_PATH
 $env:QT_QPA_PLATFORM = 'offscreen'
+$env:QT_QPA_PLATFORM_PLUGIN_PATH = Join-Path $qtDir 'plugins\platforms'
 try {
-    & (Join-Path $stageDir 'bin\SnipNexs.exe') --self-test
-    if ($LASTEXITCODE -ne 0) { throw 'The deployed application self-test failed.' }
+    $selfTest = Start-Process -FilePath (Join-Path $stageDir 'bin\SnipNexs.exe') `
+        -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
+    if ($selfTest.ExitCode -ne 0) { throw 'The deployed application self-test failed.' }
 } finally {
     $env:QT_QPA_PLATFORM = $previousQpa
+    $env:QT_QPA_PLATFORM_PLUGIN_PATH = $previousQpaPluginPath
 }
 
 Compress-Archive -Path (Join-Path $stageDir '*') `
