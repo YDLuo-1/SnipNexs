@@ -9,6 +9,23 @@
 #include <QTextStream>
 #include <QTest>
 
+namespace {
+
+bool containsAnnotationColor(const QImage& image)
+{
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QColor pixel = image.pixelColor(x, y);
+            if (pixel.red() > 220 && pixel.green() < 110 && pixel.blue() < 110) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+}
+
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
@@ -25,7 +42,7 @@ int main(int argc, char* argv[])
     QApplication::processEvents();
 
     const QImage cropped = overlay.selectedImage();
-    bool ok = cropped.size() == QSize(100, 60) && cropped.devicePixelRatio() == 1.0;
+    bool ok = cropped.size() == QSize(100, 60) && cropped.devicePixelRatio() == 2.0;
 
     QImage rendered(overlay.size(), QImage::Format_ARGB32_Premultiplied);
     rendered.fill(Qt::transparent);
@@ -104,6 +121,49 @@ int main(int argc, char* argv[])
             ok &= qvariant_cast<QRect>(recordSpy.takeFirst().at(0)) == QRect(40, 40, 160, 120);
         }
     }
+
+    QImage firstHistoryImage(60, 40, QImage::Format_ARGB32_Premultiplied);
+    firstHistoryImage.fill(QColor(220, 40, 50));
+    QImage secondHistoryImage(800, 500, QImage::Format_ARGB32_Premultiplied);
+    secondHistoryImage.fill(QColor(40, 180, 70));
+    secondHistoryImage.setDevicePixelRatio(2.0);
+    snipnexs::CaptureOverlay historyOverlay(
+        pixmap, {firstHistoryImage, secondHistoryImage});
+    historyOverlay.resize(200, 150);
+    historyOverlay.show();
+    historyOverlay.activateWindow();
+    QApplication::processEvents();
+
+    QTest::keyClick(&historyOverlay, Qt::Key_Comma);
+    const QImage latestHistory = historyOverlay.selectedImage();
+    ok &= latestHistory.size() == secondHistoryImage.size();
+    ok &= latestHistory.devicePixelRatio() == 2.0;
+    ok &= latestHistory.pixelColor(latestHistory.rect().center()) == QColor(40, 180, 70);
+    auto* historyRecordButton = historyOverlay.findChild<QPushButton*>(
+        QStringLiteral("recordButton"));
+    ok &= historyRecordButton != nullptr && !historyRecordButton->isEnabled();
+
+    historyOverlay.setAnnotationTool(snipnexs::AnnotationTool::Rectangle);
+    QTest::mousePress(&historyOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(35, 40));
+    QTest::mouseMove(&historyOverlay, QPoint(95, 80));
+    QTest::mouseRelease(&historyOverlay, Qt::LeftButton, Qt::NoModifier, QPoint(95, 80));
+    const QImage annotatedHistory = historyOverlay.selectedImage();
+    ok &= annotatedHistory.size() == secondHistoryImage.size();
+    ok &= annotatedHistory.devicePixelRatio() == 2.0;
+    ok &= containsAnnotationColor(annotatedHistory);
+
+    QTest::keyClick(&historyOverlay, Qt::Key_Comma);
+    const QImage olderHistory = historyOverlay.selectedImage();
+    ok &= olderHistory.size() == firstHistoryImage.size();
+    ok &= olderHistory.devicePixelRatio() == 1.0;
+    ok &= olderHistory.pixelColor(olderHistory.rect().center()) == QColor(220, 40, 50);
+
+    QTest::keyClick(&historyOverlay, Qt::Key_Period);
+    const QImage forwardHistory = historyOverlay.selectedImage();
+    ok &= forwardHistory.size() == secondHistoryImage.size();
+    QTest::keyClick(&historyOverlay, Qt::Key_Period);
+    ok &= historyOverlay.selectedImage().isNull();
+    ok &= historyRecordButton != nullptr && historyRecordButton->isEnabled();
 
     QTextStream(stdout) << (ok ? "capture overlay: ok\n" : "capture overlay: failed\n");
     return ok ? 0 : 1;

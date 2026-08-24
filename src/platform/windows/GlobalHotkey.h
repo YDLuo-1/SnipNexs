@@ -2,6 +2,7 @@
 
 #include <QAbstractNativeEventFilter>
 #include <QObject>
+#include <QString>
 
 namespace snipnexs {
 
@@ -14,14 +15,24 @@ public:
     ~GlobalHotkey() override;
 
     [[nodiscard]] bool registerCaptureShortcut();
+    [[nodiscard]] QString shortcutText() const;
+    [[nodiscard]] bool isUsingFallback() const;
     bool nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result) override;
 
 signals:
     void activated();
 
 private:
+    enum class Shortcut
+    {
+        None,
+        F1,
+        CtrlShiftA
+    };
+
     static constexpr int kHotkeyId = 0x534E;
     bool registered_ = false;
+    Shortcut shortcut_ = Shortcut::None;
 };
 
 } // namespace snipnexs

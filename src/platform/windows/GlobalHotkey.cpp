@@ -25,12 +25,44 @@ bool GlobalHotkey::registerCaptureShortcut()
     if (registered_) {
         return true;
     }
+
+    registered_ = RegisterHotKey(
+        nullptr,
+        kHotkeyId,
+        MOD_NOREPEAT,
+        VK_F1) != FALSE;
+    if (registered_) {
+        shortcut_ = Shortcut::F1;
+        return true;
+    }
+
     registered_ = RegisterHotKey(
         nullptr,
         kHotkeyId,
         MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
         static_cast<UINT>('A')) != FALSE;
+    if (registered_) {
+        shortcut_ = Shortcut::CtrlShiftA;
+    }
     return registered_;
+}
+
+QString GlobalHotkey::shortcutText() const
+{
+    switch (shortcut_) {
+    case Shortcut::F1:
+        return QStringLiteral("F1");
+    case Shortcut::CtrlShiftA:
+        return QStringLiteral("Ctrl+Shift+A");
+    case Shortcut::None:
+        return {};
+    }
+    return {};
+}
+
+bool GlobalHotkey::isUsingFallback() const
+{
+    return shortcut_ == Shortcut::CtrlShiftA;
 }
 
 bool GlobalHotkey::nativeEventFilter(

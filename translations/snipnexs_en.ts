@@ -135,108 +135,161 @@
 <context>
     <name>main</name>
     <message>
-        <location filename="../src/main.cpp" line="62"/>
-        <location filename="../src/main.cpp" line="150"/>
-        <source>全局快捷键 Ctrl+Shift+A 已被其他程序占用。
+        <location filename="../src/main.cpp" line="75"/>
+        <source>快捷键已回退</source>
+        <translation>Shortcut fallback</translation>
+    </message>
+    <message>
+        <location filename="../src/main.cpp" line="76"/>
+        <source>F1 无法注册（通常是被其他程序占用），当前已改用 Ctrl+Shift+A。</source>
+        <translation>F1 could not be registered (usually because another application is using it). Ctrl+Shift+A is active instead.</translation>
+    </message>
+    <message>
+        <location filename="../src/main.cpp" line="80"/>
+        <source>全局快捷键不可用</source>
+        <translation>Global shortcut unavailable</translation>
+    </message>
+    <message>
+        <location filename="../src/main.cpp" line="81"/>
+        <source>F1 和 Ctrl+Shift+A 都无法注册。
 仍可点击“区域截图”按钮使用截图功能。</source>
-        <translation>The global Ctrl+Shift+A shortcut is already used by another application.
+        <translation>Neither F1 nor Ctrl+Shift+A could be registered.
 You can still click the Region Capture button.</translation>
     </message>
     <message>
-        <location filename="../src/main.cpp" line="166"/>
+        <location filename="../src/main.cpp" line="283"/>
         <source>无法加载英文翻译资源。</source>
         <translation>Could not load the English translation resource.</translation>
     </message>
 </context>
 <context>
+    <name>snipnexs::AboutDialog</name>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="144"/>
+        <location filename="../src/app/AboutDialog.cpp" line="170"/>
+        <source>关于 Qt</source>
+        <translation>About Qt</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="160"/>
+        <source>关于 SnipNexs</source>
+        <translation>About SnipNexs</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="162"/>
+        <source>SnipNexs %1（64 位 Windows）</source>
+        <translation>SnipNexs %1 (64-bit Windows)</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="164"/>
+        <source>本程序采用 GPL-3.0-or-later，不提供任何担保。你可以在许可证允许的范围内使用、研究、修改和再分发。</source>
+        <translation>This program is licensed under GPL-3.0-or-later and comes with no warranty. You may use, study, modify, and redistribute it under the license terms.</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="167"/>
+        <source>项目源码：&lt;a href=&apos;%1&apos;&gt;%1&lt;/a&gt;</source>
+        <translation>Source code: &lt;a href=&apos;%1&apos;&gt;%1&lt;/a&gt;</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="169"/>
+        <source>开源许可</source>
+        <translation>Open-source Licenses</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="171"/>
+        <source>关闭</source>
+        <translation>Close</translation>
+    </message>
+</context>
+<context>
     <name>snipnexs::CaptureController</name>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="42"/>
+        <location filename="../src/capture/CaptureController.cpp" line="50"/>
         <source>OCR 完成：%1，%2 ms，识别 %3 个字符。</source>
         <translation>OCR completed: %1, %2 ms, %3 characters recognized.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="49"/>
+        <location filename="../src/capture/CaptureController.cpp" line="57"/>
         <source>OCR 失败</source>
         <translation>OCR Failed</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="84"/>
+        <location filename="../src/capture/CaptureController.cpp" line="93"/>
         <source>未找到可用显示器。</source>
         <translation>No available display was found.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="92"/>
+        <location filename="../src/capture/CaptureController.cpp" line="101"/>
         <source>屏幕捕获失败。请检查远程桌面或系统权限。</source>
         <translation>Screen capture failed. Check Remote Desktop and system permissions.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="117"/>
+        <location filename="../src/capture/CaptureController.cpp" line="131"/>
         <source>已捕获 %1，耗时 %2 ms。选区可移动并通过八个控制点缩放。</source>
         <translation>Captured %1 in %2 ms. Move the selection or resize it with the eight handles.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="134"/>
+        <location filename="../src/capture/CaptureController.cpp" line="148"/>
         <source>已有 OCR 任务正在运行，请稍后再试。</source>
         <translation>An OCR task is already running. Try again later.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="136"/>
+        <location filename="../src/capture/CaptureController.cpp" line="150"/>
         <source>OCR 忙碌</source>
         <translation>OCR Busy</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="140"/>
+        <location filename="../src/capture/CaptureController.cpp" line="154"/>
         <source>正在本地识别 %1 × %2 像素图像……</source>
         <translation>Recognizing the %1 × %2 pixel image locally…</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="164"/>
+        <location filename="../src/capture/CaptureController.cpp" line="179"/>
         <source>已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。</source>
         <translation>Created a %1 × %2 pixel pinned image. Scroll to resize, drag to move, and right-click to close.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="174"/>
+        <location filename="../src/capture/CaptureController.cpp" line="190"/>
         <source>已复制 %1 × %2 像素截图到剪贴板。</source>
         <translation>Copied a %1 × %2 pixel screenshot to the clipboard.</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="178"/>
+        <location filename="../src/capture/CaptureController.cpp" line="194"/>
         <source>截图已复制</source>
         <translation>Screenshot Copied</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="179"/>
+        <location filename="../src/capture/CaptureController.cpp" line="195"/>
         <source>%1 × %2 像素</source>
         <translation>%1 × %2 pixels</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="195"/>
+        <location filename="../src/capture/CaptureController.cpp" line="211"/>
         <source>保存截图</source>
         <translation>Save Screenshot</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="197"/>
+        <location filename="../src/capture/CaptureController.cpp" line="213"/>
         <source>PNG 图片 (*.png);;JPEG 图片 (*.jpg *.jpeg);;BMP 图片 (*.bmp)</source>
         <translation>PNG Images (*.png);;JPEG Images (*.jpg *.jpeg);;BMP Images (*.bmp)</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="208"/>
+        <location filename="../src/capture/CaptureController.cpp" line="224"/>
         <source>无法保存截图：%1</source>
         <translation>Could not save screenshot: %1</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="213"/>
+        <location filename="../src/capture/CaptureController.cpp" line="231"/>
         <source>已保存 %1 × %2 像素截图：%3</source>
         <translation>Saved a %1 × %2 pixel screenshot: %3</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="217"/>
+        <location filename="../src/capture/CaptureController.cpp" line="235"/>
         <source>截图已保存</source>
         <translation>Screenshot Saved</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="235"/>
+        <location filename="../src/capture/CaptureController.cpp" line="286"/>
         <source>截图失败</source>
         <translation>Screenshot Failed</translation>
     </message>
@@ -244,141 +297,151 @@ You can still click the Region Capture button.</translation>
 <context>
     <name>snipnexs::CaptureOverlay</name>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="37"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="46"/>
         <source>SnipNexs Capture</source>
         <translation>SnipNexs Capture</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="55"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="61"/>
         <source>画笔</source>
         <translation>Pen</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="56"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="62"/>
         <source>矩形</source>
         <translation>Rectangle</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="57"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="63"/>
         <source>箭头</source>
         <translation>Arrow</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="58"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="64"/>
         <source>撤销</source>
         <translation>Undo</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="59"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="65"/>
         <source>重做</source>
         <translation>Redo</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="60"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="66"/>
         <source>识字</source>
         <translation>OCR</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="62"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="68"/>
         <source>贴图</source>
         <translation>Pin</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="63"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="69"/>
         <source>录屏</source>
         <translation>Record</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="65"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="71"/>
         <source>复制</source>
         <translation>Copy</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="66"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="72"/>
         <source>保存</source>
         <translation>Save</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="67"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="73"/>
         <source>取消</source>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="300"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="314"/>
         <source>拖动鼠标选择区域 · Esc 或右键取消</source>
         <translation>Drag to select a region · Esc or right-click to cancel</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="411"/>
+        <source>当前屏幕 · 按 , 查看截图记录</source>
+        <translation>Current screen · Press , to view capture history</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="412"/>
+        <source>截图记录 %1/%2 · 按 , / . 切换</source>
+        <translation>Capture history %1/%2 · Press , / . to switch</translation>
     </message>
 </context>
 <context>
     <name>snipnexs::MainWindow</name>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="69"/>
+        <location filename="../src/app/MainWindow.cpp" line="99"/>
         <source>SnipNexs 仍在运行</source>
         <translation>SnipNexs Is Still Running</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="70"/>
+        <location filename="../src/app/MainWindow.cpp" line="100"/>
         <source>可从系统托盘重新打开或退出。</source>
         <translation>Reopen or quit SnipNexs from the system tray.</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="90"/>
+        <location filename="../src/app/MainWindow.cpp" line="120"/>
         <source>轻量、原生、可扩展的 Windows 截图工具</source>
         <translation>A lightweight, native, and extensible Windows capture tool</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="91"/>
-        <source>阶段 5 · 原生区域录屏</source>
-        <translation>Stage 5 · Native Region Recording</translation>
-    </message>
-    <message>
-        <location filename="../src/app/MainWindow.cpp" line="93"/>
+        <location filename="../src/app/MainWindow.cpp" line="122"/>
         <source>截图选区支持标注、贴图和本地文字识别。
 区域录屏使用 Windows GPU 捕获并保存 H.264 MP4（当前不含音频）。</source>
         <translation>Capture regions support annotation, pinning, and local OCR.
 Region recording uses Windows GPU capture and saves H.264 MP4 video without audio.</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="95"/>
+        <location filename="../src/app/MainWindow.cpp" line="124"/>
         <source>语言</source>
         <translation>Language</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="96"/>
+        <location filename="../src/app/MainWindow.cpp" line="125"/>
         <source>简体中文</source>
         <translation>Simplified Chinese</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="98"/>
+        <location filename="../src/app/MainWindow.cpp" line="127"/>
         <source>最小化到托盘</source>
         <translation>Hide to Tray</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="99"/>
-        <location filename="../src/main.cpp" line="102"/>
-        <source>区域截图  Ctrl+Shift+A</source>
-        <translation>Region Capture  Ctrl+Shift+A</translation>
+        <location filename="../src/app/MainWindow.cpp" line="128"/>
+        <location filename="../src/main.cpp" line="219"/>
+        <source>区域截图</source>
+        <translation>Region Capture</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="100"/>
-        <location filename="../src/app/MainWindow.cpp" line="103"/>
+        <location filename="../src/app/MainWindow.cpp" line="132"/>
+        <location filename="../src/app/MainWindow.cpp" line="137"/>
         <source>区域录屏</source>
         <translation>Region Recording</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="102"/>
-        <source>区域截图	Ctrl+Shift+A</source>
-        <translation>Region Capture	Ctrl+Shift+A</translation>
-    </message>
-    <message>
-        <location filename="../src/app/MainWindow.cpp" line="104"/>
+        <location filename="../src/app/MainWindow.cpp" line="138"/>
         <source>打开 SnipNexs</source>
         <translation>Open SnipNexs</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="105"/>
+        <location filename="../src/app/MainWindow.cpp" line="139"/>
+        <source>关于 SnipNexs</source>
+        <translation>About SnipNexs</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp" line="140"/>
         <source>退出</source>
         <translation>Quit</translation>
+    </message>
+    <message>
+        <location filename="../src/app/MainWindow.cpp" line="142"/>
+        <source>关于</source>
+        <translation>About</translation>
     </message>
 </context>
 <context>
@@ -454,6 +517,39 @@ The screenshot will not be sent. Continue?</translation>
         <location filename="../src/ocr/OcrResultWindow.cpp" line="111"/>
         <source>请检查默认浏览器设置。</source>
         <translation>Check your default browser settings.</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::OpenSourceLicensesDialog</name>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="49"/>
+        <source>开源许可</source>
+        <translation>Open-source Licenses</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="62"/>
+        <source>SnipNexs 采用 GPL-3.0-or-later。对应版本源码：%1</source>
+        <translation>SnipNexs is licensed under GPL-3.0-or-later. Source for this version: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="65"/>
+        <source>SnipNexs</source>
+        <translation>SnipNexs</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="69"/>
+        <source>本发行版动态链接 Qt 6.11.2 Core、Gui、Widgets 与 Network，采用 LGPL-3.0-only。用户可以替换兼容的 Qt DLL；SnipNexs 未修改 Qt。对应 Qt 源码副本：%1</source>
+        <translation>This distribution dynamically links Qt 6.11.2 Core, Gui, Widgets, and Network under LGPL-3.0-only. Users may replace the Qt DLLs with compatible builds; SnipNexs does not modify Qt. Corresponding Qt source copy: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="90"/>
+        <source>录屏管线设计参考了固定提交版本的 Microsoft SimpleRecorder 示例；SnipNexs 不分发该示例的二进制文件。</source>
+        <translation>The recording pipeline design was informed by a pinned revision of the Microsoft SimpleRecorder sample. SnipNexs does not distribute that sample&apos;s binaries.</translation>
+    </message>
+    <message>
+        <location filename="../src/app/AboutDialog.cpp" line="99"/>
+        <source>关闭</source>
+        <translation>Close</translation>
     </message>
 </context>
 <context>
