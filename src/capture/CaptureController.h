@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QObject>
+#include <QImage>
+#include <QList>
 #include <QPointer>
 
 #include "ocr/OcrService.h"
@@ -35,13 +37,18 @@ private:
     void pinImage(const QImage& image);
     void saveImage(const QImage& image);
     void finishCapture(bool restoreMainWindow);
+    void rememberSuccessfulCapture(const QImage& image);
     void reportFailure(const QString& message);
+    void setMainWindowCaptureExclusion(bool excluded);
 
     MainWindow& mainWindow_;
     OcrService ocrService_;
     QPointer<CaptureOverlay> overlay_;
     bool capturePending_ = false;
     bool mainWindowWasVisible_ = false;
+    bool mainWindowCaptureExcluded_ = false;
+    QList<QImage> captureHistory_;
+    qsizetype captureHistoryBytes_ = 0;
     QString activeScreenName_;
     quintptr activeMonitorHandle_ = 0;
 };

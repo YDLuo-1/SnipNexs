@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QImage>
+#include <QList>
 #include <QPixmap>
 #include <QWidget>
 
@@ -11,6 +12,7 @@ class QFrame;
 class QLabel;
 class QKeyEvent;
 class QMouseEvent;
+class QPainter;
 class QPaintEvent;
 class QPushButton;
 class QShowEvent;
@@ -23,6 +25,8 @@ class CaptureOverlay final : public QWidget
 
 public:
     explicit CaptureOverlay(QPixmap screenshot, QWidget* parent = nullptr);
+    CaptureOverlay(
+        QPixmap screenshot, QList<QImage> history, QWidget* parent = nullptr);
     void setSelection(const QRect& selection);
     void setAnnotationTool(AnnotationTool tool);
     [[nodiscard]] QImage selectedImage() const;
@@ -70,16 +74,24 @@ private:
     void acceptPin();
     void acceptRecord();
     void acceptSave();
+    void activateHistoryIndex(qsizetype index);
+    void drawHistoryHint(QPainter& painter) const;
     [[nodiscard]] QRect handleRect(ResizeHandle handle) const;
     [[nodiscard]] ResizeHandle resizeHandleAt(const QPoint& point) const;
     [[nodiscard]] bool selectionGeometryEditable() const;
     void positionToolbar();
+    void rebuildDimmedScreenshot();
+    void switchHistory(int offset);
     void updateCursorForPosition(const QPoint& point);
     void updateEditorActions();
     void updateInteraction(const QPoint& point);
 
+    QPixmap liveScreenshot_;
     QPixmap screenshot_;
     QPixmap dimmedScreenshot_;
+    QList<QImage> history_;
+    QImage activeHistoryImage_;
+    qsizetype historyIndex_ = 0;
     QRect selection_;
     QRect interactionStartSelection_;
     QPoint interactionOrigin_;
@@ -92,6 +104,7 @@ private:
     QFrame* toolbar_ = nullptr;
     QLabel* sizeLabel_ = nullptr;
     QButtonGroup* toolButtons_ = nullptr;
+    QPushButton* recordButton_ = nullptr;
     QPushButton* undoButton_ = nullptr;
     QPushButton* redoButton_ = nullptr;
 };

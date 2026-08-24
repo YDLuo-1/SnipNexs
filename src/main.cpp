@@ -1,4 +1,5 @@
 #include "app/AppIcon.h"
+#include "app/AboutDialog.h"
 #include "app/MainWindow.h"
 #include "capture/CaptureController.h"
 #include "platform/windows/GlobalHotkey.h"
@@ -9,6 +10,7 @@
 #include <QCommandLineParser>
 #include <QComboBox>
 #include <QLibraryInfo>
+#include <QLabel>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QSettings>
@@ -16,6 +18,7 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QTranslator>
+#include <QSystemTrayIcon>
 
 namespace {
 
@@ -46,16 +49,47 @@ QString applyLanguage(
     return language;
 }
 
-bool notifyExistingInstance()
+bool notifyExistingInstance(const QByteArray& command)
 {
     QLocalSocket socket;
     socket.connectToServer(QString::fromLatin1(kInstanceName), QIODevice::WriteOnly);
     if (!socket.waitForConnected(180)) {
         return false;
     }
-    socket.write("activate\n");
+    socket.write(command);
     socket.waitForBytesWritten(180);
     return true;
+}
+
+void configureCaptureHotkey(
+    snipnexs::GlobalHotkey& hotkey,
+    snipnexs::MainWindow& window,
+    bool showNotification)
+{
+    const bool registered = hotkey.registerCaptureShortcut();
+    window.setCaptureShortcut(hotkey.shortcutText());
+
+    QString title;
+    QString message;
+    if (hotkey.isUsingFallback()) {
+        title = QCoreApplication::translate("main", "快捷键已回退");
+        message = QCoreApplication::translate(
+            "main",
+            "F1 无法注册（通常是被其他程序占用），当前已改用 Ctrl+Shift+A。");
+    } else if (!registered) {
+        title = QCoreApplication::translate("main", "全局快捷键不可用");
+        message = QCoreApplication::translate(
+            "main",
+            "F1 和 Ctrl+Shift+A 都无法注册。\n"
+            "仍可点击“区域截图”按钮使用截图功能。");
+    }
+
+    if (!message.isEmpty()) {
+        window.setCaptureStatus(message);
+        if (showNotification) {
+            window.showNotification(title, message);
+        }
+    }
 }
 
 int runSelfTest(
@@ -85,15 +119,14 @@ int runSelfTest(
             language = applyLanguage(
                 app, englishTranslator, translationOk, requestedLanguage);
             window.setLanguageCode(language);
+            configureCaptureHotkey(captureHotkey, window, false);
         });
-    if (!captureHotkey.registerCaptureShortcut()) {
-        window.setCaptureStatus(
-            QCoreApplication::translate(
-                "main",
-                "全局快捷键 Ctrl+Shift+A 已被其他程序占用。\n"
-                "仍可点击“区域截图”按钮使用截图功能。"));
+    configureCaptureHotkey(captureHotkey, window, false);
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        window.hide();
+    } else {
+        window.show();
     }
-    window.show();
     auto* languageCombo = window.findChild<QComboBox*>(
         QStringLiteral("languageCombo"));
     const bool languageControlFound = languageCombo != nullptr;
@@ -106,19 +139,43 @@ int runSelfTest(
     if (languageCombo != nullptr) {
         languageCombo->setCurrentIndex(1);
     }
+    window.setCaptureActive(true);
+    window.showAndActivate();
+    const bool captureBlocksMainWindow = !window.isVisible();
+    window.setCaptureActive(false);
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        window.hide();
+    } else {
+        window.show();
+    }
 
+    const QString captureShortcut = captureHotkey.shortcutText();
     QTimer::singleShot(50, &app, [&app, &window, &language, &languageSignalReceived,
                                    initialLanguageIndex, languageControlFound,
-                                   languageItemCount, versionOk, qtOk, translationOk]() {
+                                   languageItemCount, versionOk, qtOk, translationOk,
+                                   captureBlocksMainWindow, captureShortcut]() {
         const bool windowOk = window.isVisible() && !window.windowTitle().isEmpty();
         const auto* captureButton = window.findChild<QPushButton*>(
             QStringLiteral("primaryButton"));
+        const QString expectedCaptureText = captureShortcut.isEmpty()
+            ? QStringLiteral("Region Capture")
+            : QStringLiteral("Region Capture  %1").arg(captureShortcut);
         const bool translatedUiOk = captureButton != nullptr
-            && captureButton->text() == QStringLiteral("Region Capture  Ctrl+Shift+A");
+            && captureButton->text() == expectedCaptureText;
+        const auto* aboutButton = window.findChild<QPushButton*>(
+            QStringLiteral("aboutButton"));
+        snipnexs::AboutDialog aboutDialog(&window);
+        const auto* aboutProduct = aboutDialog.findChild<QLabel*>(
+            QStringLiteral("aboutProduct"));
+        const bool translatedAboutOk = aboutButton != nullptr
+            && aboutButton->text() == QStringLiteral("About")
+            && aboutProduct != nullptr
+            && aboutProduct->text().contains(QStringLiteral("64-bit Windows"));
         const bool languageSwitchOk = languageSignalReceived
             && language == QLatin1String(kEnglishLanguage);
         const bool ok = versionOk && qtOk && windowOk && translationOk
-            && languageSwitchOk && translatedUiOk;
+            && languageSwitchOk && translatedUiOk && translatedAboutOk
+            && captureBlocksMainWindow;
         QTextStream output(stdout);
         output << "SnipNexs " << QCoreApplication::applicationVersion() << '\n'
                << "Qt " << QLibraryInfo::version().toString() << '\n'
@@ -127,7 +184,12 @@ int runSelfTest(
                << "language-control-state: " << initialLanguageIndex
                << " -> " << languageItemCount << " items\n"
                << "language-switch: " << (languageSwitchOk ? "ok" : "failed") << '\n'
+               << "capture-shortcut: "
+               << (captureShortcut.isEmpty() ? "unavailable" : captureShortcut) << '\n'
                << "translated-ui: " << (translatedUiOk ? "ok" : "failed") << '\n'
+               << "translated-about: " << (translatedAboutOk ? "ok" : "failed") << '\n'
+               << "capture-blocks-main-window: "
+               << (captureBlocksMainWindow ? "ok" : "failed") << '\n'
                << "self-test: " << (ok ? "ok" : "failed") << '\n';
         output.flush();
         app.exit(ok ? 0 : 1);
@@ -155,8 +217,8 @@ int main(int argc, char* argv[])
         QString::fromLatin1(kEnglishTranslation));
     const bool englishTranslationOk = englishTranslationAvailable
         && englishTranslator.translate(
-               "snipnexs::MainWindow", "区域截图  Ctrl+Shift+A")
-            == QStringLiteral("Region Capture  Ctrl+Shift+A");
+               "snipnexs::MainWindow", "区域截图")
+            == QStringLiteral("Region Capture");
     language = applyLanguage(
         app, englishTranslator, englishTranslationOk, language);
 
@@ -166,14 +228,20 @@ int main(int argc, char* argv[])
     parser.addVersionOption();
     const QCommandLineOption selfTestOption(
         QStringLiteral("self-test"), QStringLiteral("Run a non-interactive startup check."));
+    const QCommandLineOption quitExistingOption(
+        QStringLiteral("quit-existing"), QStringLiteral("Ask a running instance to exit."));
     parser.addOption(selfTestOption);
+    parser.addOption(quitExistingOption);
     parser.process(app);
 
     if (parser.isSet(selfTestOption)) {
         app.removeTranslator(&englishTranslator);
         return runSelfTest(app, englishTranslator, englishTranslationOk);
     }
-    if (notifyExistingInstance()) {
+    if (parser.isSet(quitExistingOption)) {
+        return notifyExistingInstance(QByteArrayLiteral("quit\n")) ? 0 : 3;
+    }
+    if (notifyExistingInstance(QByteArrayLiteral("activate\n"))) {
         return 0;
     }
 
@@ -198,13 +266,7 @@ int main(int argc, char* argv[])
         &captureController, &snipnexs::CaptureController::startCapture);
     QObject::connect(&captureController, &snipnexs::CaptureController::recordRegionRequested,
         &recorderController, &snipnexs::RecorderController::startRegion);
-    if (!captureHotkey.registerCaptureShortcut()) {
-        window.setCaptureStatus(
-            QCoreApplication::translate(
-                "main",
-                "全局快捷键 Ctrl+Shift+A 已被其他程序占用。\n"
-                "仍可点击“区域截图”按钮使用截图功能。"));
-    }
+    configureCaptureHotkey(captureHotkey, window, true);
     QObject::connect(&window, &snipnexs::MainWindow::languageChangeRequested,
         &app, [&](const QString& requestedLanguage) {
             const QString nextLanguage = supportedLanguage(requestedLanguage);
@@ -215,6 +277,7 @@ int main(int argc, char* argv[])
             language = applyLanguage(
                 app, englishTranslator, englishTranslationOk, nextLanguage);
             window.setLanguageCode(language);
+            configureCaptureHotkey(captureHotkey, window, false);
             if (nextLanguage == QLatin1String(kEnglishLanguage)
                 && language != nextLanguage) {
                 window.setCaptureStatus(QCoreApplication::translate(
@@ -223,12 +286,19 @@ int main(int argc, char* argv[])
             settings.setValue(QStringLiteral("ui/language"), language);
             settings.sync();
         });
-    window.show();
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        window.hide();
+    } else {
+        window.show();
+    }
 
     QObject::connect(&instanceServer, &QLocalServer::newConnection, &window, [&]() {
         while (QLocalSocket* socket = instanceServer.nextPendingConnection()) {
             QObject::connect(socket, &QLocalSocket::readyRead, &window, [&window, socket]() {
-                if (socket->readAll().startsWith("activate")) {
+                const QByteArray command = socket->readAll();
+                if (command.startsWith("quit")) {
+                    QTimer::singleShot(0, qApp, &QApplication::quit);
+                } else if (command.startsWith("activate")) {
                     QTimer::singleShot(0, &window, &snipnexs::MainWindow::showAndActivate);
                 }
                 socket->disconnectFromServer();

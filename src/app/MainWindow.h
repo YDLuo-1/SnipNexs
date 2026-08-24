@@ -18,6 +18,8 @@ class MainWindow final : public QMainWindow
 
 public:
     explicit MainWindow(QWidget* parent = nullptr);
+    void setCaptureActive(bool active);
+    void setCaptureShortcut(const QString& shortcut);
     void setLanguageCode(const QString& languageCode);
     void setCaptureStatus(const QString& text);
     void showNotification(const QString& title, const QString& message);
@@ -36,23 +38,27 @@ protected:
 
 private:
     void retranslateUi();
+    void showAbout();
     void setupUi();
     void setupTray();
 
     QSystemTrayIcon* trayIcon_ = nullptr;
     QLabel* subtitleLabel_ = nullptr;
-    QLabel* stageLabel_ = nullptr;
     QLabel* statusLabel_ = nullptr;
     QLabel* languageLabel_ = nullptr;
     QComboBox* languageCombo_ = nullptr;
     QPushButton* hideButton_ = nullptr;
     QPushButton* captureButton_ = nullptr;
     QPushButton* recordButton_ = nullptr;
+    QPushButton* aboutButton_ = nullptr;
     QAction* captureAction_ = nullptr;
     QAction* recordAction_ = nullptr;
     QAction* openAction_ = nullptr;
+    QAction* aboutAction_ = nullptr;
     QAction* quitAction_ = nullptr;
     QString languageCode_ = QStringLiteral("zh_CN");
+    QString captureShortcut_ = QStringLiteral("F1");
+    bool captureActive_ = false;
     bool trayHintShown_ = false;
 };
 

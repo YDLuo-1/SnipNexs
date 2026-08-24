@@ -13,6 +13,7 @@
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "cl.exe",
         "CMAKE_PREFIX_PATH": "$env{SNIPNEXS_QT_DIR}",
         "BUILD_TESTING": "ON"
       }

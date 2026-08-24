@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.5.0
+    VERSION 0.6.0
     DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )
@@ -11,12 +11,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Widgets Network LinguistTools)
+find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Core Gui Widgets Network LinguistTools)
+
+set(SNIPNEXS_LICENSE_FILES
+    LICENSE
+    licenses/LGPL-3.0-only.txt
+    licenses/MIT-Microsoft-SimpleRecorder.txt
+    licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
+)
 
 qt_add_executable(SnipNexs WIN32
     src/main.cpp
     src/app/AppIcon.cpp
     src/app/AppIcon.h
+    src/app/AboutDialog.cpp
+    src/app/AboutDialog.h
     src/app/MainWindow.cpp
     src/app/MainWindow.h
     src/capture/CaptureController.cpp
@@ -36,6 +45,8 @@ qt_add_executable(SnipNexs WIN32
     src/pin/PinWindow.h
     src/platform/windows/GlobalHotkey.cpp
     src/platform/windows/GlobalHotkey.h
+    src/platform/windows/CaptureExclusion.cpp
+    src/platform/windows/CaptureExclusion.h
     src/recorder/NativeScreenRecorder.cpp
     src/recorder/NativeScreenRecorder.h
     src/recorder/RecorderController.cpp
@@ -77,11 +88,29 @@ qt_add_translations(SnipNexs
     RESOURCE_PREFIX /i18n
 )
 
+qt_add_resources(SnipNexs "license_resources"
+    PREFIX "/licenses"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}"
+    FILES ${SNIPNEXS_LICENSE_FILES}
+)
+
 if(MSVC)
     target_compile_options(SnipNexs PRIVATE /W4 /permissive- /utf-8 /EHsc)
 endif()
 
 include(GNUInstallDirs)
+if(MSVC)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_INSTALL_BINDIR})
+    include(InstallRequiredSystemLibraries)
+endif()
+
+get_filename_component(SNIPNEXS_QT_PREFIX "${Qt6_DIR}/../../.." ABSOLUTE)
+set(SNIPNEXS_QTBASE_SBOM
+    "${SNIPNEXS_QT_PREFIX}/sbom/qtbase-6.11.2.spdx")
+if(NOT EXISTS "${SNIPNEXS_QTBASE_SBOM}")
+    message(FATAL_ERROR "Qt 6.11.2 SBOM not found: ${SNIPNEXS_QTBASE_SBOM}")
+endif()
+
 install(TARGETS SnipNexs
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
@@ -93,6 +122,8 @@ install(FILES
 install(FILES
     licenses/LGPL-3.0-only.txt
     licenses/MIT-Microsoft-SimpleRecorder.txt
+    licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
+    ${SNIPNEXS_QTBASE_SBOM}
     DESTINATION licenses
 )
 
@@ -105,7 +136,6 @@ qt_generate_deploy_app_script(
         --no-system-d3d-compiler
         --no-system-dxc-compiler
         --no-opengl-sw
-        --compiler-runtime
         --skip-plugin-types generic,iconengines,networkinformation,tls
         --exclude-plugins qsvg
 )
@@ -113,7 +143,7 @@ install(SCRIPT ${deploy_script})
 
 include(CTest)
 if(BUILD_TESTING)
-    find_package(Qt6 6.8 REQUIRED COMPONENTS Test)
+    find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Test)
 
     add_test(NAME SnipNexsSelfTest COMMAND SnipNexs --self-test)
     set_tests_properties(SnipNexsSelfTest PROPERTIES
@@ -147,6 +177,68 @@ if(BUILD_TESTING)
     )
     add_test(NAME CaptureOverlayTests COMMAND CaptureOverlayTests)
     set_tests_properties(CaptureOverlayTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(CaptureExclusionTests
+        tests/CaptureExclusionTests.cpp
+        src/platform/windows/CaptureExclusion.cpp
+        src/platform/windows/CaptureExclusion.h
+    )
+    target_include_directories(CaptureExclusionTests PRIVATE src)
+    target_link_libraries(CaptureExclusionTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        dwmapi
+        user32
+    )
+    add_test(NAME CaptureExclusionTests COMMAND CaptureExclusionTests)
+    set_tests_properties(CaptureExclusionTests PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        SKIP_RETURN_CODE 77
+    )
+
+    add_executable(PinWindowTests
+        tests/PinWindowTests.cpp
+        src/pin/PinWindow.cpp
+        src/pin/PinWindow.h
+    )
+    target_include_directories(PinWindowTests PRIVATE src)
+    target_link_libraries(PinWindowTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Test
+    )
+    add_test(NAME PinWindowTests COMMAND PinWindowTests)
+    set_tests_properties(PinWindowTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(AboutDialogTests
+        tests/AboutDialogTests.cpp
+        src/app/AboutDialog.cpp
+        src/app/AboutDialog.h
+    )
+    target_include_directories(AboutDialogTests PRIVATE src)
+    target_link_libraries(AboutDialogTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+    )
+    target_compile_definitions(AboutDialogTests PRIVATE
+        SNIPNEXS_VERSION="${PROJECT_VERSION}"
+    )
+    qt_add_resources(AboutDialogTests "about_license_resources"
+        PREFIX "/licenses"
+        BASE "${CMAKE_CURRENT_SOURCE_DIR}"
+        FILES ${SNIPNEXS_LICENSE_FILES}
+    )
+    add_test(NAME AboutDialogTests COMMAND AboutDialogTests)
+    set_tests_properties(AboutDialogTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
@@ -228,5 +320,12 @@ if(BUILD_TESTING)
         SKIP_RETURN_CODE 77
         TIMEOUT 20
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_test(NAME ReleaseLayoutTests
+        COMMAND ${CMAKE_COMMAND}
+            -DSNIPNEXS_BUILD_DIR=${CMAKE_BINARY_DIR}
+            -DSNIPNEXS_STAGE_DIR=${CMAKE_BINARY_DIR}/release-layout-test
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/ReleaseLayoutTests.cmake
     )
 endif()

@@ -28,9 +28,18 @@ constexpr int kMinimumSelectionSize = 3;
 }
 
 CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
+    : CaptureOverlay(std::move(screenshot), {}, parent)
+{
+}
+
+CaptureOverlay::CaptureOverlay(
+    QPixmap screenshot, QList<QImage> history, QWidget* parent)
     : QWidget(parent)
-    , screenshot_(std::move(screenshot))
+    , liveScreenshot_(std::move(screenshot))
+    , screenshot_(liveScreenshot_)
     , dimmedScreenshot_(screenshot_)
+    , history_(std::move(history))
+    , historyIndex_(history_.size())
     , devicePixelRatio_(screenshot_.devicePixelRatio())
 {
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
@@ -40,10 +49,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
 
-    QPainter dimmer(&dimmedScreenshot_);
-    dimmer.fillRect(
-        QRectF(QPointF(0, 0), dimmedScreenshot_.deviceIndependentSize()),
-        QColor(0, 0, 0, 115));
+    rebuildDimmedScreenshot();
 
     toolbar_ = new QFrame(this);
     toolbar_->setObjectName(QStringLiteral("captureToolbar"));
@@ -60,8 +66,8 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     auto* ocrButton = new QPushButton(tr("识字"), toolbar_);
     ocrButton->setObjectName(QStringLiteral("ocrButton"));
     auto* pinButton = new QPushButton(tr("贴图"), toolbar_);
-    auto* recordButton = new QPushButton(tr("录屏"), toolbar_);
-    recordButton->setObjectName(QStringLiteral("recordButton"));
+    recordButton_ = new QPushButton(tr("录屏"), toolbar_);
+    recordButton_->setObjectName(QStringLiteral("recordButton"));
     auto* copyButton = new QPushButton(tr("复制"), toolbar_);
     auto* saveButton = new QPushButton(tr("保存"), toolbar_);
     auto* cancelButton = new QPushButton(tr("取消"), toolbar_);
@@ -82,7 +88,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     layout->addWidget(redoButton_);
     layout->addWidget(ocrButton);
     layout->addWidget(pinButton);
-    layout->addWidget(recordButton);
+    layout->addWidget(recordButton_);
     layout->addWidget(copyButton);
     layout->addWidget(saveButton);
     layout->addWidget(cancelButton);
@@ -102,7 +108,7 @@ CaptureOverlay::CaptureOverlay(QPixmap screenshot, QWidget* parent)
     connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
     connect(ocrButton, &QPushButton::clicked, this, &CaptureOverlay::acceptOcr);
     connect(pinButton, &QPushButton::clicked, this, &CaptureOverlay::acceptPin);
-    connect(recordButton, &QPushButton::clicked, this, &CaptureOverlay::acceptRecord);
+    connect(recordButton_, &QPushButton::clicked, this, &CaptureOverlay::acceptRecord);
     connect(saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
     connect(cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
     connect(toolButtons_, &QButtonGroup::idClicked, this, [this](int id) {
@@ -161,6 +167,14 @@ void CaptureOverlay::setAnnotationTool(AnnotationTool tool)
 
 void CaptureOverlay::keyPressEvent(QKeyEvent* event)
 {
+    if (event->modifiers() == Qt::NoModifier && event->key() == Qt::Key_Comma) {
+        switchHistory(-1);
+        return;
+    }
+    if (event->modifiers() == Qt::NoModifier && event->key() == Qt::Key_Period) {
+        switchHistory(1);
+        return;
+    }
     if (event->matches(QKeySequence::Undo)) {
         const bool changed = annotations_.undo();
         Q_UNUSED(changed);
@@ -306,6 +320,7 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
         painter.drawRoundedRect(centered, 6, 6);
         painter.setPen(QColor(235, 240, 245));
         painter.drawText(centered, Qt::AlignCenter, hint);
+        drawHistoryHint(painter);
         return;
     }
 
@@ -336,6 +351,92 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
             painter.drawRect(handleRect(handle));
         }
     }
+    drawHistoryHint(painter);
+}
+
+void CaptureOverlay::activateHistoryIndex(qsizetype index)
+{
+    if (index < 0 || index > history_.size()) {
+        return;
+    }
+
+    historyIndex_ = index;
+    annotations_.clear();
+    updateEditorActions();
+    setAnnotationTool(AnnotationTool::None);
+
+    if (historyIndex_ == history_.size()) {
+        activeHistoryImage_ = {};
+        screenshot_ = liveScreenshot_;
+        devicePixelRatio_ = screenshot_.devicePixelRatio();
+        recordButton_->setEnabled(true);
+        selection_ = {};
+        toolbar_->hide();
+        rebuildDimmedScreenshot();
+        update();
+        return;
+    }
+
+    activeHistoryImage_ = history_.at(historyIndex_);
+    screenshot_ = liveScreenshot_;
+    devicePixelRatio_ = screenshot_.devicePixelRatio();
+    recordButton_->setEnabled(false);
+    const QImage& image = activeHistoryImage_;
+    QSize targetSize = image.deviceIndependentSize().toSize();
+    const QSize maximumSize(
+        qMax(1, qRound(width() * 0.9)),
+        qMax(1, qRound(height() * 0.8)));
+    if (targetSize.width() > maximumSize.width()
+        || targetSize.height() > maximumSize.height()) {
+        targetSize.scale(maximumSize, Qt::KeepAspectRatio);
+    }
+
+    QRect targetRect(QPoint(), targetSize);
+    targetRect.moveCenter(rect().center());
+    {
+        QPainter painter(&screenshot_);
+        painter.drawImage(targetRect, image);
+    }
+    rebuildDimmedScreenshot();
+    setSelection(targetRect);
+}
+
+void CaptureOverlay::drawHistoryHint(QPainter& painter) const
+{
+    if (history_.isEmpty()) {
+        return;
+    }
+
+    const QString hint = historyIndex_ == history_.size()
+        ? tr("当前屏幕 · 按 , 查看截图记录")
+        : tr("截图记录 %1/%2 · 按 , / . 切换")
+              .arg(historyIndex_ + 1)
+              .arg(history_.size());
+    QRect hintRect = fontMetrics().boundingRect(hint).adjusted(-12, -7, 12, 7);
+    hintRect.moveTopRight(QPoint(width() - 16, 16));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(15, 20, 26, 210));
+    painter.drawRoundedRect(hintRect, 6, 6);
+    painter.setPen(QColor(235, 240, 245));
+    painter.drawText(hintRect, Qt::AlignCenter, hint);
+}
+
+void CaptureOverlay::rebuildDimmedScreenshot()
+{
+    dimmedScreenshot_ = screenshot_;
+    QPainter dimmer(&dimmedScreenshot_);
+    dimmer.fillRect(
+        QRectF(QPointF(0, 0), dimmedScreenshot_.deviceIndependentSize()),
+        QColor(0, 0, 0, 115));
+}
+
+void CaptureOverlay::switchHistory(int offset)
+{
+    if (history_.isEmpty()) {
+        return;
+    }
+    activateHistoryIndex(std::clamp<qsizetype>(
+        historyIndex_ + offset, 0, history_.size()));
 }
 
 void CaptureOverlay::showEvent(QShowEvent* event)
@@ -352,6 +453,22 @@ QImage CaptureOverlay::selectedImage() const
         return {};
     }
 
+    if (!activeHistoryImage_.isNull()) {
+        QImage image = activeHistoryImage_.copy();
+        if (annotations_.itemCount() == 0) {
+            return image;
+        }
+
+        const QSizeF logicalSize = image.deviceIndependentSize();
+        QPainter painter(&image);
+        painter.scale(
+            logicalSize.width() / selection_.width(),
+            logicalSize.height() / selection_.height());
+        painter.translate(-selection_.left(), -selection_.top());
+        annotations_.paint(painter);
+        return image;
+    }
+
     const QRect pixelRect = logicalToPixelRect(
         selection_, devicePixelRatio_, screenshot_.size());
     if (!pixelRect.isValid()) {
@@ -359,10 +476,9 @@ QImage CaptureOverlay::selectedImage() const
     }
 
     QImage image = screenshot_.toImage().copy(pixelRect);
-    image.setDevicePixelRatio(1.0);
+    image.setDevicePixelRatio(devicePixelRatio_);
     {
         QPainter painter(&image);
-        painter.scale(devicePixelRatio_, devicePixelRatio_);
         painter.translate(-selection_.topLeft());
         annotations_.paint(painter);
     }
@@ -371,6 +487,9 @@ QImage CaptureOverlay::selectedImage() const
 
 QRect CaptureOverlay::selectedPixelRect() const
 {
+    if (!activeHistoryImage_.isNull()) {
+        return {};
+    }
     return logicalToPixelRect(selection_, devicePixelRatio_, screenshot_.size());
 }
 
@@ -478,6 +597,7 @@ CaptureOverlay::ResizeHandle CaptureOverlay::resizeHandleAt(const QPoint& point)
 bool CaptureOverlay::selectionGeometryEditable() const
 {
     return selection_.isValid()
+        && activeHistoryImage_.isNull()
         && annotationTool_ == AnnotationTool::None
         && annotations_.itemCount() == 0
         && !annotations_.canRedo();
@@ -485,10 +605,12 @@ bool CaptureOverlay::selectionGeometryEditable() const
 
 void CaptureOverlay::positionToolbar()
 {
-    const QRect pixelRect = logicalToPixelRect(
-        selection_, devicePixelRatio_, screenshot_.size());
-    sizeLabel_->setText(
-        QStringLiteral("%1 × %2").arg(pixelRect.width()).arg(pixelRect.height()));
+    const QSize pixelSize = activeHistoryImage_.isNull()
+        ? logicalToPixelRect(selection_, devicePixelRatio_, screenshot_.size()).size()
+        : activeHistoryImage_.size();
+    sizeLabel_->setText(QStringLiteral("%1 × %2")
+        .arg(pixelSize.width())
+        .arg(pixelSize.height()));
     toolbar_->adjustSize();
 
     const int maximumX = std::max(8, width() - toolbar_->width() - 8);

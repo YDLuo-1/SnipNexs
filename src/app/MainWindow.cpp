@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 
+#include "AboutDialog.h"
 #include "AppIcon.h"
 
 #include <QAction>
@@ -11,8 +12,12 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
+#include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QSize>
+#include <QSizePolicy>
 #include <QSystemTrayIcon>
 #include <QVBoxLayout>
 
@@ -23,8 +28,8 @@ MainWindow::MainWindow(QWidget* parent)
 {
     setWindowTitle(QStringLiteral("SnipNexs"));
     setWindowIcon(createAppIcon());
-    setMinimumSize(640, 400);
-    resize(760, 480);
+    setMinimumSize(520, 340);
+    resize(600, 380);
     setupUi();
     setupTray();
     retranslateUi();
@@ -32,9 +37,33 @@ MainWindow::MainWindow(QWidget* parent)
 
 void MainWindow::showAndActivate()
 {
+    if (captureActive_) {
+        return;
+    }
     showNormal();
     raise();
     activateWindow();
+}
+
+void MainWindow::setCaptureActive(bool active)
+{
+    captureActive_ = active;
+    if (openAction_ != nullptr) {
+        openAction_->setEnabled(!active);
+        aboutAction_->setEnabled(!active);
+    }
+    if (aboutButton_ != nullptr) {
+        aboutButton_->setEnabled(!active);
+    }
+    if (active) {
+        hide();
+    }
+}
+
+void MainWindow::setCaptureShortcut(const QString& shortcut)
+{
+    captureShortcut_ = shortcut;
+    retranslateUi();
 }
 
 void MainWindow::setCaptureStatus(const QString& text)
@@ -89,7 +118,6 @@ void MainWindow::changeEvent(QEvent* event)
 void MainWindow::retranslateUi()
 {
     subtitleLabel_->setText(tr("轻量、原生、可扩展的 Windows 截图工具"));
-    stageLabel_->setText(tr("阶段 5 · 原生区域录屏"));
     statusLabel_->setText(
         tr("截图选区支持标注、贴图和本地文字识别。\n"
            "区域录屏使用 Windows GPU 捕获并保存 H.264 MP4（当前不含音频）。"));
@@ -97,76 +125,109 @@ void MainWindow::retranslateUi()
     languageCombo_->setItemText(0, tr("简体中文"));
     languageCombo_->setItemText(1, QStringLiteral("English"));
     hideButton_->setText(tr("最小化到托盘"));
-    captureButton_->setText(tr("区域截图  Ctrl+Shift+A"));
+    const QString captureText = tr("区域截图");
+    captureButton_->setText(captureShortcut_.isEmpty()
+        ? captureText
+        : QStringLiteral("%1  %2").arg(captureText, captureShortcut_));
     recordButton_->setText(tr("区域录屏"));
     if (captureAction_ != nullptr) {
-        captureAction_->setText(tr("区域截图\tCtrl+Shift+A"));
+        captureAction_->setText(captureShortcut_.isEmpty()
+            ? captureText
+            : QStringLiteral("%1\t%2").arg(captureText, captureShortcut_));
         recordAction_->setText(tr("区域录屏"));
         openAction_->setText(tr("打开 SnipNexs"));
+        aboutAction_->setText(tr("关于 SnipNexs"));
         quitAction_->setText(tr("退出"));
     }
+    aboutButton_->setText(tr("关于"));
+}
+
+void MainWindow::showAbout()
+{
+    if (captureActive_) {
+        return;
+    }
+    AboutDialog dialog(this);
+    dialog.exec();
 }
 
 void MainWindow::setupUi()
 {
     auto* central = new QWidget(this);
     auto* root = new QVBoxLayout(central);
-    root->setContentsMargins(40, 32, 40, 32);
-    root->setSpacing(20);
+    root->setContentsMargins(28, 24, 28, 24);
+    root->setSpacing(14);
 
+    auto* header = new QHBoxLayout();
+    header->setSpacing(10);
     auto* title = new QLabel(QStringLiteral("SnipNexs"), central);
     title->setObjectName(QStringLiteral("title"));
-    subtitleLabel_ = new QLabel(central);
-    subtitleLabel_->setObjectName(QStringLiteral("subtitle"));
-
-    auto* card = new QFrame(central);
-    card->setObjectName(QStringLiteral("card"));
-    auto* cardLayout = new QVBoxLayout(card);
-    cardLayout->setContentsMargins(24, 22, 24, 22);
-    cardLayout->setSpacing(10);
-
-    stageLabel_ = new QLabel(card);
-    stageLabel_->setObjectName(QStringLiteral("stage"));
-    statusLabel_ = new QLabel(card);
-    statusLabel_->setWordWrap(true);
-    cardLayout->addWidget(stageLabel_);
-    cardLayout->addWidget(statusLabel_);
-
-    auto* footer = new QVBoxLayout();
-    footer->setSpacing(10);
-    auto* languageRow = new QHBoxLayout();
+    header->addWidget(title);
+    header->addStretch();
     languageLabel_ = new QLabel(central);
     languageCombo_ = new QComboBox(central);
     languageCombo_->setObjectName(QStringLiteral("languageCombo"));
     languageCombo_->addItem(QString(), QStringLiteral("zh_CN"));
     languageCombo_->addItem(QString(), QStringLiteral("en"));
-    languageRow->addWidget(languageLabel_);
-    languageRow->addWidget(languageCombo_);
-    languageRow->addStretch();
+    header->addWidget(languageLabel_);
+    header->addWidget(languageCombo_);
+    root->addLayout(header);
+
+    subtitleLabel_ = new QLabel(central);
+    subtitleLabel_->setObjectName(QStringLiteral("subtitle"));
+    root->addWidget(subtitleLabel_);
+
+    root->addStretch();
+
     auto* actions = new QHBoxLayout();
-    actions->addStretch();
-    hideButton_ = new QPushButton(central);
-    hideButton_->setObjectName(QStringLiteral("secondaryButton"));
+    actions->setSpacing(12);
     captureButton_ = new QPushButton(central);
     captureButton_->setObjectName(QStringLiteral("primaryButton"));
+    captureButton_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     recordButton_ = new QPushButton(central);
     recordButton_->setObjectName(QStringLiteral("recordButton"));
-    actions->addWidget(hideButton_);
-    actions->addWidget(recordButton_);
+    QPixmap recordDot(10, 10);
+    recordDot.fill(Qt::transparent);
+    {
+        QPainter dotPainter(&recordDot);
+        dotPainter.setRenderHint(QPainter::Antialiasing);
+        dotPainter.setPen(Qt::NoPen);
+        dotPainter.setBrush(QColor(232, 76, 61));
+        dotPainter.drawEllipse(0, 0, 10, 10);
+    }
+    recordButton_->setIcon(recordDot);
+    recordButton_->setIconSize(QSize(10, 10));
+    recordButton_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     actions->addWidget(captureButton_);
-    footer->addLayout(languageRow);
-    footer->addLayout(actions);
+    actions->addWidget(recordButton_);
+    root->addLayout(actions);
 
-    root->addWidget(title);
-    root->addWidget(subtitleLabel_);
+    auto* card = new QFrame(central);
+    card->setObjectName(QStringLiteral("card"));
+    auto* cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(16, 12, 16, 12);
+    statusLabel_ = new QLabel(card);
+    statusLabel_->setWordWrap(true);
+    cardLayout->addWidget(statusLabel_);
     root->addWidget(card);
-    root->addStretch();
+
+    auto* footer = new QHBoxLayout();
+    footer->setSpacing(10);
+    hideButton_ = new QPushButton(central);
+    hideButton_->setObjectName(QStringLiteral("secondaryButton"));
+    footer->addWidget(hideButton_);
+    footer->addStretch();
+    aboutButton_ = new QPushButton(central);
+    aboutButton_->setObjectName(QStringLiteral("aboutButton"));
+    footer->addWidget(aboutButton_);
     root->addLayout(footer);
+
     setCentralWidget(central);
 
     connect(hideButton_, &QPushButton::clicked, this, &QWidget::hide);
     connect(recordButton_, &QPushButton::clicked, this, &MainWindow::recordRequested);
     connect(captureButton_, &QPushButton::clicked, this, &MainWindow::captureRequested);
+    connect(aboutButton_, &QPushButton::clicked, this, &MainWindow::showAbout);
     connect(languageCombo_, &QComboBox::currentIndexChanged, this, [this](int index) {
         const QString languageCode = languageCombo_->itemData(index).toString();
         if (!languageCode.isEmpty() && languageCode != languageCode_) {
@@ -175,21 +236,24 @@ void MainWindow::setupUi()
     });
 
     setStyleSheet(QStringLiteral(R"(
-        QMainWindow, QWidget { background: #11161d; color: #e8edf2; }
+        QMainWindow, QWidget { background: #12161c; color: #e8edf2; }
         QLabel { background: transparent; }
-        QLabel#title { font-size: 34px; font-weight: 700; color: #ffffff; }
-        QLabel#subtitle { font-size: 15px; color: #93a1af; }
-        QFrame#card { background: #19212b; border: 1px solid #283440; border-radius: 12px; }
-        QLabel#stage { font-size: 18px; font-weight: 600; color: #39d0be; }
-        QFrame#card QLabel { font-size: 14px; color: #c5ced8; }
-        QComboBox { min-height: 34px; padding: 0 10px; color: #e8edf2; background: #19212b; border: 1px solid #3c4a58; border-radius: 6px; }
-        QPushButton { min-height: 36px; padding: 0 18px; border-radius: 7px; font-weight: 600; }
-        QPushButton#primaryButton { background: #39d0be; color: #0c2724; border: 0; }
-        QPushButton#primaryButton:hover { background: #52dfce; }
-        QPushButton#secondaryButton { background: transparent; color: #d8e0e7; border: 1px solid #3c4a58; }
-        QPushButton#secondaryButton:hover { background: #202a35; }
-        QPushButton#recordButton { background: #d84d57; color: #ffffff; border: 0; }
-        QPushButton#recordButton:hover { background: #ea616b; }
+        QLabel#title { font-size: 22px; font-weight: 700; color: #ffffff; }
+        QLabel#subtitle { font-size: 13px; color: #8b98a5; }
+        QLabel#languageLabel { font-size: 13px; color: #8b98a5; }
+        QComboBox { min-height: 30px; padding: 0 10px; color: #e8edf2; background: #181f27; border: 1px solid #2c3947; border-radius: 6px; }
+        QComboBox:hover { border-color: #3c4c5c; }
+        QPushButton { min-height: 42px; padding: 0 18px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+        QPushButton#primaryButton { background: #39d0be; color: #0b2622; border: 0; }
+        QPushButton#primaryButton:hover { background: #4fdccd; }
+        QPushButton#primaryButton:pressed { background: #2fb8a7; }
+        QPushButton#recordButton { background: #1c2530; color: #e8edf2; border: 1px solid #2c3947; }
+        QPushButton#recordButton:hover { background: #243040; border-color: #3c4c5c; }
+        QPushButton#recordButton:pressed { background: #1a222c; }
+        QPushButton#secondaryButton, QPushButton#aboutButton { min-height: 32px; padding: 0 14px; background: transparent; color: #93a1af; border: 1px solid #2c3947; font-weight: 400; font-size: 13px; }
+        QPushButton#secondaryButton:hover, QPushButton#aboutButton:hover { background: #1a222c; color: #c6d0da; }
+        QFrame#card { background: #181f27; border: 1px solid #263039; border-radius: 10px; }
+        QFrame#card QLabel { font-size: 13px; color: #aab6c2; }
     )"));
 }
 
@@ -208,6 +272,7 @@ void MainWindow::setupTray()
     recordAction_ = menu->addAction({}, this, &MainWindow::recordRequested);
     menu->addSeparator();
     openAction_ = menu->addAction({}, this, &MainWindow::showAndActivate);
+    aboutAction_ = menu->addAction({}, this, &MainWindow::showAbout);
     menu->addSeparator();
     quitAction_ = menu->addAction({}, qApp, &QApplication::quit);
     trayIcon_->setContextMenu(menu);

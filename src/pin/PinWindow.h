@@ -24,7 +24,8 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
-    void resizeBy(qreal factor);
+    void resizeBy(qreal factor, const QPointF& anchorPosition);
+    QRectF imageRect() const;
 
     QPixmap pixmap_;
     QPoint dragOffset_;

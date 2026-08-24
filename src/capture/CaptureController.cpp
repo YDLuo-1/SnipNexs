@@ -4,6 +4,7 @@
 #include "app/MainWindow.h"
 #include "ocr/OcrResultWindow.h"
 #include "pin/PinWindow.h"
+#include "platform/windows/CaptureExclusion.h"
 
 #include <QClipboard>
 #include <QCoreApplication>
@@ -27,6 +28,13 @@
 #include <utility>
 
 namespace snipnexs {
+
+namespace {
+
+constexpr qsizetype kMaximumCaptureHistoryBytes = 64 * 1024 * 1024;
+constexpr qsizetype kMaximumCaptureHistoryEntries = 20;
+
+}
 
 CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent)
     : QObject(parent)
@@ -63,7 +71,8 @@ void CaptureController::startCapture()
 
     capturePending_ = true;
     mainWindowWasVisible_ = mainWindow_.isVisible();
-    mainWindow_.hide();
+    setMainWindowCaptureExclusion(mainWindowWasVisible_);
+    mainWindow_.setCaptureActive(true);
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     QGuiApplication::sync();
     QTimer::singleShot(120, this, &CaptureController::captureAfterUiSettles);
@@ -93,7 +102,8 @@ void CaptureController::captureAfterUiSettles()
         return;
     }
 
-    auto* overlay = new CaptureOverlay(std::move(screenshot));
+    setMainWindowCaptureExclusion(false);
+    auto* overlay = new CaptureOverlay(std::move(screenshot), captureHistory_);
     activeScreenName_ = screen->name();
     if (const auto* nativeScreen = screen->nativeInterface<QNativeInterface::QWindowsScreen>()) {
         activeMonitorHandle_ = reinterpret_cast<quintptr>(nativeScreen->handle());
@@ -110,7 +120,11 @@ void CaptureController::captureAfterUiSettles()
     connect(overlay, &CaptureOverlay::canceled, this, [this]() {
         finishCapture(mainWindowWasVisible_);
     });
-    connect(overlay, &QObject::destroyed, this, [this]() { overlay_ = nullptr; });
+    connect(overlay, &QObject::destroyed, this, [this]() {
+        overlay_ = nullptr;
+        setMainWindowCaptureExclusion(false);
+        mainWindow_.setCaptureActive(false);
+    });
     overlay->show();
 
     mainWindow_.setCaptureStatus(
@@ -159,6 +173,7 @@ void CaptureController::pinImage(const QImage& image)
     }
     pin->move(position);
     pin->show();
+    rememberSuccessfulCapture(image);
 
     mainWindow_.setCaptureStatus(
         tr("已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。")
@@ -170,6 +185,7 @@ void CaptureController::pinImage(const QImage& image)
 void CaptureController::copyImage(const QImage& image)
 {
     QGuiApplication::clipboard()->setImage(image);
+    rememberSuccessfulCapture(image);
     mainWindow_.setCaptureStatus(
         tr("已复制 %1 × %2 像素截图到剪贴板。")
             .arg(image.width())
@@ -209,6 +225,8 @@ void CaptureController::saveImage(const QImage& image)
         return;
     }
 
+    rememberSuccessfulCapture(image);
+
     mainWindow_.setCaptureStatus(
         tr("已保存 %1 × %2 像素截图：%3")
             .arg(image.width())
@@ -220,13 +238,46 @@ void CaptureController::saveImage(const QImage& image)
 
 void CaptureController::finishCapture(bool restoreMainWindow)
 {
+    setMainWindowCaptureExclusion(false);
     if (overlay_ != nullptr) {
         overlay_->close();
         overlay_ = nullptr;
     }
+    mainWindow_.setCaptureActive(false);
     if (restoreMainWindow) {
         mainWindow_.showAndActivate();
     }
+}
+
+void CaptureController::rememberSuccessfulCapture(const QImage& image)
+{
+    if (image.isNull()) {
+        return;
+    }
+
+    captureHistory_.append(image);
+    captureHistoryBytes_ += image.sizeInBytes();
+    while (captureHistory_.size() > 1
+        && (captureHistory_.size() > kMaximumCaptureHistoryEntries
+            || captureHistoryBytes_ > kMaximumCaptureHistoryBytes)) {
+        captureHistoryBytes_ -= captureHistory_.first().sizeInBytes();
+        captureHistory_.removeFirst();
+    }
+}
+
+void CaptureController::setMainWindowCaptureExclusion(bool excluded)
+{
+    if (excluded) {
+        mainWindowCaptureExcluded_ = setWindowExcludedFromCapture(mainWindow_, true);
+        return;
+    }
+    if (!mainWindowCaptureExcluded_) {
+        return;
+    }
+
+    const bool reset = setWindowExcludedFromCapture(mainWindow_, false);
+    Q_UNUSED(reset);
+    mainWindowCaptureExcluded_ = false;
 }
 
 void CaptureController::reportFailure(const QString& message)
