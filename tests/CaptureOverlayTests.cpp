@@ -129,6 +129,19 @@ int main(int argc, char* argv[])
             }
         }
         toolbarButtonsOk &= toolbarButtonCount == 11;
+        const auto* pinButton = captureToolbar->findChild<QPushButton*>(
+            QStringLiteral("pinButton"));
+        const auto* copyButton = captureToolbar->findChild<QPushButton*>(
+            QStringLiteral("copyButton"));
+        const auto* saveButton = captureToolbar->findChild<QPushButton*>(
+            QStringLiteral("saveButton"));
+        toolbarButtonsOk &= pinButton != nullptr
+            && copyButton != nullptr
+            && saveButton != nullptr
+            && pinButton->icon().pixmap(QSize(22, 22)).toImage()
+                != copyButton->icon().pixmap(QSize(22, 22)).toImage()
+            && copyButton->icon().pixmap(QSize(22, 22)).toImage()
+                != saveButton->icon().pixmap(QSize(22, 22)).toImage();
     }
     ok &= toolbarButtonsOk;
     if (!hintLayoutOk || !toolbarCursorOk || !toolbarButtonsOk) {

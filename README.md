@@ -4,7 +4,7 @@
 
 SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.7.0`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, lightweight annotation, draggable and resizable image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
+Current version: `0.7.1`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, lightweight annotation, draggable and resizable image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
@@ -77,7 +77,7 @@ The deployed executable is `dist/SnipNexs/bin/SnipNexs.exe`.
 For a formal release, run this only from a clean commit carrying the matching version tag:
 
 ```powershell
-.\scripts\package-release.ps1 -Version 0.7.0
+.\scripts\package-release.ps1 -Version 0.7.1
 ```
 
 The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and downloads and verifies the separate Qt source Release asset. See the [release checklist](docs/release-checklist.md).
