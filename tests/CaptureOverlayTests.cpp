@@ -90,6 +90,24 @@ int main(int argc, char* argv[])
         ok &= copied.size() == QSize(100, 60);
     }
 
+    snipnexs::CaptureOverlay pinOverlay(pixmap);
+    pinOverlay.resize(200, 150);
+    pinOverlay.setSelection(QRect(20, 30, 60, 40));
+    pinOverlay.show();
+    QApplication::processEvents();
+    QSignalSpy pinSpy(&pinOverlay, &snipnexs::CaptureOverlay::pinRequested);
+    auto* pinButton = pinOverlay.findChild<QPushButton*>(QStringLiteral("pinButton"));
+    ok &= pinButton != nullptr;
+    if (pinButton != nullptr) {
+        QTest::mouseClick(pinButton, Qt::LeftButton);
+        ok &= pinSpy.count() == 1;
+        if (pinSpy.count() == 1) {
+            const QList<QVariant> arguments = pinSpy.takeFirst();
+            ok &= qvariant_cast<QPoint>(arguments.at(1))
+                == pinOverlay.mapToGlobal(QPoint(20, 30));
+        }
+    }
+
     snipnexs::CaptureOverlay targetOverlay(pixmap);
     targetOverlay.resize(640, 300);
     targetOverlay.setWindowTargets({

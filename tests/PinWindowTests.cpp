@@ -44,6 +44,12 @@ int main(int argc, char* argv[])
     const QSize expectedSize(320 + kMarginTotal, 200 + kMarginTotal);
     const bool initialSizeOk = pin.size() == expectedSize;
     bool ok = initialSizeOk;
+    const QRect available = QGuiApplication::primaryScreen()->availableGeometry();
+    const QPoint imageTopLeft = available.topLeft() + QPoint(40, 40);
+    pin.moveImageTopLeft(imageTopLeft);
+    const bool imagePositionOk = pin.pos()
+        == imageTopLeft - QPoint(kMarginTotal / 2, kMarginTotal / 2);
+    ok &= imagePositionOk;
     const QPoint originalPosition = pin.pos();
     QTest::mousePress(&pin, Qt::LeftButton, Qt::NoModifier, QPoint(40, 30));
     QTest::mouseMove(&pin, QPoint(90, 70));
@@ -130,6 +136,7 @@ int main(int argc, char* argv[])
     QTextStream(stdout)
         << "pin window: " << (ok ? "ok" : "failed")
         << " initial=" << initialSizeOk
+        << " imagePosition=" << imagePositionOk
         << " drag=" << dragOk
         << " zoom=" << zoomOk
         << " cumulative=" << cumulativeZoomOk

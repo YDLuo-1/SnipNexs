@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QImage>
 #include <QList>
+#include <QPoint>
 #include <QPointer>
 
 #include "ocr/OcrService.h"
@@ -34,7 +35,7 @@ private:
     void copyImage(const QImage& image);
     void recognizeImage(const QImage& image);
     void recordRegion(const QRect& pixelRect);
-    void pinImage(const QImage& image);
+    void pinImage(const QImage& image, const QPoint& imageTopLeft);
     void saveImage(const QImage& image);
     void finishCapture(bool restoreMainWindow);
     void rememberSuccessfulCapture(const QImage& image);
