@@ -24,11 +24,13 @@
 - Added inline single-line text annotation. Click inside the selection to type, press `Enter` to commit, press `Esc` to cancel, and use the existing undo/redo actions after committing.
 - Added a fully local color picker with a 9 × 9 magnified pixel grid, physical pixel coordinates, RGB/HEX display, `C` to copy, `Shift` to switch formats, and click-to-copy.
 - Moved physical pixel dimensions out of the toolbar into a floating label attached to the selection frame. Live and history captures preserve their own DPI and original physical size.
+- Fixed high-DPI pinned-image rendering so the complete physical source image is displayed. Pinned images now keep the original source for copy/save, close on a left double-click, and expose a right-click menu for copy, save, toolbar visibility, and close.
+- Added a hidden-by-default compact pin toolbar and a persistent local history at `%LOCALAPPDATA%/SnipNexs/history`, capped at 20 PNGs/about 64 MiB and restored after restart.
 
 ### ✅ Verification
 
-- CTest: 13 tests, 0 failures; 11 passed and 2 skipped as designed.
-- Regression coverage includes text composition and undo, RGB/HEX copying, distinct Text/OCR icons, 13 icon-only toolbar actions, and DPI-aware selection dimensions.
+- CTest: 14 tests, 0 failures; 12 passed and 2 skipped as designed.
+- Regression coverage includes text composition and undo, RGB/HEX copying, distinct Text/OCR icons, 13 icon-only toolbar actions, DPI-aware selection dimensions, complete high-DPI pin rendering, pin menu gestures, and persistent history capacity/corruption recovery.
 - Offscreen QA renders were generated for the toolbar and color-picker panel.
 
 > [!WARNING]
@@ -42,10 +44,12 @@
 - 新增单行文字标注：在选区内单击后输入，按 `Enter` 完成、按 `Esc` 取消，完成后可沿用撤销和重做。
 - 新增完全本地的取色器：显示 9 × 9 像素放大格、物理像素坐标和 RGB/HEX；按 `C` 复制、按 `Shift` 切换格式，单击可复制并退出。
 - 物理像素尺寸从工具栏移到选框旁的浮层；实时截图与历史截图分别使用自己的 DPI 和原始物理尺寸。
+- 修复高 DPI 贴图只显示左上区域的问题；贴图复制/保存使用原始图片，左键双击关闭，右键菜单提供复制、保存、显示/隐藏工具条和关闭。
+- 新增默认隐藏的紧凑贴图工具条，并将历史持久化到 `%LOCALAPPDATA%/SnipNexs/history`；最多保留 20 张 PNG、约 64 MiB，程序重启后恢复。
 
 ### ✅ 验证结果
 
-- CTest 共 13 项，零失败：11 项执行通过，2 项按设计跳过。
+- CTest 共 14 项，零失败：12 项执行通过，2 项按设计跳过。
 - 回归测试覆盖文字合成与撤销、RGB/HEX 复制、文字与识字图标差异、13 个纯图标按钮和 DPI 感知的选区尺寸。
 - 已生成工具栏和取色面板的离屏 QA 渲染图。
 

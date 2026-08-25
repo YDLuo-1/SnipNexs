@@ -31,6 +31,8 @@ qt_add_executable(SnipNexs WIN32
     src/capture/CaptureController.cpp
     src/capture/CaptureController.h
     src/capture/CaptureGeometry.h
+    src/capture/CaptureHistoryStore.cpp
+    src/capture/CaptureHistoryStore.h
     src/capture/CaptureOverlay.cpp
     src/capture/CaptureOverlay.h
     src/editor/AnnotationDocument.cpp
@@ -160,6 +162,23 @@ if(BUILD_TESTING)
     target_link_libraries(CaptureGeometryTests PRIVATE Qt6::Core)
     add_test(NAME CaptureGeometryTests COMMAND CaptureGeometryTests)
     set_tests_properties(CaptureGeometryTests PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(CaptureHistoryStoreTests
+        tests/CaptureHistoryStoreTests.cpp
+        src/capture/CaptureHistoryStore.cpp
+        src/capture/CaptureHistoryStore.h
+    )
+    target_include_directories(CaptureHistoryStoreTests PRIVATE src)
+    target_link_libraries(CaptureHistoryStoreTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Test
+    )
+    add_test(NAME CaptureHistoryStoreTests COMMAND CaptureHistoryStoreTests)
+    set_tests_properties(CaptureHistoryStoreTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 

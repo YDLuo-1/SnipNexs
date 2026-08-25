@@ -41,6 +41,11 @@ CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent)
     : QObject(parent)
     , mainWindow_(mainWindow)
 {
+    captureHistory_ = historyStore_.load();
+    for (const QImage& image : captureHistory_) {
+        captureHistoryBytes_ += image.sizeInBytes();
+    }
+
     connect(&ocrService_, &OcrService::recognized, this,
         [this](const QString& text, const QString& languageTag, qint64 elapsedMs) {
             auto* window = new OcrResultWindow(text, languageTag, elapsedMs);
@@ -162,15 +167,62 @@ void CaptureController::recognizeImage(const QImage& image)
 void CaptureController::pinImage(const QImage& image, const QPoint& imageTopLeft)
 {
     auto* pin = new PinWindow(image);
+    connect(pin, &PinWindow::copyRequested,
+        this, &CaptureController::copyPinnedImage);
+    connect(pin, &PinWindow::saveRequested,
+        this, &CaptureController::savePinnedImage);
     pin->moveImageTopLeft(imageTopLeft);
     pin->show();
     rememberSuccessfulCapture(image);
 
     mainWindow_.setCaptureStatus(
-        tr("已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。")
+        tr("已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，双击左键关闭，右键打开菜单。")
             .arg(image.width())
             .arg(image.height()));
     finishCapture(false);
+}
+
+void CaptureController::copyPinnedImage(const QImage& image)
+{
+    QGuiApplication::clipboard()->setImage(image);
+    mainWindow_.setCaptureStatus(
+        tr("已复制贴图 %1 × %2 像素到剪贴板。")
+            .arg(image.width())
+            .arg(image.height()));
+    mainWindow_.showNotification(
+        tr("贴图已复制"),
+        tr("%1 × %2 像素").arg(image.width()).arg(image.height()));
+}
+
+void CaptureController::savePinnedImage(const QImage& image)
+{
+    const QString pictures = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+    const QString suggestedName = QStringLiteral("SnipNexs-%1.png")
+        .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss")));
+    const QString initialPath = QDir(pictures).filePath(suggestedName);
+    const QString fileName = QFileDialog::getSaveFileName(
+        nullptr,
+        tr("保存贴图"),
+        initialPath,
+        tr("PNG 图片 (*.png);;JPEG 图片 (*.jpg *.jpeg);;BMP 图片 (*.bmp)"));
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    if (!image.save(fileName)) {
+        const QString message = tr("无法保存贴图：%1").arg(QDir::toNativeSeparators(fileName));
+        mainWindow_.setCaptureStatus(message);
+        mainWindow_.showNotification(tr("贴图保存失败"), message);
+        return;
+    }
+
+    mainWindow_.setCaptureStatus(
+        tr("已保存贴图 %1 × %2 像素：%3")
+            .arg(image.width())
+            .arg(image.height())
+            .arg(QDir::toNativeSeparators(fileName)));
+    mainWindow_.showNotification(
+        tr("贴图已保存"), QDir::toNativeSeparators(fileName));
 }
 
 void CaptureController::copyImage(const QImage& image)
@@ -254,6 +306,7 @@ void CaptureController::rememberSuccessfulCapture(const QImage& image)
         captureHistoryBytes_ -= captureHistory_.first().sizeInBytes();
         captureHistory_.removeFirst();
     }
+    historyStore_.append(image);
 }
 
 void CaptureController::setMainWindowCaptureExclusion(bool excluded)
