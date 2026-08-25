@@ -15,6 +15,7 @@ class PinWindow final : public QWidget
 
 public:
     explicit PinWindow(const QImage& image, QWidget* parent = nullptr);
+    void moveImageTopLeft(const QPoint& globalTopLeft);
 
 protected:
     void mouseMoveEvent(QMouseEvent* event) override;

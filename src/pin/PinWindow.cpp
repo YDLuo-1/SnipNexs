@@ -38,6 +38,24 @@ PinWindow::PinWindow(const QImage& image, QWidget* parent)
     resize(target + QSize(kShadowMargin * 2, kShadowMargin * 2));
 }
 
+void PinWindow::moveImageTopLeft(const QPoint& globalTopLeft)
+{
+    QPoint imageTopLeft = globalTopLeft;
+    if (QScreen* screen = QGuiApplication::screenAt(globalTopLeft)) {
+        const QRect available = screen->availableGeometry();
+        const QSize imageSize = imageRect().size().toSize();
+        imageTopLeft.setX(std::clamp(
+            imageTopLeft.x(),
+            available.left(),
+            std::max(available.left(), available.right() - imageSize.width() + 1)));
+        imageTopLeft.setY(std::clamp(
+            imageTopLeft.y(),
+            available.top(),
+            std::max(available.top(), available.bottom() - imageSize.height() + 1)));
+    }
+    move(imageTopLeft - QPoint(kShadowMargin, kShadowMargin));
+}
+
 void PinWindow::mouseMoveEvent(QMouseEvent* event)
 {
     if (moving_) {

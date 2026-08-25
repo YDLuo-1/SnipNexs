@@ -2,6 +2,7 @@
 
 #include <QImage>
 #include <QList>
+#include <QPoint>
 #include <QPixmap>
 #include <QWidget>
 
@@ -40,7 +41,7 @@ signals:
     void copyRequested(const QImage& image);
     void ocrRequested(const QImage& image);
     void saveRequested(const QImage& image);
-    void pinRequested(const QImage& image);
+    void pinRequested(const QImage& image, const QPoint& imageTopLeft);
     void recordRequested(const QRect& pixelRect);
     void canceled();
 

@@ -159,22 +159,10 @@ void CaptureController::recognizeImage(const QImage& image)
             .arg(image.height()));
 }
 
-void CaptureController::pinImage(const QImage& image)
+void CaptureController::pinImage(const QImage& image, const QPoint& imageTopLeft)
 {
     auto* pin = new PinWindow(image);
-    QPoint position = QCursor::pos() + QPoint(18, 18);
-    if (QScreen* screen = QGuiApplication::screenAt(QCursor::pos())) {
-        const QRect available = screen->availableGeometry();
-        position.setX(std::clamp(
-            position.x(),
-            available.left(),
-            std::max(available.left(), available.right() - pin->width() + 1)));
-        position.setY(std::clamp(
-            position.y(),
-            available.top(),
-            std::max(available.top(), available.bottom() - pin->height() + 1)));
-    }
-    pin->move(position);
+    pin->moveImageTopLeft(imageTopLeft);
     pin->show();
     rememberSuccessfulCapture(image);
 

@@ -915,7 +915,7 @@ void CaptureOverlay::acceptPin()
     commitTextEditing();
     const QImage image = selectedImage();
     if (!image.isNull()) {
-        emit pinRequested(image);
+        emit pinRequested(image, mapToGlobal(selection_.topLeft()));
     }
 }
 
