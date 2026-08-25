@@ -1,5 +1,6 @@
 #include "CaptureHistoryStore.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -10,6 +11,7 @@
 #include <QSaveFile>
 #include <QSet>
 #include <QStandardPaths>
+#include <QTemporaryFile>
 #include <QUuid>
 
 #include <algorithm>
@@ -33,6 +35,21 @@ struct Entry final
 
 QString defaultHistoryDirectory()
 {
+    const QString applicationDirectory = QCoreApplication::applicationDirPath();
+    if (!applicationDirectory.isEmpty()) {
+        const QString applicationHistory = QDir(applicationDirectory).filePath(
+            QStringLiteral("history"));
+        if (QDir().mkpath(applicationHistory)) {
+            QTemporaryFile probe(QDir(applicationHistory).filePath(
+                QStringLiteral(".write-test-XXXXXX")));
+            if (probe.open()) {
+                probe.close();
+                probe.remove();
+                return applicationHistory;
+            }
+        }
+    }
+
     QString base = QStandardPaths::writableLocation(
         QStandardPaths::AppLocalDataLocation);
     if (base.isEmpty()) {
