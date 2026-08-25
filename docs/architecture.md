@@ -34,9 +34,9 @@ app
 - 界面以中文源码文案为默认语言，英文由内嵌 Qt `.qm` 资源提供；`QSettings` 只保存 `zh_CN` 或 `en`，不增加自定义国际化框架。
 - `capture/CaptureController` 协调窗口隐藏、显示器采集、剪贴板和文件保存；捕获期间 `MainWindow` 会拒绝托盘或重复启动触发的重新显示。Windows 10 2004 及以上还会在捕获前请求 `WDA_EXCLUDEFROMCAPTURE`，避免 DWM 的旧窗口帧进入截图。
 - `capture/CaptureOverlay` 负责窗口悬停预选、手动选区、物理像素尺寸浮层、图标工具栏、标注与本地取色交互；取色直接读取当前截图或历史原图，不上传像素。原始 `QPixmap` 保持隐式共享，用户确认后才转换和裁剪为 `QImage`。`platform/windows/WindowTargeting` 按顶层窗口 Z 序枚举可见、未最小化且未被 DWM 隐藏的窗口，再把可见原生子 HWND 按小区域优先排列，并追加客户区和整窗边界作为回退。没有独立 HWND 的网页画布、Qt Quick 等内部视觉元素不会被进一步细分；当前不引入控件级 UI Automation。
-- 只把成功复制、保存或贴出的截图加入会话内历史；`,` / `.` 向前或向后浏览。历史同时受 20 条和约 64 MiB 上限约束，不写磁盘。历史原图与缩小预览矩形分开保存，导出始终保留原始物理分辨率和图片自己的 DPR；历史模式固定整图选择，标注坐标在导出时映射回原图。
+- `capture/CaptureHistoryStore` 将成功复制、保存或贴出的原始截图以 PNG 写入 `%LOCALAPPDATA%/SnipNexs/history`，并以原子替换维护 `index.json`；`,` / `.` 向前或向后浏览，程序重启后仍可加载。历史同时受 20 条和约 64 MiB 上限约束，损坏或缺失条目会在启动时静默跳过并清理。历史原图与缩小预览矩形分开保存，导出始终保留原始物理分辨率和图片自己的 DPR；历史模式固定整图选择，标注坐标在导出时映射回原图。
 - `editor/AnnotationDocument` 保存画笔、矩形、箭头和单行文字数据及撤销游标；复制、保存或贴图时才合成标注。
-- `pin/PinWindow` 是仅持有一份隐式共享 `QPixmap` 的置顶窗口，支持移动和以鼠标内容为锚点的累积有界缩放；阴影由窗口直接绘制，不在每次缩放时创建图形场景或模糊效果。
+- `pin/PinWindow` 是持有原始 `QImage` 和一份隐式共享 `QPixmap` 的置顶窗口，支持移动、以鼠标内容为锚点的累积有界缩放、双击左键关闭和右键菜单；复制/保存信号交回 `CaptureController`，默认隐藏的轻量工具条只提供复制、保存和关闭。绘制源矩形使用完整物理 `QPixmap::rect()`，避免高 DPI 下只显示左上区域；阴影由窗口直接绘制，不在每次缩放时创建图形场景或模糊效果。
 - `ocr/OcrService` 复用一个工作线程，避免 OCR 阻塞 UI；同一时刻只接受一个识别任务。
 - `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型。
 - `translate/BrowserTranslation` 只构造文本翻译 URL；结果窗口在打开浏览器前明确提示传输边界。

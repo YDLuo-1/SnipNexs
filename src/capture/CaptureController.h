@@ -6,6 +6,7 @@
 #include <QPoint>
 #include <QPointer>
 
+#include "capture/CaptureHistoryStore.h"
 #include "ocr/OcrService.h"
 
 class QImage;
@@ -36,6 +37,8 @@ private:
     void recognizeImage(const QImage& image);
     void recordRegion(const QRect& pixelRect);
     void pinImage(const QImage& image, const QPoint& imageTopLeft);
+    void copyPinnedImage(const QImage& image);
+    void savePinnedImage(const QImage& image);
     void saveImage(const QImage& image);
     void finishCapture(bool restoreMainWindow);
     void rememberSuccessfulCapture(const QImage& image);
@@ -44,6 +47,7 @@ private:
 
     MainWindow& mainWindow_;
     OcrService ocrService_;
+    CaptureHistoryStore historyStore_;
     QPointer<CaptureOverlay> overlay_;
     bool capturePending_ = false;
     bool mainWindowWasVisible_ = false;

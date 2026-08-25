@@ -245,8 +245,43 @@ You can still click the Region Capture button.</translation>
     </message>
     <message>
         <location filename="../src/capture/CaptureController.cpp" line="182"/>
-        <source>已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，右键关闭。</source>
-        <translation>Created a %1 × %2 pixel pinned image. Scroll to resize, drag to move, and right-click to close.</translation>
+        <source>已创建 %1 × %2 像素贴图。滚轮缩放，拖动移动，双击左键关闭，右键打开菜单。</source>
+        <translation>Created a %1 × %2 pixel pinned image. Scroll to resize, drag to move, double-click the left button to close, or right-click for the menu.</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="190"/>
+        <source>已复制贴图 %1 × %2 像素到剪贴板。</source>
+        <translation>Copied the %1 × %2 pixel pinned image to the clipboard.</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="194"/>
+        <source>贴图已复制</source>
+        <translation>Pinned Image Copied</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="214"/>
+        <source>保存贴图</source>
+        <translation>Save Pinned Image</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="223"/>
+        <source>无法保存贴图：%1</source>
+        <translation>Could not save the pinned image: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="225"/>
+        <source>贴图保存失败</source>
+        <translation>Pinned Image Save Failed</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="231"/>
+        <source>已保存贴图 %1 × %2 像素：%3</source>
+        <translation>Saved the %1 × %2 pixel pinned image: %3</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureController.cpp" line="236"/>
+        <source>贴图已保存</source>
+        <translation>Pinned Image Saved</translation>
     </message>
     <message>
         <location filename="../src/capture/CaptureController.cpp" line="193"/>
@@ -458,6 +493,34 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
         <location filename="../src/app/MainWindow.cpp" line="142"/>
         <source>关于</source>
         <translation>About</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::PinWindow</name>
+    <message>
+        <location filename="../src/pin/PinWindow.cpp" line="104"/>
+        <source>复制图像</source>
+        <translation>Copy Image</translation>
+    </message>
+    <message>
+        <location filename="../src/pin/PinWindow.cpp" line="106"/>
+        <source>图像另存为...</source>
+        <translation>Save Image As...</translation>
+    </message>
+    <message>
+        <location filename="../src/pin/PinWindow.cpp" line="109"/>
+        <source>隐藏工具条</source>
+        <translation>Hide Toolbar</translation>
+    </message>
+    <message>
+        <location filename="../src/pin/PinWindow.cpp" line="110"/>
+        <source>显示工具条</source>
+        <translation>Show Toolbar</translation>
+    </message>
+    <message>
+        <location filename="../src/pin/PinWindow.cpp" line="112"/>
+        <source>关闭贴图</source>
+        <translation>Close Pin</translation>
     </message>
 </context>
 <context>

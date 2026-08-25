@@ -12,7 +12,7 @@ Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first s
 - Press `F1`, or click **Region Capture** in the main window. If F1 is already in use, SnipNexs falls back to `Ctrl+Shift+A` and shows the active shortcut.
 - Choose **Simplified Chinese** or **English** from the language selector. The change takes effect immediately and is remembered for the next launch.
 - Hover a desktop window to preview a native child window, client area, or whole-window frame, then click to select it; drag instead to create a custom region. Visual elements without their own native window still fall back to the surrounding client area or window frame. Before annotating, drag inside the selection to move it, or drag any of its eight handles to resize it.
-- The main window stays hidden during capture. Successfully copied, saved, or pinned captures enter the current session history; press `,` for the previous image and `.` for the next one.
+- The main window stays hidden during capture. Successfully copied, saved, or pinned captures are written to the local history at `%LOCALAPPDATA%/SnipNexs/history`; press `,` for the previous image and `.` for the next one. The history keeps at most 20 original PNGs and about 64 MiB, and is restored after restart.
 - The selection frame shows its physical pixel dimensions. Use **Pen**, **Rectangle**, **Arrow**, or **Text** to annotate; press `Enter` to commit inline text and `Esc` to cancel it. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **Color picker** to inspect a 9 × 9 magnified pixel grid. Press `C` to copy the value, `Shift` to toggle RGB/HEX, or click to copy and close the picker.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
@@ -20,7 +20,7 @@ Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first s
 - Click **Region Recording**, draw a region, then click **Record** in the selection toolbar. Choose an MP4 path and use the floating indicator to stop. The indicator starts at the bottom-right of the selected display and can be dragged from an empty area.
 - Recording captures the pointer and writes H.264/MP4 through Windows media APIs. Recording is currently video-only; system audio and microphone input are not included yet.
 - Press `Enter` or double-click the selection to copy it, or use **Pin**, **Copy**, and **Save** next to the selection.
-- Pinned images stay on top: drag to move, use the mouse wheel for cumulative cursor-anchored resizing, and right-click to close.
+- Pinned images stay on top: drag to move, use the mouse wheel for cumulative cursor-anchored resizing, double-click the left button to close, and right-click for Copy Image, Save Image As, toolbar visibility, or Close Pin. The compact pin toolbar is hidden by default and can be shown from that menu.
 - Open **About SnipNexs** from the main-window footer or tray menu to read the application, Qt, and recording-reference licenses and source locations offline.
 - Press `Esc` or right-click to cancel.
 
