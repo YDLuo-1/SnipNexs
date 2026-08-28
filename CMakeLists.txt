@@ -77,6 +77,8 @@ qt_add_executable(SnipNexs WIN32
     src/capture/CaptureController.cpp
     src/capture/CaptureController.h
     src/capture/CaptureGeometry.h
+    src/capture/ToolbarIcons.cpp
+    src/capture/ToolbarIcons.h
     src/capture/CaptureHistoryStore.cpp
     src/capture/CaptureHistoryStore.h
     src/capture/CaptureOverlay.cpp
@@ -256,6 +258,8 @@ if(BUILD_TESTING)
         src/capture/CaptureOverlay.cpp
         src/capture/CaptureOverlay.h
         src/capture/CaptureGeometry.h
+        src/capture/ToolbarIcons.cpp
+        src/capture/ToolbarIcons.h
         src/editor/AnnotationDocument.cpp
         src/editor/AnnotationDocument.h
     )
@@ -295,6 +299,8 @@ if(BUILD_TESTING)
         tests/PinWindowTests.cpp
         src/pin/PinWindow.cpp
         src/pin/PinWindow.h
+        src/capture/ToolbarIcons.cpp
+        src/capture/ToolbarIcons.h
     )
     target_include_directories(PinWindowTests PRIVATE src)
     target_link_libraries(PinWindowTests PRIVATE
@@ -415,6 +421,19 @@ if(BUILD_TESTING)
     target_link_libraries(TranslationTextSplitterTests PRIVATE Qt6::Core)
     add_test(NAME TranslationTextSplitterTests COMMAND TranslationTextSplitterTests)
     set_tests_properties(TranslationTextSplitterTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(ToolbarIconsTests
+        tests/ToolbarIconsTests.cpp
+        src/capture/ToolbarIcons.cpp
+        src/capture/ToolbarIcons.h
+    )
+    target_include_directories(ToolbarIconsTests PRIVATE src)
+    target_link_libraries(ToolbarIconsTests PRIVATE Qt6::Core Qt6::Gui)
+    add_test(NAME ToolbarIconsTests COMMAND ToolbarIconsTests)
+    set_tests_properties(ToolbarIconsTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
