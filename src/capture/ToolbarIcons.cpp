@@ -121,18 +121,31 @@ void drawOcr(QPainter& painter, const QColor& color)
 
 void drawPin(QPainter& painter, const QColor& color)
 {
+    // Filled push-pin silhouette: head bar, concave flare into a wide
+    // skirt, pointed needle below the center.
     QPainterPath pin;
-    pin.moveTo(33.5, 18.5);
-    pin.cubicTo(33.5, 26.5, 28.5, 33.5, 24, 39.5);
-    pin.cubicTo(19.5, 33.5, 14.5, 26.5, 14.5, 18.5);
-    pin.cubicTo(16, 10.5, 32, 10.5, 33.5, 18.5);
+    pin.moveTo(20, 9);
+    pin.lineTo(28, 9);
+    pin.quadTo(31, 9, 31, 12);
+    pin.lineTo(31, 15);
+    pin.quadTo(31.5, 18.5, 35, 20.5);
+    pin.quadTo(37.5, 22, 35, 23.5);
+    pin.quadTo(31, 25.5, 25.4, 25.5);
+    pin.lineTo(25.4, 33);
+    pin.lineTo(24, 36);
+    pin.lineTo(22.6, 33);
+    pin.lineTo(22.6, 25.5);
+    pin.quadTo(17, 25.5, 13, 23.5);
+    pin.quadTo(10.5, 22, 13, 20.5);
+    pin.quadTo(16.5, 18.5, 17, 15);
+    pin.lineTo(17, 12);
+    pin.quadTo(17, 9, 20, 9);
     pin.closeSubpath();
-    painter.drawPath(pin);
 
     painter.save();
     painter.setPen(Qt::NoPen);
     painter.setBrush(color);
-    painter.drawEllipse(QPointF(24, 18.5), 3, 3);
+    painter.drawPath(pin);
     painter.restore();
 }
 
