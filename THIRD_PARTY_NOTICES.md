@@ -23,6 +23,33 @@ The Windows recording pipeline design was informed by Microsoft's SimpleRecorder
 - Code license: MIT License
 - License text: [licenses/MIT-Microsoft-SimpleRecorder.txt](licenses/MIT-Microsoft-SimpleRecorder.txt)
 
+## CTranslate2 (local translation engine)
+
+SnipNexs dynamically links CTranslate2 to run the local translation models described in [docs/local-translation-decision.md](docs/local-translation-decision.md). The library is built from the pinned release v4.8.1 and distributed as a separate shared library next to the Qt DLLs.
+
+- Project: <https://github.com/OpenNMT/CTranslate2>
+- Source revision used by this distribution: tag `v4.8.1`
+- Code license: MIT License
+- License text: [licenses/CTranslate2-MIT.txt](licenses/CTranslate2-MIT.txt)
+
+## SentencePiece (tokenizer for local translation)
+
+SnipNexs statically links SentencePiece to tokenize text for the local translation models. The bundled build includes SentencePiece's vendored abseil-cpp (Apache-2.0) and protobuf (BSD-3-Clause) components, which are covered by SentencePiece's own licensing files in its source repository.
+
+- Project: <https://github.com/google/sentencepiece>
+- Source revision used by this distribution: tag `v0.2.0`
+- Code license: Apache License 2.0
+- License text: [licenses/SentencePiece-Apache-2.0.txt](licenses/SentencePiece-Apache-2.0.txt)
+
+## Local translation models
+
+The optional translation language packages are converted from the Helsinki-NLP OPUS-MT models and downloaded on first use; they are not part of the application ZIP.
+
+- `opus-mt-en-zh-int8`: Helsinki-NLP/opus-mt-en-zh, Apache License 2.0
+- `opus-mt-zh-en-int8`: Helsinki-NLP/opus-mt-zh-en, CC-BY 4.0
+- Conversion pipeline and selection rationale: [docs/local-translation-decision.md](docs/local-translation-decision.md)
+- Each installed package records its file digests in `manifest.json`; attribution is also shown in the download prompt and can be reviewed offline in the package manifest.
+
 ## Microsoft Visual C++ runtime
 
 The portable ZIP includes application-local release CRT DLLs copied only from the Visual Studio 2022 `VC/Redist/MSVC/.../x64/Microsoft.VC143.CRT` directory. This avoids an administrator-level prerequisite installation. These Microsoft files are distributed under the applicable Visual Studio license terms and are not part of SnipNexs or covered by its GPL license.

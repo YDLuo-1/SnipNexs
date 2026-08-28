@@ -49,7 +49,7 @@ QStringList splitTranslationSegments(const QString& text, int maxCharacters)
             && text.at(index + 1).isSpace();
         const bool sentenceEnd = isSentenceTerminator(character)
             && (nextIsCjk || nextIsSpace || index + 1 >= total);
-        const bool forcedEnd = character.isSpace()
+        const bool forcedEnd = character == u'\n' || character == u'\r'
             || current.size() >= maxCharacters;
         if (sentenceEnd || forcedEnd) {
             segments.append(current);
