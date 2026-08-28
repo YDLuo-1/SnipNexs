@@ -1,0 +1,231 @@
+#include "TranslationModels.h"
+
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
+#include <QStandardPaths>
+#include <QTemporaryFile>
+
+namespace snipnexs {
+
+namespace {
+
+constexpr int kManifestFormat = 1;
+
+// The catalog is static: a package becomes available for download only once
+// its exact files and digests are pinned here. sha256 values cover the
+// converted CTranslate2 int8 models published as release assets; the
+// conversion pipeline is documented in docs/local-translation-decision.md.
+TranslationModelSpec createEnZhModel()
+{
+    TranslationModelSpec spec;
+    spec.id = QStringLiteral("opus-mt-en-zh-int8");
+    spec.sourceLanguage = QStringLiteral("en");
+    spec.targetLanguage = QStringLiteral("zh");
+    spec.licenseNote = QStringLiteral(
+        "Helsinki-NLP/opus-mt-en-zh (Apache-2.0), converted to CTranslate2 int8");
+    // TODO(model-hashes): fill after the conversion pipeline finishes.
+    spec.files = {
+        { QStringLiteral("model.bin"),
+          QStringLiteral("opus-mt-en-zh-int8/model.bin"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+        { QStringLiteral("shared_vocabulary.json"),
+          QStringLiteral("opus-mt-en-zh-int8/shared_vocabulary.json"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+        { QStringLiteral("source.spm"),
+          QStringLiteral("opus-mt-en-zh-int8/source.spm"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+        { QStringLiteral("target.spm"),
+          QStringLiteral("opus-mt-en-zh-int8/target.spm"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+    };
+    return spec;
+}
+
+TranslationModelSpec createZhEnModel()
+{
+    TranslationModelSpec spec;
+    spec.id = QStringLiteral("opus-mt-zh-en-int8");
+    spec.sourceLanguage = QStringLiteral("zh");
+    spec.targetLanguage = QStringLiteral("en");
+    spec.licenseNote = QStringLiteral(
+        "Helsinki-NLP/opus-mt-zh-en (CC-BY 4.0), converted to CTranslate2 int8");
+    // TODO(model-hashes): fill after the conversion pipeline finishes.
+    spec.files = {
+        { QStringLiteral("model.bin"),
+          QStringLiteral("opus-mt-zh-en-int8/model.bin"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+        { QStringLiteral("shared_vocabulary.json"),
+          QStringLiteral("opus-mt-zh-en-int8/shared_vocabulary.json"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+        { QStringLiteral("source.spm"),
+          QStringLiteral("opus-mt-zh-en-int8/source.spm"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+        { QStringLiteral("target.spm"),
+          QStringLiteral("opus-mt-zh-en-int8/target.spm"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
+    };
+    return spec;
+}
+
+QString defaultModelsDirectory()
+{
+    const QString applicationDirectory = QCoreApplication::applicationDirPath();
+    if (!applicationDirectory.isEmpty()) {
+        const QString applicationModels = QDir(applicationDirectory).filePath(
+            QStringLiteral("models/translation"));
+        if (QDir().mkpath(applicationModels)) {
+            QTemporaryFile probe(QDir(applicationModels).filePath(
+                QStringLiteral(".write-test-XXXXXX")));
+            if (probe.open()) {
+                probe.close();
+                probe.remove();
+                return applicationModels;
+            }
+        }
+    }
+
+    QString base = QStandardPaths::writableLocation(
+        QStandardPaths::AppLocalDataLocation);
+    if (base.isEmpty()) {
+        base = QDir::homePath();
+    }
+    return QDir(base).filePath(QStringLiteral("models/translation"));
+}
+
+} // namespace
+
+QList<TranslationModelSpec> knownTranslationModels()
+{
+    static const QList<TranslationModelSpec> models = {
+        createEnZhModel(),
+        createZhEnModel(),
+    };
+    return models;
+}
+
+bool findTranslationModelSpec(
+    const QString& sourceLanguageTag,
+    const QString& targetLanguage,
+    TranslationModelSpec& spec)
+{
+    const QString normalizedTarget = targetLanguage.startsWith(
+        QStringLiteral("zh"), Qt::CaseInsensitive)
+        ? QStringLiteral("zh")
+        : QStringLiteral("en");
+
+    for (const TranslationModelSpec& candidate : knownTranslationModels()) {
+        if (candidate.targetLanguage == normalizedTarget
+            && candidate.sourceLanguage
+                == (normalizedTarget == QStringLiteral("zh")
+                    ? QStringLiteral("en")
+                    : QStringLiteral("zh"))) {
+            spec = candidate;
+            return true;
+        }
+    }
+
+    // The OCR tag decides the direction when the caller did not ask for a
+    // specific target: Chinese text goes to English, the rest to Chinese.
+    const QString source = sourceLanguageTag.startsWith(
+        QStringLiteral("zh"), Qt::CaseInsensitive)
+        ? QStringLiteral("zh")
+        : QStringLiteral("en");
+    for (const TranslationModelSpec& candidate : knownTranslationModels()) {
+        if (candidate.sourceLanguage == source
+            && candidate.targetLanguage
+                == (source == QStringLiteral("zh") ? QStringLiteral("en")
+                                                   : QStringLiteral("zh"))) {
+            spec = candidate;
+            return true;
+        }
+    }
+    return false;
+}
+
+QString translationModelsBaseUrl()
+{
+    return QStringLiteral(
+        "https://github.com/YDLuo-1/SnipNexs/releases/download/translation-models-v1");
+}
+
+QString translationModelsRoot()
+{
+    static const QString root = defaultModelsDirectory();
+    return root;
+}
+
+QString translationModelDirectory(const QString& packageId)
+{
+    return QDir(translationModelsRoot()).filePath(packageId);
+}
+
+bool isTranslationModelInstalled(const TranslationModelSpec& spec)
+{
+    const QDir packageDir = translationModelDirectory(spec.id);
+    QFile manifestFile(packageDir.filePath(QStringLiteral("manifest.json")));
+    if (!manifestFile.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    const QJsonObject manifest = QJsonDocument::fromJson(
+        manifestFile.readAll()).object();
+    if (manifest.value(QStringLiteral("format")).toInt() != kManifestFormat
+        || manifest.value(QStringLiteral("id")).toString() != spec.id) {
+        return false;
+    }
+
+    const QJsonArray entries = manifest.value(QStringLiteral("files")).toArray();
+    for (const TranslationModelFile& fileSpec : spec.files) {
+        bool verified = false;
+        for (const QJsonValue& value : entries) {
+            const QJsonObject entry = value.toObject();
+            if (entry.value(QStringLiteral("name")).toString() == fileSpec.fileName
+                && entry.value(QStringLiteral("sha256")).toString()
+                    .compare(QString::fromLatin1(fileSpec.sha256),
+                             Qt::CaseInsensitive) == 0) {
+                verified = true;
+                break;
+            }
+        }
+        if (!verified
+            || !QFileInfo::exists(packageDir.filePath(fileSpec.fileName))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool writeTranslationModelManifest(const TranslationModelSpec& spec)
+{
+    QJsonArray files;
+    for (const TranslationModelFile& fileSpec : spec.files) {
+        files.append(QJsonObject{
+            { QStringLiteral("name"), fileSpec.fileName },
+            { QStringLiteral("sha256"), QString::fromLatin1(fileSpec.sha256) },
+        });
+    }
+
+    QJsonObject manifest;
+    manifest.insert(QStringLiteral("format"), kManifestFormat);
+    manifest.insert(QStringLiteral("id"), spec.id);
+    manifest.insert(QStringLiteral("sourceLanguage"), spec.sourceLanguage);
+    manifest.insert(QStringLiteral("targetLanguage"), spec.targetLanguage);
+    manifest.insert(QStringLiteral("license"), spec.licenseNote);
+    manifest.insert(QStringLiteral("files"), files);
+
+    QSaveFile file(QDir(translationModelDirectory(spec.id)).filePath(
+        QStringLiteral("manifest.json")));
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    file.write(QJsonDocument(manifest).toJson(QJsonDocument::Compact));
+    return file.commit();
+}
+
+} // namespace snipnexs

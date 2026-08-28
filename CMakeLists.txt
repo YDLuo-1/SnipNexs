@@ -13,6 +13,40 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Core Gui Widgets Network LinguistTools)
 
+# ---------------------------------------------------------------------------
+# Local translation engine (see docs/local-translation-decision.md)
+#
+# CTranslate2 (MIT) runs OPUS-MT models on CPU; SentencePiece (Apache-2.0)
+# tokenizes raw text for those models. Both are fetched at pinned tags and
+# built from source. The engine stays CPU-only: no MKL/DNNL/CUDA, no GPU
+# requirement, Windows 10 2004 x64 remains the floor.
+# ---------------------------------------------------------------------------
+include(FetchContent)
+
+set(BUILD_SHARED_LIBS ON) # ctranslate2 becomes a runtime DLL next to SnipNexs.exe
+set(WITH_MKL OFF CACHE INTERNAL "No MKL for CTranslate2")
+set(WITH_DNNL OFF CACHE INTERNAL "No DNNL for CTranslate2")
+set(BUILD_CLI OFF CACHE INTERNAL "No CTranslate2 CLI tools")
+set(BUILD_TESTS OFF CACHE INTERNAL "No CTranslate2 tests")
+FetchContent_Declare(ctranslate2
+    GIT_REPOSITORY https://github.com/OpenNMT/CTranslate2.git
+    GIT_TAG v4.8.1
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(ctranslate2)
+unset(BUILD_SHARED_LIBS)
+
+set(SPM_ENABLE_SHARED OFF CACHE INTERNAL "SentencePiece static only")
+set(SPM_ENABLE_TEST OFF CACHE INTERNAL "No SentencePiece tests")
+set(SPM_ENABLE_TRAINING OFF CACHE INTERNAL "No SentencePiece trainer")
+set(SPM_BUILD_EXAMPLES OFF CACHE INTERNAL "No SentencePiece examples")
+FetchContent_Declare(sentencepiece
+    GIT_REPOSITORY https://github.com/google/sentencepiece.git
+    GIT_TAG v0.2.0
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(sentencepiece)
+
 set(SNIPNEXS_LICENSE_FILES
     LICENSE
     licenses/LGPL-3.0-only.txt
@@ -62,6 +96,16 @@ qt_add_executable(SnipNexs WIN32
     src/recorder/ScreenRecorderService.h
     src/translate/BrowserTranslation.cpp
     src/translate/BrowserTranslation.h
+    src/translate/LocalTranslation.cpp
+    src/translate/LocalTranslation.h
+    src/translate/TranslationModelInstaller.cpp
+    src/translate/TranslationModelInstaller.h
+    src/translate/TranslationModels.cpp
+    src/translate/TranslationModels.h
+    src/translate/TranslationService.cpp
+    src/translate/TranslationService.h
+    src/translate/TranslationTextSplitter.cpp
+    src/translate/TranslationTextSplitter.h
 )
 
 target_include_directories(SnipNexs PRIVATE src)
@@ -71,6 +115,8 @@ target_link_libraries(SnipNexs PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
+    ctranslate2
+    sentencepiece-static
     d3d11
     dwmapi
     dxgi

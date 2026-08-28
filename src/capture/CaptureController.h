@@ -8,6 +8,7 @@
 
 #include "capture/CaptureHistoryStore.h"
 #include "ocr/OcrService.h"
+#include "translate/TranslationService.h"
 
 class QImage;
 class QString;
@@ -48,6 +49,7 @@ private:
     MainWindow& mainWindow_;
     OcrService ocrService_;
     CaptureHistoryStore historyStore_;
+    TranslationService translationService_;
     QPointer<CaptureOverlay> overlay_;
     bool capturePending_ = false;
     bool mainWindowWasVisible_ = false;
