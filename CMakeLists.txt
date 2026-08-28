@@ -206,6 +206,15 @@ qt_generate_deploy_app_script(
 )
 install(SCRIPT ${deploy_script})
 
+# SentencePiece's own install rules ship its command-line tools; SnipNexs
+# only links the static library, so drop them from the deployment layout.
+install(CODE
+    "foreach(_spm_tool spm_train spm_encode spm_decode spm_normalize spm_export_vocab)
+         if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/bin/\${_spm_tool}.exe\")
+             file(REMOVE \"\${CMAKE_INSTALL_PREFIX}/bin/\${_spm_tool}.exe\")
+         endif()
+     endforeach()")
+
 include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Test)
