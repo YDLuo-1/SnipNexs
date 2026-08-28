@@ -72,6 +72,16 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 
 浏览器翻译指向 Google 在大陆不可达的问题，v1 通过"本地翻译"按钮的存在间接解决；把浏览器翻译目标做成可配置（Bing 等）作为后续独立小改进，不与本次引擎工作耦合。
 
+## 实现验证记录（2026-08-28）
+
+以下事实在集成阶段实测得出，是后续维护的重要约束：
+
+1. **CTranslate2 必须显式选择 CPU GEMM 后端**。仅 `WITH_MKL=OFF` 的"纯净 CPU 构建"会在推理时报 `No SGEMM backend on CPU`。本项目启用 CT2 自带的 Ruy 子模块（`WITH_RUY=ON`，Apache-2.0，静态编入 `ctranslate2.dll`），不引入 MKL/oneDNN 外部依赖。
+2. **MSVC 工具链上"自动计算类型 + 多 worker"会挂死**。`ComputeType::DEFAULT` 对 int8 权重模型走 Ruy 的 int8 路径并配合多线程时测试无限期阻塞；固定 `ComputeType::FLOAT32` + `num_threads_per_replica = 1` 后稳定（int8 权重在加载时反量化，下载体积优势保留）。实测 en-zh 模型加载约 255 ms、两句翻译约 493 ms，满足"OCR 级短文本亚秒级"预期。
+3. **模型包自转换成功**：Helsinki-NLP opus-mt-en-zh / opus-mt-zh-en 经 `ct2-transformers-converter --quantization int8` 转换，模型约 79.5 MB/方向，双语方向均实测可翻译；文件 SHA-256 已静态登记于 `src/translate/TranslationModels.cpp`。
+4. **分词边界**：SentencePiece 静态链接并通过序列化 proto 加载 `.spm`（规避 Windows 非 ASCII 路径的 `std::ifstream` 问题）；CTranslate2 词表只认 `.json`/`.txt`（`model_reader.cc`），转换产物直接兼容。
+5. **测试**：`TranslationTextSplitterTests`（分句不变式）+ `LocalTranslationTests`（真实推理，模型缺失时 exit 77 跳过）；CTest 全套 16/16 通过。
+
 ## 决策的边界条件（何时应重新审视）
 
 - 若 CTranslate2 在 MSVC 上出现无法修复的构建/运行回归，转评 Bergamot 或 ONNX Runtime，并更新本文档。
