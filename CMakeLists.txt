@@ -27,6 +27,7 @@ set(BUILD_SHARED_LIBS ON) # ctranslate2 becomes a runtime DLL next to SnipNexs.e
 set(OPENMP_RUNTIME "COMP" CACHE INTERNAL "Use the MSVC OpenMP runtime (vcomp)")
 set(WITH_MKL OFF CACHE INTERNAL "No MKL for CTranslate2")
 set(WITH_DNNL OFF CACHE INTERNAL "No DNNL for CTranslate2")
+set(WITH_RUY ON CACHE INTERNAL "Ruy is CTranslate2's vendored CPU GEMM backend")
 set(BUILD_CLI OFF CACHE INTERNAL "No CTranslate2 CLI tools")
 set(BUILD_TESTS OFF CACHE INTERNAL "No CTranslate2 tests")
 FetchContent_Declare(ctranslate2
@@ -406,6 +407,28 @@ if(BUILD_TESTING)
     add_test(NAME TranslationTextSplitterTests COMMAND TranslationTextSplitterTests)
     set_tests_properties(TranslationTextSplitterTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(LocalTranslationTests
+        tests/LocalTranslationTests.cpp
+        src/translate/LocalTranslation.cpp
+        src/translate/LocalTranslation.h
+        src/translate/TranslationTextSplitter.cpp
+        src/translate/TranslationTextSplitter.h
+    )
+    target_include_directories(LocalTranslationTests PRIVATE
+        src ${SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR})
+    target_link_libraries(LocalTranslationTests PRIVATE
+        Qt6::Core
+        ctranslate2
+        sentencepiece-static
+    )
+    add_test(NAME LocalTranslationTests COMMAND LocalTranslationTests)
+    set_tests_properties(LocalTranslationTests PROPERTIES
+        SKIP_RETURN_CODE 77
+        TIMEOUT 120
+        ENVIRONMENT "SNIPNEXS_TEST_MODEL_DIR=${CMAKE_SOURCE_DIR}/build/models/src/opus-mt-en-zh-int8"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
