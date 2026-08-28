@@ -4,7 +4,7 @@
 
 SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
+Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, local offline translation, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
@@ -16,6 +16,7 @@ Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first s
 - The selection frame shows its physical pixel dimensions. Use **Pen**, **Rectangle**, **Arrow**, or **Text** to annotate; press `Enter` to commit inline text and `Esc` to cancel it. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **Color picker** to inspect a 9 × 9 magnified pixel grid. Press `C` to copy the value, `Shift` to toggle RGB/HEX, or click to copy and close the picker.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
+- The result window offers **Local translation**: a built-in engine translates fully offline on the machine. First use downloads a Chinese↔English language package (about 80 MB, verified by SHA-256); afterwards it works without any network. The OPUS-MT engine produces quick, draft-grade output below LLM quality; see the [selection decision](docs/local-translation-decision.md).
 - The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.
 - Click **Region Recording**, draw a region, then click **Record** in the selection toolbar. Choose an MP4 path and use the floating indicator to stop. The indicator starts at the bottom-right of the selected display and can be dragged from an empty area.
 - Recording captures the pointer and writes H.264/MP4 through Windows media APIs. Recording is currently video-only; system audio and microphone input are not included yet.
@@ -28,6 +29,7 @@ Current version: `0.8.0`. It includes Chinese/English UI switching, tray-first s
 
 - Screen pixels stay in local process memory unless you explicitly choose **Copy**, **Save**, or **Pin**.
 - The current version has no telemetry. OCR is local and never uploads screenshots or annotation data.
+- Local translation runs entirely on the machine as well: text, models, and results never leave the device, and language packages are downloaded from GitHub Releases with SHA-256 verification.
 - Recording is local. Frames stay on the GPU path and are written only to the path you choose; SnipNexs does not stream or upload the video.
 - Browser translation is opt-in: after confirmation, at most 4,000 recognized characters are placed in a `translate.google.com` URL. No image is transmitted.
 - Generated `SnipNexs-*` images and common capture directories are ignored by Git. Every stage is also audited for staged images, binaries, local paths, and likely secrets before push.

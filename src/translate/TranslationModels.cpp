@@ -29,7 +29,7 @@ TranslationModelSpec createEnZhModel()
     spec.targetLanguage = QStringLiteral("zh");
     spec.licenseNote = QStringLiteral(
         "Helsinki-NLP/opus-mt-en-zh (Apache-2.0), converted to CTranslate2 int8");
-    // TODO(model-hashes): fill after the conversion pipeline finishes.
+
     spec.files = {
         { QStringLiteral("config.json"),
           QStringLiteral("opus-mt-en-zh-int8/config.json"),
@@ -63,23 +63,28 @@ TranslationModelSpec createZhEnModel()
     spec.targetLanguage = QStringLiteral("en");
     spec.licenseNote = QStringLiteral(
         "Helsinki-NLP/opus-mt-zh-en (CC-BY 4.0), converted to CTranslate2 int8");
-    // TODO(model-hashes): fill after the conversion pipeline finishes.
+
     spec.files = {
         { QStringLiteral("config.json"),
           QStringLiteral("opus-mt-zh-en-int8/config.json"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee"),
+          233 },
         { QStringLiteral("model.bin"),
           QStringLiteral("opus-mt-zh-en-int8/model.bin"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("e4955858cae9542bef37424a9b79720e3db2f32501fe62264c0cd3eac6319777"),
+          79567635 },
         { QStringLiteral("shared_vocabulary.json"),
           QStringLiteral("opus-mt-zh-en-int8/shared_vocabulary.json"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("55d071d6c63a2dab993f00e77077eca76573ac6964990e2e80de7462344401fb"),
+          1368999 },
         { QStringLiteral("source.spm"),
           QStringLiteral("opus-mt-zh-en-int8/source.spm"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("e27a3a1b539f4959ec72ea60e453f49156289f95d4e6000b29332efc45616203"),
+          804677 },
         { QStringLiteral("target.spm"),
           QStringLiteral("opus-mt-zh-en-int8/target.spm"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("6a881f4717cd7265f53fea54fd3dc689c767c05338fac7a4590f3088cb2d7855"),
+          806530 },
     };
     return spec;
 }
