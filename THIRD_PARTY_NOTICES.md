@@ -31,6 +31,7 @@ SnipNexs dynamically links CTranslate2 to run the local translation models descr
 - Source revision used by this distribution: tag `v4.8.1`
 - Code license: MIT License
 - License text: [licenses/CTranslate2-MIT.txt](licenses/CTranslate2-MIT.txt)
+- The distributed `ctranslate2.dll` statically includes CTranslate2's vendored third-party components: Ruy and cpu_features (Apache-2.0) and spdlog (MIT); their license texts ship inside the CTranslate2 source repository at the revision listed above.
 
 ## SentencePiece (tokenizer for local translation)
 

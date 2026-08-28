@@ -12,27 +12,18 @@
 
 #include <exception>
 #include <memory>
-#include <thread>
+
 #include <vector>
 
 namespace local_translation {
 
 namespace {
 
-// Leave cores for the UI thread; the MT model is small enough that four
-// intra-op threads are plenty for OCR-sized text.
-std::size_t intraThreads()
-{
-    static const std::size_t threads = [] {
-        const unsigned hardware = std::thread::hardware_concurrency();
-        if (hardware <= 2u) {
-            return std::size_t{1};
-        }
-        const std::size_t halved = hardware / 2u;
-        return halved > 4u ? std::size_t{4} : (halved < 1u ? std::size_t{1} : halved);
-    }();
-    return threads;
-}
+// FLOAT32 with a single worker thread is the configuration verified on the
+// CI-like MSVC toolchain: CTranslate2's auto compute type dispatches to an
+// int8 Ruy GEMM that hangs when built with MSVC OpenMP, so the int8 model
+// weights are dequantized at load time instead.
+constexpr std::size_t kIntraThreads = 1;
 
 bool readFileBytes(const QString& path, std::string& contents)
 {
@@ -74,11 +65,11 @@ Session* openSession(const QString& modelDirectory, QString* error)
     auto session = std::make_unique<Session>();
     try {
         ctranslate2::ReplicaPoolConfig config;
-        config.num_threads_per_replica = intraThreads();
+        config.num_threads_per_replica = kIntraThreads;
         session->translator = std::make_unique<ctranslate2::Translator>(
             modelDirectory.toStdString(),
             ctranslate2::Device::CPU,
-            ctranslate2::ComputeType::DEFAULT,
+            ctranslate2::ComputeType::FLOAT32,
             std::vector<int>{0},
             false,
             config);
@@ -135,12 +126,14 @@ QString translateSegments(
     std::vector<int> batchSegmentIndexes;
     batch.reserve(static_cast<std::size_t>(segments.size()));
     batchSegmentIndexes.reserve(static_cast<std::size_t>(segments.size()));
+    bool hasTranslatableContent = false;
 
     for (int index = 0; index < segments.size(); ++index) {
         const QString& segment = segments.at(index);
         if (segment.trimmed().isEmpty()) {
             continue;
         }
+        hasTranslatableContent = true;
         std::vector<std::string> pieces;
         if (!session.sourceTokenizer->Encode(segment.toStdString(), &pieces).ok()
             || pieces.empty()) {
@@ -153,6 +146,9 @@ QString translateSegments(
     QString output;
     output.reserve(segments.isEmpty() ? 0 : segments.front().size() * 2);
     if (batch.empty()) {
+        if (hasTranslatableContent && error) {
+            *error = QObject::tr("分词失败：无法对输入文本编码。");
+        }
         return output;
     }
 
