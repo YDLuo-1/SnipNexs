@@ -121,20 +121,18 @@ void drawOcr(QPainter& painter, const QColor& color)
 
 void drawPin(QPainter& painter, const QColor& color)
 {
+    QPainterPath pin;
+    pin.moveTo(33.5, 18.5);
+    pin.cubicTo(33.5, 26.5, 28.5, 33.5, 24, 39.5);
+    pin.cubicTo(19.5, 33.5, 14.5, 26.5, 14.5, 18.5);
+    pin.cubicTo(16, 10.5, 32, 10.5, 33.5, 18.5);
+    pin.closeSubpath();
+    painter.drawPath(pin);
+
     painter.save();
-    painter.translate(24, 24);
-    painter.rotate(45);
-
-    QPainterPath flange;
-    flange.moveTo(-4.5, -8);
-    flange.lineTo(4.5, -8);
-    flange.lineTo(6.5, 0);
-    flange.lineTo(-6.5, 0);
-    flange.closeSubpath();
-
-    painter.drawRoundedRect(QRectF(-5.5, -16, 11, 8), 2.5, 2.5);
-    painter.drawPath(flange);
-    painter.drawLine(QPointF(0, 0), QPointF(0, 14));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
+    painter.drawEllipse(QPointF(24, 18.5), 3, 3);
     painter.restore();
 }
 
@@ -175,11 +173,6 @@ void drawSave(QPainter& painter, const QColor& color)
     outer.quadTo(10, 9, 11.5, 9);
     outer.lineTo(27, 9);
 
-    QPainterPath shutter;
-    shutter.moveTo(15, 9);
-    shutter.lineTo(15, 16);
-    shutter.lineTo(23, 16);
-
     QPainterPath label;
     label.moveTo(16, 37);
     label.lineTo(16, 28);
@@ -189,7 +182,6 @@ void drawSave(QPainter& painter, const QColor& color)
     label.lineTo(32, 37);
 
     painter.drawPath(outer);
-    painter.drawPath(shutter);
     painter.drawPath(label);
 }
 
