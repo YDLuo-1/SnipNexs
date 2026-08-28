@@ -56,19 +56,19 @@ void drawArrow(QPainter& painter, const QColor& color)
 
 void drawColorPicker(QPainter& painter, const QColor& color)
 {
+    QPainterPath body;
+    body.addEllipse(QRectF(10, 11, 28, 28));
+    QPainterPath bite;
+    bite.addEllipse(QRectF(29, 30, 12, 12));
+    painter.drawPath(body.subtracted(bite));
+
     painter.save();
-    painter.translate(24, 24);
-    painter.rotate(-45);
-
-    QPainterPath tip;
-    tip.moveTo(-3, 5.5);
-    tip.lineTo(3, 5.5);
-    tip.lineTo(0, 13.5);
-    tip.closeSubpath();
-
-    painter.drawEllipse(QPointF(0, -14), 6, 6);
-    painter.drawRoundedRect(QRectF(-3, -8.5, 6, 14), 3, 3);
-    painter.drawPath(tip);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
+    for (const QPointF dot : { QPointF(18, 20), QPointF(25, 16.5),
+         QPointF(31.5, 21), QPointF(17.5, 29) }) {
+        painter.drawEllipse(dot, 2.1, 2.1);
+    }
     painter.restore();
 }
 
@@ -114,23 +114,28 @@ void drawOcr(QPainter& painter, const QColor& color)
     corner.lineTo(8, 31);
     painter.drawPath(corner);
 
-    painter.drawLine(QPointF(15, 19), QPointF(33, 19));
-    painter.drawLine(QPointF(15, 24.2), QPointF(33, 24.2));
-    painter.drawLine(QPointF(15, 29.4), QPointF(33, 29.4));
+    painter.drawLine(QPointF(17, 18.5), QPointF(31, 18.5));
+    painter.drawLine(QPointF(24, 18.5), QPointF(24, 30.5));
+    painter.drawLine(QPointF(20, 30.5), QPointF(28, 30.5));
 }
 
 void drawPin(QPainter& painter, const QColor& color)
 {
+    painter.save();
+    painter.translate(24, 24);
+    painter.rotate(45);
+
     QPainterPath flange;
-    flange.moveTo(18, 15);
-    flange.lineTo(30, 15);
-    flange.lineTo(33, 23);
-    flange.lineTo(15, 23);
+    flange.moveTo(-4.5, -8);
+    flange.lineTo(4.5, -8);
+    flange.lineTo(6.5, 0);
+    flange.lineTo(-6.5, 0);
     flange.closeSubpath();
 
-    painter.drawRoundedRect(QRectF(16, 8, 16, 7), 2, 2);
+    painter.drawRoundedRect(QRectF(-5.5, -16, 11, 8), 2.5, 2.5);
     painter.drawPath(flange);
-    painter.drawLine(QPointF(24, 23), QPointF(24, 38));
+    painter.drawLine(QPointF(0, 0), QPointF(0, 14));
+    painter.restore();
 }
 
 void drawRecord(QPainter& painter, const QColor& color)
@@ -159,21 +164,33 @@ void drawCopy(QPainter& painter, const QColor& color)
 
 void drawSave(QPainter& painter, const QColor& color)
 {
-    QPainterPath head;
-    head.moveTo(17.5, 21);
-    head.lineTo(30.5, 21);
-    head.lineTo(24, 28.5);
-    head.closeSubpath();
+    QPainterPath outer;
+    outer.moveTo(27, 9);
+    outer.lineTo(38, 20);
+    outer.lineTo(38, 35.5);
+    outer.quadTo(38, 37, 36.5, 37);
+    outer.lineTo(11.5, 37);
+    outer.quadTo(10, 37, 10, 35.5);
+    outer.lineTo(10, 10.5);
+    outer.quadTo(10, 9, 11.5, 9);
+    outer.lineTo(27, 9);
 
-    QPainterPath tray;
-    tray.moveTo(10, 29);
-    tray.lineTo(10, 37);
-    tray.lineTo(38, 37);
-    tray.lineTo(38, 29);
+    QPainterPath shutter;
+    shutter.moveTo(15, 9);
+    shutter.lineTo(15, 16);
+    shutter.lineTo(23, 16);
 
-    painter.drawLine(QPointF(24, 9), QPointF(24, 21.5));
-    fillPath(painter, head, color);
-    painter.drawPath(tray);
+    QPainterPath label;
+    label.moveTo(16, 37);
+    label.lineTo(16, 28);
+    label.quadTo(16, 26, 18, 26);
+    label.lineTo(30, 26);
+    label.quadTo(32, 26, 32, 28);
+    label.lineTo(32, 37);
+
+    painter.drawPath(outer);
+    painter.drawPath(shutter);
+    painter.drawPath(label);
 }
 
 } // namespace
@@ -198,11 +215,17 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
     case ToolbarIcon::Arrow:
         drawArrow(painter, color);
         break;
-    case ToolbarIcon::Text:
-        painter.drawLine(QPointF(12, 12), QPointF(36, 12));
-        painter.drawLine(QPointF(24, 12), QPointF(24, 36));
-        painter.drawLine(QPointF(18, 36), QPointF(30, 36));
+    case ToolbarIcon::Text: {
+        QPainterPath bar;
+        bar.moveTo(10, 13.5);
+        bar.lineTo(10, 10);
+        bar.lineTo(38, 10);
+        bar.lineTo(38, 13.5);
+        painter.drawPath(bar);
+        painter.drawLine(QPointF(24, 10), QPointF(24, 36.5));
+        painter.drawLine(QPointF(18.5, 36.5), QPointF(29.5, 36.5));
         break;
+    }
     case ToolbarIcon::ColorPicker:
         drawColorPicker(painter, color);
         break;
