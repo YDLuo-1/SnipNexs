@@ -1,11 +1,12 @@
 #include "PinWindow.h"
 
+#include "capture/ToolbarIcons.h"
+
 #include <QContextMenuEvent>
 #include <QCursor>
 #include <QFrame>
 #include <QGuiApplication>
 #include <QHBoxLayout>
-#include <QIcon>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
@@ -24,37 +25,6 @@ namespace {
 
 constexpr int kShadowMargin = 16;
 constexpr qreal kMinimumImageSize = 24.0;
-
-enum class ToolbarIcon {
-    Copy,
-    Save,
-    Close,
-};
-
-QIcon makeToolbarIcon(ToolbarIcon kind)
-{
-    QPixmap pixmap(22, 22);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(245, 248, 252), 1.8, Qt::SolidLine, Qt::RoundCap,
-        Qt::RoundJoin));
-    painter.setBrush(Qt::NoBrush);
-
-    if (kind == ToolbarIcon::Copy) {
-        painter.drawRoundedRect(QRectF(7.0, 5.0, 10.0, 12.0), 1.5, 1.5);
-        painter.drawRoundedRect(QRectF(4.0, 8.0, 10.0, 10.0), 1.5, 1.5);
-    } else if (kind == ToolbarIcon::Save) {
-        painter.drawRoundedRect(QRectF(4.0, 3.0, 14.0, 16.0), 1.5, 1.5);
-        painter.drawLine(QPointF(7.0, 4.0), QPointF(7.0, 10.0));
-        painter.drawLine(QPointF(15.0, 4.0), QPointF(15.0, 10.0));
-        painter.drawRoundedRect(QRectF(7.0, 13.0, 8.0, 4.0), 0.8, 0.8);
-    } else {
-        painter.drawLine(QPointF(5.0, 5.0), QPointF(17.0, 17.0));
-        painter.drawLine(QPointF(17.0, 5.0), QPointF(5.0, 17.0));
-    }
-    return QIcon(pixmap);
-}
 
 }
 
@@ -92,7 +62,7 @@ PinWindow::PinWindow(const QImage& image, QWidget* parent)
         ToolbarIcon icon, const QString& toolTip, const char* objectName) {
         auto* button = new QToolButton(toolbar_);
         button->setObjectName(QString::fromLatin1(objectName));
-        button->setIcon(makeToolbarIcon(icon));
+        button->setIcon(makeToolbarIcon(icon, true));
         button->setIconSize(QSize(20, 20));
         button->setFixedSize(32, 32);
         button->setAutoRaise(true);
@@ -107,7 +77,7 @@ PinWindow::PinWindow(const QImage& image, QWidget* parent)
     QToolButton* saveButton = addButton(
         ToolbarIcon::Save, tr("图像另存为..."), "pinSaveButton");
     QToolButton* closeButton = addButton(
-        ToolbarIcon::Close, tr("关闭贴图"), "pinCloseButton");
+        ToolbarIcon::Cancel, tr("关闭贴图"), "pinCloseButton");
     connect(copyButton, &QToolButton::clicked, this, [this]() {
         emit copyRequested(sourceImage_);
     });
