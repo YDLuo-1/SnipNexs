@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 
     snipnexs::OpenSourceLicensesDialog licenses;
     const auto* tabs = licenses.findChild<QTabWidget*>(QStringLiteral("licenseTabs"));
-    ok &= tabs != nullptr && tabs->count() == 3;
+    ok &= tabs != nullptr && tabs->count() == 4;
 
     QString allLicenseText;
     for (const auto* browser : licenses.findChildren<QTextBrowser*>()) {
@@ -78,6 +78,8 @@ int main(int argc, char* argv[])
     ok &= allLicenseText.contains(QStringLiteral("Qt 6.11.2"));
     ok &= allLicenseText.contains(QStringLiteral("qtbase-everywhere-src-6.11.2.tar.xz"));
     ok &= allLicenseText.contains(QStringLiteral("Microsoft SimpleRecorder"));
+    ok &= allLicenseText.contains(QStringLiteral("SYSTRAN"));
+    ok &= allLicenseText.contains(QStringLiteral("Apache License"));
 
     QTextStream(stdout)
         << "about dialog: " << (ok ? "ok" : "failed")

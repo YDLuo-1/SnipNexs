@@ -31,18 +31,26 @@ TranslationModelSpec createEnZhModel()
         "Helsinki-NLP/opus-mt-en-zh (Apache-2.0), converted to CTranslate2 int8");
     // TODO(model-hashes): fill after the conversion pipeline finishes.
     spec.files = {
+        { QStringLiteral("config.json"),
+          QStringLiteral("opus-mt-en-zh-int8/config.json"),
+          QByteArrayLiteral("72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee"),
+          233 },
         { QStringLiteral("model.bin"),
           QStringLiteral("opus-mt-en-zh-int8/model.bin"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("327584c20bb83c7e89d595bcfa30b6ef3771c10816f707e892c4bbb1f808a8fb"),
+          79567635 },
         { QStringLiteral("shared_vocabulary.json"),
           QStringLiteral("opus-mt-en-zh-int8/shared_vocabulary.json"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("4821251fdc0a6c9e889837b42427a90cb3240f71aef89681a5a6de525182a634"),
+          1368888 },
         { QStringLiteral("source.spm"),
           QStringLiteral("opus-mt-en-zh-int8/source.spm"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("5775ddc9e3ff2fae91554da56468ad35ff56edaba870fea74447bc7234bfdaa8"),
+          806435 },
         { QStringLiteral("target.spm"),
           QStringLiteral("opus-mt-en-zh-int8/target.spm"),
-          QByteArrayLiteral("PLACEHOLDER"), 0 },
+          QByteArrayLiteral("81dc94efa84e4025ef38d25d5d07429fe41e3eb29d44003f1db6fe98487b0052"),
+          804600 },
     };
     return spec;
 }
@@ -57,6 +65,9 @@ TranslationModelSpec createZhEnModel()
         "Helsinki-NLP/opus-mt-zh-en (CC-BY 4.0), converted to CTranslate2 int8");
     // TODO(model-hashes): fill after the conversion pipeline finishes.
     spec.files = {
+        { QStringLiteral("config.json"),
+          QStringLiteral("opus-mt-zh-en-int8/config.json"),
+          QByteArrayLiteral("PLACEHOLDER"), 0 },
         { QStringLiteral("model.bin"),
           QStringLiteral("opus-mt-zh-en-int8/model.bin"),
           QByteArrayLiteral("PLACEHOLDER"), 0 },

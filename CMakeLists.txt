@@ -24,6 +24,7 @@ find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Core Gui Widgets Network Lingu
 include(FetchContent)
 
 set(BUILD_SHARED_LIBS ON) # ctranslate2 becomes a runtime DLL next to SnipNexs.exe
+set(OPENMP_RUNTIME "COMP" CACHE INTERNAL "Use the MSVC OpenMP runtime (vcomp)")
 set(WITH_MKL OFF CACHE INTERNAL "No MKL for CTranslate2")
 set(WITH_DNNL OFF CACHE INTERNAL "No DNNL for CTranslate2")
 set(BUILD_CLI OFF CACHE INTERNAL "No CTranslate2 CLI tools")
@@ -34,6 +35,10 @@ FetchContent_Declare(ctranslate2
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(ctranslate2)
+# Keep the runtime DLL next to SnipNexs.exe and the test executables so
+# Windows DLL search and CTest find it without extra PATH setup.
+set_target_properties(ctranslate2 PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 unset(BUILD_SHARED_LIBS)
 
 set(SPM_ENABLE_SHARED OFF CACHE INTERNAL "SentencePiece static only")
@@ -47,11 +52,17 @@ FetchContent_Declare(sentencepiece
 )
 FetchContent_MakeAvailable(sentencepiece)
 
+# SentencePiece exposes its headers via directory-scope include paths only,
+# so consumers must add the source include directory themselves.
+set(SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR "${sentencepiece_SOURCE_DIR}/src")
+
 set(SNIPNEXS_LICENSE_FILES
     LICENSE
     licenses/LGPL-3.0-only.txt
     licenses/MIT-Microsoft-SimpleRecorder.txt
     licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
+    licenses/CTranslate2-MIT.txt
+    licenses/SentencePiece-Apache-2.0.txt
 )
 
 qt_add_executable(SnipNexs WIN32
@@ -108,7 +119,7 @@ qt_add_executable(SnipNexs WIN32
     src/translate/TranslationTextSplitter.h
 )
 
-target_include_directories(SnipNexs PRIVATE src)
+target_include_directories(SnipNexs PRIVATE src ${SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR})
 
 target_link_libraries(SnipNexs PRIVATE
     Qt6::Core
@@ -173,6 +184,8 @@ install(FILES
     licenses/LGPL-3.0-only.txt
     licenses/MIT-Microsoft-SimpleRecorder.txt
     licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
+    licenses/CTranslate2-MIT.txt
+    licenses/SentencePiece-Apache-2.0.txt
     ${SNIPNEXS_QTBASE_SBOM}
     DESTINATION licenses
 )
@@ -380,6 +393,19 @@ if(BUILD_TESTING)
     target_link_libraries(BrowserTranslationTests PRIVATE Qt6::Core)
     add_test(NAME BrowserTranslationTests COMMAND BrowserTranslationTests)
     set_tests_properties(BrowserTranslationTests PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(TranslationTextSplitterTests
+        tests/TranslationTextSplitterTests.cpp
+        src/translate/TranslationTextSplitter.cpp
+        src/translate/TranslationTextSplitter.h
+    )
+    target_include_directories(TranslationTextSplitterTests PRIVATE src)
+    target_link_libraries(TranslationTextSplitterTests PRIVATE Qt6::Core)
+    add_test(NAME TranslationTextSplitterTests COMMAND TranslationTextSplitterTests)
+    set_tests_properties(TranslationTextSplitterTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
