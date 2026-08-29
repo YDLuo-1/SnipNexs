@@ -570,6 +570,11 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
         <translation>No text was recognized.</translation>
     </message>
     <message>
+        <location/>
+        <source>确认复制</source>
+        <translation>Confirm and copy</translation>
+    </message>
+    <message>
         <location filename="../src/ocr/OcrResultWindow.cpp" line="146"/>
         <source>复制文字</source>
         <translation>Copy Text</translation>

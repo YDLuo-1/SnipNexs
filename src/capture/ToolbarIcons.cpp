@@ -220,17 +220,12 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
     case ToolbarIcon::Arrow:
         drawArrow(painter, color);
         break;
-    case ToolbarIcon::Text: {
-        QPainterPath bar;
-        bar.moveTo(10, 13.5);
-        bar.lineTo(10, 10);
-        bar.lineTo(38, 10);
-        bar.lineTo(38, 13.5);
-        painter.drawPath(bar);
-        painter.drawLine(QPointF(24, 10), QPointF(24, 36.5));
-        painter.drawLine(QPointF(18.5, 36.5), QPointF(29.5, 36.5));
+    case ToolbarIcon::Text:
+        // I-beam text cursor: two serifs joined by a stem.
+        painter.drawLine(QPointF(18, 10), QPointF(30, 10));
+        painter.drawLine(QPointF(24, 10), QPointF(24, 38));
+        painter.drawLine(QPointF(18, 38), QPointF(30, 38));
         break;
-    }
     case ToolbarIcon::ColorPicker:
         drawColorPicker(painter, color);
         break;
@@ -261,6 +256,16 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
         painter.drawLine(QPointF(15, 15), QPointF(33, 33));
         painter.drawLine(QPointF(33, 15), QPointF(15, 33));
         break;
+    case ToolbarIcon::Check: {
+        // The primary "confirm" action gets a heavier stroke than the rest
+        // of the set so it reads as solid.
+        QPen pen = painter.pen();
+        pen.setWidthF(5.2);
+        painter.setPen(pen);
+        painter.drawPolyline(QVector<QPointF>{
+            QPointF(10, 25.5), QPointF(20, 35), QPointF(38, 13.5)});
+        break;
+    }
     }
     painter.end();
     return pixmap;
@@ -269,10 +274,14 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
 QIcon makeToolbarIcon(ToolbarIcon icon, bool onDarkBackground)
 {
     QIcon result;
-    const QColor normal = onDarkBackground
-        ? QColor(240, 244, 249)
-        : QColor(53, 65, 76);
-    const QColor active = onDarkBackground ? QColor(255, 255, 255) : QColor(20, 29, 37);
+    // The confirm check is the one accent-colored action in the set.
+    const bool accent = icon == ToolbarIcon::Check && !onDarkBackground;
+    const QColor normal = accent
+        ? QColor(35, 139, 218)
+        : (onDarkBackground ? QColor(240, 244, 249) : QColor(53, 65, 76));
+    const QColor active = accent
+        ? QColor(24, 104, 165)
+        : (onDarkBackground ? QColor(255, 255, 255) : QColor(20, 29, 37));
     const QColor disabled = onDarkBackground
         ? QColor(240, 244, 249, 90)
         : QColor(158, 168, 177);
