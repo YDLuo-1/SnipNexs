@@ -128,9 +128,17 @@ CaptureOverlay::CaptureOverlay(
     configureToolbarButton(ocrButton, ToolbarIcon::Ocr, tr("识字"));
     configureToolbarButton(pinButton, ToolbarIcon::Pin, tr("贴图"));
     configureToolbarButton(recordButton_, ToolbarIcon::Record, tr("录屏"));
-    configureToolbarButton(copyButton, ToolbarIcon::Copy, tr("复制"));
+    configureToolbarButton(copyButton, ToolbarIcon::Check, tr("确认复制"));
     configureToolbarButton(saveButton, ToolbarIcon::Save, tr("保存"));
     configureToolbarButton(cancelButton, ToolbarIcon::Cancel, tr("取消"));
+    auto addSeparator = [this, layout]() {
+        auto* separator = new QFrame(toolbar_);
+        separator->setStyleSheet(QStringLiteral("background: #c3cdd6;"));
+        separator->setFixedSize(1, 22);
+        layout->addSpacing(2);
+        layout->addWidget(separator);
+        layout->addSpacing(2);
+    };
     toolButtons_ = new QButtonGroup(this);
     toolButtons_->setExclusive(true);
     toolButtons_->addButton(penButton, static_cast<int>(AnnotationTool::Pen));
@@ -145,11 +153,14 @@ CaptureOverlay::CaptureOverlay(
     layout->addWidget(arrowButton);
     layout->addWidget(textButton);
     layout->addWidget(colorPickerButton_);
+    addSeparator();
     layout->addWidget(undoButton_);
     layout->addWidget(redoButton_);
+    addSeparator();
     layout->addWidget(ocrButton);
     layout->addWidget(pinButton);
     layout->addWidget(recordButton_);
+    addSeparator();
     layout->addWidget(copyButton);
     layout->addWidget(saveButton);
     layout->addWidget(cancelButton);

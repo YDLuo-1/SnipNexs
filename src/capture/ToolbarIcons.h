@@ -20,6 +20,7 @@ enum class ToolbarIcon {
     Copy,
     Save,
     Cancel,
+    Check,
 };
 
 // Renders a glyph on a 48x48 canvas with a uniform 3.4 px round stroke.
