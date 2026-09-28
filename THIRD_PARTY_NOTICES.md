@@ -51,6 +51,15 @@ The optional translation language packages are converted from the Helsinki-NLP O
 - Conversion pipeline and selection rationale: [docs/local-translation-decision.md](docs/local-translation-decision.md)
 - Each installed package records its file digests in `manifest.json`; attribution is also shown in the download prompt and can be reviewed offline in the package manifest.
 
+## Lucide Icons (toolbar icon geometry)
+
+The toolbar glyph geometry in `src/capture/ToolbarIcons.cpp` is derived from the Lucide Icons library. The 24x24 SVG path data was converted to build-time segment tables; no Lucide source files are distributed, only the derived coordinates plus this notice.
+
+- Project: <https://lucide.dev>
+- Source revision used by this distribution: tag `v1.48.0`
+- Code license: ISC License
+- License text: [licenses/Lucide-ISC.txt](licenses/Lucide-ISC.txt)
+
 ## Microsoft Visual C++ runtime
 
 The portable ZIP includes application-local release CRT DLLs copied only from the Visual Studio 2022 `VC/Redist/MSVC/.../x64/Microsoft.VC143.CRT` directory. This avoids an administrator-level prerequisite installation. These Microsoft files are distributed under the applicable Visual Studio license terms and are not part of SnipNexs or covered by its GPL license.

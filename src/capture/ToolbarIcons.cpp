@@ -3,199 +3,262 @@
 #include <QPainter>
 #include <QPainterPath>
 
+#include <cstddef>
+
+// Glyph geometry adopted from the Lucide Icons library, https://lucide.dev,
+// version 1.48.0 (ISC license, see licenses/Lucide-ISC.txt). The 24x24 SVG
+// path data was converted to these segment tables; rendering scales it 2x
+// onto the 48x48 icon canvas with the library's 2 px round stroke.
+
 namespace snipnexs {
 
 namespace {
 
-constexpr qreal kStroke = 3.4;
+struct Seg {
+    enum Kind { Move, Line, Cubic, Close } kind;
+    float p[6];
+};
 
-QPen iconPen(const QColor& color)
+struct Glyph {
+    const Seg* segs;
+    std::size_t count;
+};
+
+const Seg kPenSegs[] = {
+    {Seg::Move, {21.2f, 6.81f}},
+    {Seg::Cubic, {22.3f, 5.71f, 22.3f, 3.93f, 21.2f, 2.83f}},
+    {Seg::Cubic, {20.1f, 1.72f, 18.3f, 1.72f, 17.2f, 2.83f}},
+    {Seg::Line, {3.84f, 16.2f}},
+    {Seg::Cubic, {3.61f, 16.4f, 3.44f, 16.7f, 3.34f, 17.0f}},
+    {Seg::Line, {2.02f, 21.4f}},
+    {Seg::Cubic, {1.97f, 21.5f, 2.02f, 21.7f, 2.15f, 21.9f}},
+    {Seg::Cubic, {2.28f, 22.0f, 2.47f, 22.0f, 2.64f, 22.0f}},
+    {Seg::Line, {7.0f, 20.7f}},
+    {Seg::Cubic, {7.31f, 20.6f, 7.6f, 20.4f, 7.83f, 20.2f}},
+    {Seg::Close, {}},
+    {Seg::Move, {15.0f, 5.0f}},
+    {Seg::Line, {19.0f, 9.0f}},
+};
+const Seg kRectangleSegs[] = {
+    {Seg::Move, {5.0f, 3.0f}},
+    {Seg::Line, {19.0f, 3.0f}},
+    {Seg::Cubic, {20.1f, 3.0f, 21.0f, 3.9f, 21.0f, 5.0f}},
+    {Seg::Line, {21.0f, 19.0f}},
+    {Seg::Cubic, {21.0f, 20.1f, 20.1f, 21.0f, 19.0f, 21.0f}},
+    {Seg::Line, {5.0f, 21.0f}},
+    {Seg::Cubic, {3.9f, 21.0f, 3.0f, 20.1f, 3.0f, 19.0f}},
+    {Seg::Line, {3.0f, 5.0f}},
+    {Seg::Cubic, {3.0f, 3.9f, 3.9f, 3.0f, 5.0f, 3.0f}},
+    {Seg::Close, {}},
+};
+const Seg kArrowSegs[] = {
+    {Seg::Move, {7.0f, 7.0f}},
+    {Seg::Line, {17.0f, 7.0f}},
+    {Seg::Line, {17.0f, 17.0f}},
+    {Seg::Move, {7.0f, 17.0f}},
+    {Seg::Line, {17.0f, 7.0f}},
+};
+const Seg kTextSegs[] = {
+    {Seg::Move, {17.0f, 22.0f}},
+    {Seg::Line, {16.0f, 22.0f}},
+    {Seg::Cubic, {13.8f, 22.0f, 12.0f, 20.2f, 12.0f, 18.0f}},
+    {Seg::Line, {12.0f, 6.0f}},
+    {Seg::Cubic, {12.0f, 3.79f, 13.8f, 2.0f, 16.0f, 2.0f}},
+    {Seg::Line, {17.0f, 2.0f}},
+    {Seg::Move, {7.0f, 22.0f}},
+    {Seg::Line, {8.0f, 22.0f}},
+    {Seg::Cubic, {10.2f, 22.0f, 12.0f, 20.2f, 12.0f, 18.0f}},
+    {Seg::Move, {7.0f, 2.0f}},
+    {Seg::Line, {8.0f, 2.0f}},
+    {Seg::Cubic, {10.2f, 2.0f, 12.0f, 3.79f, 12.0f, 6.0f}},
+};
+const Seg kColorPickerSegs[] = {
+    {Seg::Move, {12.0f, 9.0f}},
+    {Seg::Line, {3.59f, 17.4f}},
+    {Seg::Cubic, {3.21f, 17.8f, 3.0f, 18.3f, 3.0f, 18.8f}},
+    {Seg::Line, {3.0f, 20.2f}},
+    {Seg::Cubic, {3.0f, 20.7f, 2.79f, 21.2f, 2.41f, 21.6f}},
+    {Seg::Cubic, {2.79f, 21.2f, 3.3f, 21.0f, 3.83f, 21.0f}},
+    {Seg::Line, {5.17f, 21.0f}},
+    {Seg::Cubic, {5.7f, 21.0f, 6.21f, 20.8f, 6.59f, 20.4f}},
+    {Seg::Line, {15.0f, 12.0f}},
+    {Seg::Move, {18.0f, 9.0f}},
+    {Seg::Line, {18.4f, 9.4f}},
+    {Seg::Cubic, {19.2f, 10.2f, 19.2f, 11.6f, 18.4f, 12.4f}},
+    {Seg::Cubic, {17.6f, 13.2f, 16.2f, 13.2f, 15.4f, 12.4f}},
+    {Seg::Line, {11.6f, 8.6f}},
+    {Seg::Cubic, {10.8f, 7.77f, 10.8f, 6.43f, 11.6f, 5.6f}},
+    {Seg::Cubic, {12.4f, 4.77f, 13.8f, 4.77f, 14.6f, 5.6f}},
+    {Seg::Line, {15.0f, 6.0f}},
+    {Seg::Line, {18.4f, 2.6f}},
+    {Seg::Cubic, {18.9f, 2.06f, 19.7f, 1.85f, 20.4f, 2.05f}},
+    {Seg::Cubic, {21.2f, 2.25f, 21.8f, 2.82f, 21.9f, 3.55f}},
+    {Seg::Cubic, {22.1f, 4.28f, 21.9f, 5.06f, 21.4f, 5.6f}},
+    {Seg::Close, {}},
+    {Seg::Move, {2.0f, 22.0f}},
+    {Seg::Line, {2.41f, 21.6f}},
+};
+const Seg kUndoSegs[] = {
+    {Seg::Move, {9.0f, 14.0f}},
+    {Seg::Line, {4.0f, 9.0f}},
+    {Seg::Line, {9.0f, 4.0f}},
+    {Seg::Move, {4.0f, 9.0f}},
+    {Seg::Line, {14.5f, 9.0f}},
+    {Seg::Cubic, {17.5f, 9.0f, 20.0f, 11.5f, 20.0f, 14.5f}},
+    {Seg::Cubic, {20.0f, 17.5f, 17.5f, 20.0f, 14.5f, 20.0f}},
+    {Seg::Line, {11.0f, 20.0f}},
+};
+const Seg kRedoSegs[] = {
+    {Seg::Move, {15.0f, 14.0f}},
+    {Seg::Line, {20.0f, 9.0f}},
+    {Seg::Line, {15.0f, 4.0f}},
+    {Seg::Move, {20.0f, 9.0f}},
+    {Seg::Line, {9.5f, 9.0f}},
+    {Seg::Cubic, {6.46f, 9.0f, 4.0f, 11.5f, 4.0f, 14.5f}},
+    {Seg::Cubic, {4.0f, 17.5f, 6.46f, 20.0f, 9.5f, 20.0f}},
+    {Seg::Line, {13.0f, 20.0f}},
+};
+const Seg kOcrSegs[] = {
+    {Seg::Move, {3.0f, 7.0f}},
+    {Seg::Line, {3.0f, 5.0f}},
+    {Seg::Cubic, {3.0f, 3.9f, 3.9f, 3.0f, 5.0f, 3.0f}},
+    {Seg::Line, {7.0f, 3.0f}},
+    {Seg::Move, {17.0f, 3.0f}},
+    {Seg::Line, {19.0f, 3.0f}},
+    {Seg::Cubic, {20.1f, 3.0f, 21.0f, 3.9f, 21.0f, 5.0f}},
+    {Seg::Line, {21.0f, 7.0f}},
+    {Seg::Move, {21.0f, 17.0f}},
+    {Seg::Line, {21.0f, 19.0f}},
+    {Seg::Cubic, {21.0f, 20.1f, 20.1f, 21.0f, 19.0f, 21.0f}},
+    {Seg::Line, {17.0f, 21.0f}},
+    {Seg::Move, {7.0f, 21.0f}},
+    {Seg::Line, {5.0f, 21.0f}},
+    {Seg::Cubic, {3.9f, 21.0f, 3.0f, 20.1f, 3.0f, 19.0f}},
+    {Seg::Line, {3.0f, 17.0f}},
+    {Seg::Move, {7.0f, 8.0f}},
+    {Seg::Line, {15.0f, 8.0f}},
+    {Seg::Move, {7.0f, 12.0f}},
+    {Seg::Line, {17.0f, 12.0f}},
+    {Seg::Move, {7.0f, 16.0f}},
+    {Seg::Line, {13.0f, 16.0f}},
+};
+const Seg kPinSegs[] = {
+    {Seg::Move, {12.0f, 17.0f}},
+    {Seg::Line, {12.0f, 22.0f}},
+    {Seg::Move, {9.0f, 10.8f}},
+    {Seg::Cubic, {9.0f, 11.5f, 8.57f, 12.2f, 7.89f, 12.5f}},
+    {Seg::Line, {6.11f, 13.5f}},
+    {Seg::Cubic, {5.43f, 13.8f, 5.0f, 14.5f, 5.0f, 15.2f}},
+    {Seg::Line, {5.0f, 16.0f}},
+    {Seg::Cubic, {5.0f, 16.6f, 5.45f, 17.0f, 6.0f, 17.0f}},
+    {Seg::Line, {18.0f, 17.0f}},
+    {Seg::Cubic, {18.6f, 17.0f, 19.0f, 16.6f, 19.0f, 16.0f}},
+    {Seg::Line, {19.0f, 15.2f}},
+    {Seg::Cubic, {19.0f, 14.5f, 18.6f, 13.8f, 17.9f, 13.5f}},
+    {Seg::Line, {16.1f, 12.5f}},
+    {Seg::Cubic, {15.4f, 12.2f, 15.0f, 11.5f, 15.0f, 10.8f}},
+    {Seg::Line, {15.0f, 7.0f}},
+    {Seg::Cubic, {15.0f, 6.45f, 15.4f, 6.0f, 16.0f, 6.0f}},
+    {Seg::Cubic, {17.1f, 6.0f, 18.0f, 5.1f, 18.0f, 4.0f}},
+    {Seg::Cubic, {18.0f, 2.9f, 17.1f, 2.0f, 16.0f, 2.0f}},
+    {Seg::Line, {8.0f, 2.0f}},
+    {Seg::Cubic, {6.9f, 2.0f, 6.0f, 2.9f, 6.0f, 4.0f}},
+    {Seg::Cubic, {6.0f, 5.1f, 6.9f, 6.0f, 8.0f, 6.0f}},
+    {Seg::Cubic, {8.55f, 6.0f, 9.0f, 6.45f, 9.0f, 7.0f}},
+    {Seg::Close, {}},
+};
+const Seg kRecordSegs[] = {
+    {Seg::Move, {16.0f, 13.0f}},
+    {Seg::Line, {21.2f, 16.5f}},
+    {Seg::Cubic, {21.4f, 16.6f, 21.6f, 16.6f, 21.7f, 16.5f}},
+    {Seg::Cubic, {21.9f, 16.4f, 22.0f, 16.3f, 22.0f, 16.1f}},
+    {Seg::Line, {22.0f, 7.87f}},
+    {Seg::Cubic, {22.0f, 7.69f, 21.9f, 7.53f, 21.7f, 7.44f}},
+    {Seg::Cubic, {21.6f, 7.35f, 21.4f, 7.35f, 21.2f, 7.44f}},
+    {Seg::Line, {16.0f, 10.5f}},
+    {Seg::Move, {4.0f, 6.0f}},
+    {Seg::Line, {14.0f, 6.0f}},
+    {Seg::Cubic, {15.1f, 6.0f, 16.0f, 6.9f, 16.0f, 8.0f}},
+    {Seg::Line, {16.0f, 16.0f}},
+    {Seg::Cubic, {16.0f, 17.1f, 15.1f, 18.0f, 14.0f, 18.0f}},
+    {Seg::Line, {4.0f, 18.0f}},
+    {Seg::Cubic, {2.9f, 18.0f, 2.0f, 17.1f, 2.0f, 16.0f}},
+    {Seg::Line, {2.0f, 8.0f}},
+    {Seg::Cubic, {2.0f, 6.9f, 2.9f, 6.0f, 4.0f, 6.0f}},
+    {Seg::Close, {}},
+};
+const Seg kCopySegs[] = {
+    {Seg::Move, {10.0f, 8.0f}},
+    {Seg::Line, {20.0f, 8.0f}},
+    {Seg::Cubic, {21.1f, 8.0f, 22.0f, 8.9f, 22.0f, 10.0f}},
+    {Seg::Line, {22.0f, 20.0f}},
+    {Seg::Cubic, {22.0f, 21.1f, 21.1f, 22.0f, 20.0f, 22.0f}},
+    {Seg::Line, {10.0f, 22.0f}},
+    {Seg::Cubic, {8.9f, 22.0f, 8.0f, 21.1f, 8.0f, 20.0f}},
+    {Seg::Line, {8.0f, 10.0f}},
+    {Seg::Cubic, {8.0f, 8.9f, 8.9f, 8.0f, 10.0f, 8.0f}},
+    {Seg::Close, {}},
+    {Seg::Move, {4.0f, 16.0f}},
+    {Seg::Cubic, {2.9f, 16.0f, 2.0f, 15.1f, 2.0f, 14.0f}},
+    {Seg::Line, {2.0f, 4.0f}},
+    {Seg::Cubic, {2.0f, 2.9f, 2.9f, 2.0f, 4.0f, 2.0f}},
+    {Seg::Line, {14.0f, 2.0f}},
+    {Seg::Cubic, {15.1f, 2.0f, 16.0f, 2.9f, 16.0f, 4.0f}},
+};
+const Seg kSaveSegs[] = {
+    {Seg::Move, {15.2f, 3.0f}},
+    {Seg::Cubic, {15.7f, 3.01f, 16.2f, 3.22f, 16.6f, 3.6f}},
+    {Seg::Line, {20.4f, 7.4f}},
+    {Seg::Cubic, {20.8f, 7.77f, 21.0f, 8.27f, 21.0f, 8.8f}},
+    {Seg::Line, {21.0f, 19.0f}},
+    {Seg::Cubic, {21.0f, 20.1f, 20.1f, 21.0f, 19.0f, 21.0f}},
+    {Seg::Line, {5.0f, 21.0f}},
+    {Seg::Cubic, {3.9f, 21.0f, 3.0f, 20.1f, 3.0f, 19.0f}},
+    {Seg::Line, {3.0f, 5.0f}},
+    {Seg::Cubic, {3.0f, 3.9f, 3.9f, 3.0f, 5.0f, 3.0f}},
+    {Seg::Close, {}},
+    {Seg::Move, {17.0f, 21.0f}},
+    {Seg::Line, {17.0f, 14.0f}},
+    {Seg::Cubic, {17.0f, 13.4f, 16.6f, 13.0f, 16.0f, 13.0f}},
+    {Seg::Line, {8.0f, 13.0f}},
+    {Seg::Cubic, {7.45f, 13.0f, 7.0f, 13.4f, 7.0f, 14.0f}},
+    {Seg::Line, {7.0f, 21.0f}},
+    {Seg::Move, {7.0f, 3.0f}},
+    {Seg::Line, {7.0f, 7.0f}},
+    {Seg::Cubic, {7.0f, 7.55f, 7.45f, 8.0f, 8.0f, 8.0f}},
+    {Seg::Line, {15.0f, 8.0f}},
+};
+const Seg kCancelSegs[] = {
+    {Seg::Move, {18.0f, 6.0f}},
+    {Seg::Line, {6.0f, 18.0f}},
+    {Seg::Move, {6.0f, 6.0f}},
+    {Seg::Line, {18.0f, 18.0f}},
+};
+const Seg kCheckSegs[] = {
+    {Seg::Move, {20.0f, 6.0f}},
+    {Seg::Line, {9.0f, 17.0f}},
+    {Seg::Line, {4.0f, 12.0f}},
+};
+
+Glyph glyphFor(ToolbarIcon icon)
 {
-    return QPen(color, kStroke, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-}
-
-void fillPath(QPainter& painter, const QPainterPath& path, const QColor& color)
-{
-    const QPen pen = painter.pen();
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(color);
-    painter.drawPath(path);
-    painter.setPen(pen);
-    painter.setBrush(Qt::NoBrush);
-}
-
-void drawPen(QPainter& painter, const QColor& color)
-{
-    painter.save();
-    painter.translate(24, 24);
-    painter.rotate(45);
-
-    QPainterPath tip;
-    tip.moveTo(-6, 6);
-    tip.lineTo(6, 6);
-    tip.lineTo(0, 15);
-    tip.closeSubpath();
-
-    painter.drawRoundedRect(QRectF(-6, -15, 12, 21), 3.5, 3.5);
-    painter.drawPath(tip);
-    painter.drawLine(QPointF(-6, -10), QPointF(6, -10));
-    painter.restore();
-}
-
-void drawArrow(QPainter& painter, const QColor& color)
-{
-    QPainterPath head;
-    head.moveTo(39, 9);
-    head.lineTo(39, 23);
-    head.lineTo(25, 9);
-    head.closeSubpath();
-
-    painter.drawLine(QPointF(11, 37), QPointF(32.5, 15.5));
-    fillPath(painter, head, color);
-}
-
-void drawColorPicker(QPainter& painter, const QColor& color)
-{
-    QPainterPath body;
-    body.addEllipse(QRectF(10, 11, 28, 28));
-    QPainterPath bite;
-    bite.addEllipse(QRectF(29, 30, 12, 12));
-    painter.drawPath(body.subtracted(bite));
-
-    painter.save();
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(color);
-    for (const QPointF dot : { QPointF(18, 20), QPointF(25, 16.5),
-         QPointF(31.5, 21), QPointF(17.5, 29) }) {
-        painter.drawEllipse(dot, 2.1, 2.1);
+    switch (icon) {
+    case ToolbarIcon::Pen: return {kPenSegs, 13};
+    case ToolbarIcon::Rectangle: return {kRectangleSegs, 10};
+    case ToolbarIcon::Arrow: return {kArrowSegs, 5};
+    case ToolbarIcon::Text: return {kTextSegs, 12};
+    case ToolbarIcon::ColorPicker: return {kColorPickerSegs, 24};
+    case ToolbarIcon::Undo: return {kUndoSegs, 8};
+    case ToolbarIcon::Redo: return {kRedoSegs, 8};
+    case ToolbarIcon::Ocr: return {kOcrSegs, 22};
+    case ToolbarIcon::Pin: return {kPinSegs, 23};
+    case ToolbarIcon::Record: return {kRecordSegs, 18};
+    case ToolbarIcon::Copy: return {kCopySegs, 16};
+    case ToolbarIcon::Save: return {kSaveSegs, 21};
+    case ToolbarIcon::Cancel: return {kCancelSegs, 4};
+    case ToolbarIcon::Check: return {kCheckSegs, 3};
     }
-    painter.restore();
-}
-
-void drawUndo(QPainter& painter, const QColor& color)
-{
-    QPainterPath curve;
-    curve.moveTo(38, 34);
-    curve.cubicTo(36, 20, 26, 12, 15, 15);
-
-    QPainterPath head;
-    head.moveTo(15, 10.5);
-    head.lineTo(15, 21.5);
-    head.lineTo(6.5, 16);
-    head.closeSubpath();
-
-    painter.drawPath(curve);
-    fillPath(painter, head, color);
-}
-
-void drawOcr(QPainter& painter, const QColor& color)
-{
-    QPainterPath corner;
-    corner.moveTo(8, 17);
-    corner.lineTo(8, 9);
-    corner.lineTo(16, 9);
-    painter.drawPath(corner);
-
-    corner = QPainterPath();
-    corner.moveTo(32, 9);
-    corner.lineTo(40, 9);
-    corner.lineTo(40, 17);
-    painter.drawPath(corner);
-
-    corner = QPainterPath();
-    corner.moveTo(40, 31);
-    corner.lineTo(40, 39);
-    corner.lineTo(32, 39);
-    painter.drawPath(corner);
-
-    corner = QPainterPath();
-    corner.moveTo(16, 39);
-    corner.lineTo(8, 39);
-    corner.lineTo(8, 31);
-    painter.drawPath(corner);
-
-    painter.drawLine(QPointF(17, 18.5), QPointF(31, 18.5));
-    painter.drawLine(QPointF(24, 18.5), QPointF(24, 30.5));
-    painter.drawLine(QPointF(20, 30.5), QPointF(28, 30.5));
-}
-
-void drawPin(QPainter& painter, const QColor& color)
-{
-    // Filled push-pin silhouette: head bar, concave flare into a wide
-    // skirt, pointed needle below the center.
-    QPainterPath pin;
-    pin.moveTo(20, 9);
-    pin.lineTo(28, 9);
-    pin.quadTo(31, 9, 31, 12);
-    pin.lineTo(31, 15);
-    pin.quadTo(31.5, 18.5, 35, 20.5);
-    pin.quadTo(37.5, 22, 35, 23.5);
-    pin.quadTo(31, 25.5, 25.4, 25.5);
-    pin.lineTo(25.4, 33);
-    pin.lineTo(24, 36);
-    pin.lineTo(22.6, 33);
-    pin.lineTo(22.6, 25.5);
-    pin.quadTo(17, 25.5, 13, 23.5);
-    pin.quadTo(10.5, 22, 13, 20.5);
-    pin.quadTo(16.5, 18.5, 17, 15);
-    pin.lineTo(17, 12);
-    pin.quadTo(17, 9, 20, 9);
-    pin.closeSubpath();
-
-    painter.save();
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(color);
-    painter.drawPath(pin);
-    painter.restore();
-}
-
-void drawRecord(QPainter& painter, const QColor& color)
-{
-    QPainterPath flap;
-    flap.moveTo(33.5, 20.5);
-    flap.lineTo(40, 15.5);
-    flap.lineTo(40, 32.5);
-    flap.lineTo(33.5, 27.5);
-    flap.closeSubpath();
-
-    painter.drawRoundedRect(QRectF(8, 14, 22, 20), 4.5, 4.5);
-    fillPath(painter, flap, color);
-}
-
-void drawCopy(QPainter& painter, const QColor& color)
-{
-    QPainterPath front;
-    front.addRoundedRect(QRectF(18, 10, 21, 25), 3.5, 3.5);
-    QPainterPath back;
-    back.addRoundedRect(QRectF(9, 13, 21, 25), 3.5, 3.5);
-
-    painter.drawPath(back.subtracted(front));
-    painter.drawPath(front);
-}
-
-void drawSave(QPainter& painter, const QColor& color)
-{
-    QPainterPath outer;
-    outer.moveTo(27, 9);
-    outer.lineTo(38, 20);
-    outer.lineTo(38, 35.5);
-    outer.quadTo(38, 37, 36.5, 37);
-    outer.lineTo(11.5, 37);
-    outer.quadTo(10, 37, 10, 35.5);
-    outer.lineTo(10, 10.5);
-    outer.quadTo(10, 9, 11.5, 9);
-    outer.lineTo(27, 9);
-
-    QPainterPath label;
-    label.moveTo(16, 37);
-    label.lineTo(16, 28);
-    label.quadTo(16, 26, 18, 26);
-    label.lineTo(30, 26);
-    label.quadTo(32, 26, 32, 28);
-    label.lineTo(32, 37);
-
-    painter.drawPath(outer);
-    painter.drawPath(label);
+    return {nullptr, 0};
 }
 
 } // namespace
@@ -207,66 +270,31 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(iconPen(color));
+    painter.scale(2.0, 2.0);
+    painter.setPen(QPen(color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter.setBrush(Qt::NoBrush);
 
-    switch (icon) {
-    case ToolbarIcon::Pen:
-        drawPen(painter, color);
-        break;
-    case ToolbarIcon::Rectangle:
-        painter.drawRoundedRect(QRectF(9, 13, 30, 22), 4, 4);
-        break;
-    case ToolbarIcon::Arrow:
-        drawArrow(painter, color);
-        break;
-    case ToolbarIcon::Text:
-        // I-beam text cursor: two serifs joined by a stem.
-        painter.drawLine(QPointF(18, 10), QPointF(30, 10));
-        painter.drawLine(QPointF(24, 10), QPointF(24, 38));
-        painter.drawLine(QPointF(18, 38), QPointF(30, 38));
-        break;
-    case ToolbarIcon::ColorPicker:
-        drawColorPicker(painter, color);
-        break;
-    case ToolbarIcon::Undo:
-    case ToolbarIcon::Redo:
-        if (icon == ToolbarIcon::Redo) {
-            painter.translate(48, 0);
-            painter.scale(-1, 1);
+    const Glyph glyph = glyphFor(icon);
+    QPainterPath path;
+    for (std::size_t i = 0; i < glyph.count; ++i) {
+        const Seg& segment = glyph.segs[i];
+        switch (segment.kind) {
+        case Seg::Move:
+            path.moveTo(segment.p[0], segment.p[1]);
+            break;
+        case Seg::Line:
+            path.lineTo(segment.p[0], segment.p[1]);
+            break;
+        case Seg::Cubic:
+            path.cubicTo(segment.p[0], segment.p[1], segment.p[2],
+                         segment.p[3], segment.p[4], segment.p[5]);
+            break;
+        case Seg::Close:
+            path.closeSubpath();
+            break;
         }
-        drawUndo(painter, color);
-        break;
-    case ToolbarIcon::Ocr:
-        drawOcr(painter, color);
-        break;
-    case ToolbarIcon::Pin:
-        drawPin(painter, color);
-        break;
-    case ToolbarIcon::Record:
-        drawRecord(painter, color);
-        break;
-    case ToolbarIcon::Copy:
-        drawCopy(painter, color);
-        break;
-    case ToolbarIcon::Save:
-        drawSave(painter, color);
-        break;
-    case ToolbarIcon::Cancel:
-        painter.drawLine(QPointF(15, 15), QPointF(33, 33));
-        painter.drawLine(QPointF(33, 15), QPointF(15, 33));
-        break;
-    case ToolbarIcon::Check: {
-        // The primary "confirm" action gets a heavier stroke than the rest
-        // of the set so it reads as solid.
-        QPen pen = painter.pen();
-        pen.setWidthF(5.2);
-        painter.setPen(pen);
-        painter.drawPolyline(QVector<QPointF>{
-            QPointF(10, 25.5), QPointF(20, 35), QPointF(38, 13.5)});
-        break;
     }
-    }
+    painter.drawPath(path);
     painter.end();
     return pixmap;
 }

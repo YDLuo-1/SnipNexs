@@ -174,6 +174,15 @@ OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
             tabs_),
         tr("翻译引擎"));
 
+    tabs_->addTab(
+        createLicenseBrowser(
+            QStringLiteral("Toolbar icons"),
+            tr("工具栏图标的字形几何来自 Lucide Icons（ISC）；路径数据已转换为"
+               "构建期坐标表，未分发 Lucide 源文件本身。"),
+            resourceText(QStringLiteral(":/licenses/licenses/Lucide-ISC.txt")),
+            tabs_),
+        tr("图标"));
+
     root->addWidget(tabs_);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     closeButton_ = buttons->button(QDialogButtonBox::Close);

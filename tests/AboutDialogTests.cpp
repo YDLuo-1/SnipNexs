@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 
     snipnexs::OpenSourceLicensesDialog licenses;
     const auto* tabs = licenses.findChild<QTabWidget*>(QStringLiteral("licenseTabs"));
-    ok &= tabs != nullptr && tabs->count() == 4;
+    ok &= tabs != nullptr && tabs->count() == 5;
 
     QString allLicenseText;
     for (const auto* browser : licenses.findChildren<QTextBrowser*>()) {
