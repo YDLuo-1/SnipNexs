@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryFile>
 
@@ -166,6 +167,14 @@ bool findTranslationModelSpec(
 
 QString translationModelsBaseUrl()
 {
+    // Users behind restrictive networks can point this at a mirror or a
+    // local server (http(s)/file URL) hosting the same directory layout;
+    // SHA-256 verification applies regardless of the source.
+    const QString overrideUrl = QSettings().value(
+        QStringLiteral("translation/modelBaseUrl")).toString().trimmed();
+    if (!overrideUrl.isEmpty()) {
+        return overrideUrl;
+    }
     return QStringLiteral(
         "https://github.com/YDLuo-1/SnipNexs/releases/download/translation-models-v1");
 }

@@ -86,4 +86,4 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 
 - 若 CTranslate2 在 MSVC 上出现无法修复的构建/运行回归，转评 Bergamot 或 ONNX Runtime，并更新本文档。
 - 若用户实际反馈"要求装 Ollama 可接受且质量需求强烈"，再启用 Ollama 后端（预期为一个独立的 HTTP 后端实现，不改上层）。
-- 若模型包的分发成本（GitHub Release 在部分网络的可达性）成为实际障碍，增设镜像配置项，不改变包格式与校验机制。
+- 若模型包的分发成本（GitHub Release 在部分网络的可达性）成为实际障碍，增设镜像配置项，不改变包格式与校验机制。**已实现**：`QSettings` 键 `translation/modelBaseUrl` 可覆盖分发基址（http(s)/file URL，目录布局需与 Release 一致），SHA-256 校验与来源无关，始终生效。
