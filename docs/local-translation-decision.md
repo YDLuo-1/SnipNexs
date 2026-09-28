@@ -53,7 +53,7 @@ v0.8.0 的翻译流程是：本地 OCR 得到文字后，由用户确认，把�
 
 - **Argos Translate 现成模型包**：最初的首选，但 2026-08-28 实测其分发服务器（`pkg.argosopentech.com`、`download.argosopentech.com`）均不可达，索引仓库也无该文件；不作为依赖来源，仅在需要对照时人工取用。
 - **采纳**：从 HuggingFace 拉取 Helsinki-NLP 官方仓库（`pytorch_model.bin` + `source.spm`/`target.spm`），用 CTranslate2 官方 Python 转换器转换为 int8 CTranslate2 格式，自建模型包。转换工具链仅在本机开发期使用（Python venv，位于 `build/tools-env`，不入库），发布产物只有转换结果。
-- **模型包格式**：不打包 zip（避免为此引入解压库），而是逐文件分发——`model.bin`、`source_vocabulary.json`/`target_vocabulary.json`、`source.spm`/`target.spm`，每个文件在目录中静态登记 URL 与 SHA-256，客户端逐文件校验后落盘，manifest 最后写入作为安装完成标记。
+- **模型包格式**：不打包 zip（避免为此引入解压库），而是逐文件分发。GitHub Release 附件是扁平命名空间（不能有子目录，且全 Release 内资产名唯一），因此资产命名为 `{包id}__{文件名}`（如 `opus-mt-en-zh-int8__model.bin`），代码目录中登记对应的 remotePath 与 SHA-256；客户端逐文件校验后落盘，manifest 最后写入作为安装完成标记。此格式在 2026-09-28 首次发布时踩坑验证：子目录式 URL 会 404，同名 model.bin 会在两个语言包间互相覆盖。
 - 模型许可证已核实：`Helsinki-NLP/opus-mt-zh-en` 为 CC-BY 4.0，`opus-mt-en-zh` 为 Apache 2.0，均与 GPL v3 兼容（署名要求在"关于"页与模型信息中体现）。**明确禁用 NLLB 系列（CC-BY-NC，禁止商用，与 GPL 分发不兼容）**；质量更高的 Tatoeba-Challenge tc-big 系列在 HuggingFace 检索未果（2026-08-28），列为后续观察项。未来引入其他模型时逐个核实许可证。
 
 ### 架构落位
