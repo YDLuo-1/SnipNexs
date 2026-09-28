@@ -22,7 +22,7 @@
 - 区域录屏可开始、停止并生成 MP4；悬浮条默认位于目标屏幕右下角，空白处可拖动且停止按钮仍可点击；捕获排除可在真实桌面组合器下验证。
 - 从托盘退出后没有残留 `SnipNexs.exe` 进程。
 
-桌面验收应写入 `docs/validation-v0.8.0.md`，记录日期、系统、显示缩放、发布包哈希、逐项结果和未验证项。没有证据的项目必须写“未验证”，不能写“通过”。
+桌面验收应写入 `docs/releases/validation-v0.8.0.md`，记录日期、系统、显示缩放、发布包哈希、逐项结果和未验证项。没有证据的项目必须写“未验证”，不能写“通过”。
 
 ## GitHub 发布
 
@@ -33,7 +33,7 @@ git push origin main
 git push origin v0.8.0
 gh release create v0.8.0 `
   dist\SnipNexs-0.8.0-win64.zip `
-  --title "SnipNexs v0.8.0" --notes-file docs\release-notes-v0.8.0.md
+  --title "SnipNexs v0.8.0" --notes-file docs\releases\release-notes-v0.8.0.md
 ```
 
 普通用户只需下载应用 ZIP；GitHub 会在附件旁直接显示 SHA-256 摘要。Qt 6.11.2 源码复用本仓库 [`v0.7.0` Release](https://github.com/YDLuo-1/SnipNexs/releases/tag/v0.7.0) 中已发布且校验一致的副本。
