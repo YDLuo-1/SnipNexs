@@ -72,6 +72,19 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 
 浏览器翻译指向 Google 在大陆不可达的问题，v1 通过"本地翻译"按钮的存在间接解决；把浏览器翻译目标做成可配置（Bing 等）作为后续独立小改进，不与本次引擎工作耦合。
 
+## 双引擎分层（2026-09-28 增补）
+
+在默认引擎上线后，用户要求同屏提供更高质量的翻译选项。结论：**保留 OPUS-MT 作为默认引擎，新增可选"高质量引擎"**，两层共存而非替换：
+
+1. **默认引擎**（OPUS-MT int8，约 80 MB/方向）：亚秒级，粗翻，满足快速查看场景。本文档此前的全部结论继续适用。
+2. **高质量引擎**（腾讯 [Hy-MT2-1.8B](https://huggingface.co/tencent/Hy-MT2-1.8B) GGUF Q4_K_M，约 1.1 GB，Apache-2.0）：经 llama.cpp（MIT，commit 4da6337）CPU 推理，质量接近大模型，代价是下载体积与每段数秒的速度。单一 prompt 驱动模型覆盖 zh-en 双向（prompt 格式为模型官方模板 `Translate the following segment into {Chinese|English}, without additional explanation：`）。
+
+集成要点（实测）：
+
+- llama.cpp 对该模型架构（GGUF `general.architecture = "hunyuan-dense"`）原生支持；MSVC 下需对 llama 目标追加 `/Zc:char8_t-`（上游按 C++17 构建，本项目全局 C++20 会破坏其 u8 字面量）。
+- 两个引擎各自独立的会话槽位（懒加载、常驻复用），`TranslationService` 对上层只暴露引擎枚举参数，`OcrResultWindow` 用下拉框让用户按次选择并持久化。
+- 高质量包走同一套"逐文件 SHA-256 校验 + 原子 manifest"安装机制，分发于独立 Release（`translation-models-hymt2-v1`）。
+
 ## 实现验证记录（2026-08-28）
 
 以下事实在集成阶段实测得出，是后续维护的重要约束：

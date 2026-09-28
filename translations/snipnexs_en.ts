@@ -117,12 +117,24 @@
         <translation>Missing model file: %1</translation>
     </message>
     <message>
-        <location line="+19"/>
+        <location filename="../src/translate/LlamaTranslation.cpp" line="+81"/>
+        <location filename="../src/translate/LocalTranslation.cpp" line="+19"/>
         <source>加载翻译模型失败：%1</source>
         <translation>Failed to load the translation model: %1</translation>
     </message>
     <message>
         <location line="+15"/>
+        <source>创建翻译上下文失败。</source>
+        <translation>Failed to create the translation context.</translation>
+    </message>
+    <message>
+        <location line="+87"/>
+        <location line="+27"/>
+        <source>翻译失败：模型推理出错。</source>
+        <translation>Translation failed: model inference error.</translation>
+    </message>
+    <message>
+        <location filename="../src/translate/LocalTranslation.cpp" line="+15"/>
         <source>无法读取分词模型：%1</source>
         <translation>Cannot read the tokenizer model: %1</translation>
     </message>
@@ -132,12 +144,13 @@
         <translation>Failed to parse the tokenizer model: %1</translation>
     </message>
     <message>
-        <location line="+48"/>
+        <location filename="../src/translate/LlamaTranslation.cpp" line="-40"/>
+        <location filename="../src/translate/LocalTranslation.cpp" line="+48"/>
         <source>分词失败：无法对输入文本编码。</source>
         <translation>Tokenization failed: the input text could not be encoded.</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location filename="../src/translate/LocalTranslation.cpp" line="+34"/>
         <source>翻译失败：%1</source>
         <translation>Translation failed: %1</translation>
     </message>
@@ -198,7 +211,7 @@ You can still click the Region Capture button.</translation>
 <context>
     <name>snipnexs</name>
     <message>
-        <location filename="../src/translate/TranslationService.cpp" line="+46"/>
+        <location filename="../src/translate/TranslationService.cpp" line="+67"/>
         <source>当前语言组合暂无本地翻译模型。</source>
         <translation>No local translation model is available for this language pair.</translation>
     </message>
@@ -549,7 +562,7 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
 <context>
     <name>snipnexs::OcrResultWindow</name>
     <message>
-        <location filename="../src/ocr/OcrResultWindow.cpp" line="+105"/>
+        <location filename="../src/ocr/OcrResultWindow.cpp" line="+118"/>
         <source>本地翻译失败</source>
         <translation>Local translation failed</translation>
     </message>
@@ -578,7 +591,17 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
         <translation type="vanished">Confirm and copy</translation>
     </message>
     <message>
+        <location line="+5"/>
+        <source>默认引擎(快)</source>
+        <translation>Default engine (fast)</translation>
+    </message>
+    <message>
         <location line="+1"/>
+        <source>高质量引擎(更准，较慢)</source>
+        <translation>High-quality engine (better, slower)</translation>
+    </message>
+    <message>
+        <location line="+13"/>
         <source>复制文字</source>
         <translation>Copy Text</translation>
     </message>
@@ -642,7 +665,7 @@ The screenshot will not be sent. Continue?</translation>
         <translation>Check your default browser settings.</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+39"/>
         <source>正在下载其他模型</source>
         <translation>Another download in progress</translation>
     </message>

@@ -26,6 +26,8 @@ TranslationModelSpec createEnZhModel()
 {
     TranslationModelSpec spec;
     spec.id = QStringLiteral("opus-mt-en-zh-int8");
+    spec.engine = TranslationEngineId::OpusMt;
+    spec.distributionBase = defaultOpusModelsBaseUrl();
     spec.sourceLanguage = QStringLiteral("en");
     spec.targetLanguage = QStringLiteral("zh");
     spec.licenseNote = QStringLiteral(
@@ -60,6 +62,8 @@ TranslationModelSpec createZhEnModel()
 {
     TranslationModelSpec spec;
     spec.id = QStringLiteral("opus-mt-zh-en-int8");
+    spec.engine = TranslationEngineId::OpusMt;
+    spec.distributionBase = defaultOpusModelsBaseUrl();
     spec.sourceLanguage = QStringLiteral("zh");
     spec.targetLanguage = QStringLiteral("en");
     spec.licenseNote = QStringLiteral(
@@ -117,16 +121,37 @@ QString defaultModelsDirectory()
 
 } // namespace
 
+TranslationModelSpec createHyMt2Model()
+{
+    TranslationModelSpec spec;
+    spec.id = QStringLiteral("hy-mt2-1.8b-q4");
+    spec.engine = TranslationEngineId::LlamaHyMT2;
+    spec.distributionBase = defaultLlamaModelsBaseUrl();
+    spec.sourceLanguage = QStringLiteral("auto");
+    spec.targetLanguage = QStringLiteral("auto");
+    spec.licenseNote = QStringLiteral(
+        "tencent/Hy-MT2-1.8B GGUF Q4_K_M (Apache-2.0), runs via llama.cpp");
+    spec.files = {
+        { QStringLiteral("Hy-MT2-1.8B-Q4_K_M.gguf"),
+          QStringLiteral("Hy-MT2-1.8B-Q4_K_M.gguf"),
+          QByteArrayLiteral("dc5f44fcf1fa496ee7ad725982c0c8c553a4de00259b53af84c4b89fb0c06699"),
+          1133080448 },
+    };
+    return spec;
+}
+
 QList<TranslationModelSpec> knownTranslationModels()
 {
     static const QList<TranslationModelSpec> models = {
         createEnZhModel(),
         createZhEnModel(),
+        createHyMt2Model(),
     };
     return models;
 }
 
 bool findTranslationModelSpec(
+    TranslationEngineId engine,
     const QString& sourceLanguageTag,
     const QString& targetLanguage,
     TranslationModelSpec& spec)
@@ -135,25 +160,33 @@ bool findTranslationModelSpec(
         QStringLiteral("zh"), Qt::CaseInsensitive)
         ? QStringLiteral("zh")
         : QStringLiteral("en");
+    const QString requestedSource = normalizedTarget == QStringLiteral("zh")
+        ? QStringLiteral("en")
+        : QStringLiteral("zh");
 
     for (const TranslationModelSpec& candidate : knownTranslationModels()) {
-        if (candidate.targetLanguage == normalizedTarget
-            && candidate.sourceLanguage
-                == (normalizedTarget == QStringLiteral("zh")
-                    ? QStringLiteral("en")
-                    : QStringLiteral("zh"))) {
+        if (candidate.engine != engine) {
+            continue;
+        }
+        if (candidate.engine == TranslationEngineId::LlamaHyMT2) {
+            // One prompt-driven model covers both zh-en directions.
             spec = candidate;
             return true;
         }
-    }
-
-    // The OCR tag decides the direction when the caller did not ask for a
-    // specific target: Chinese text goes to English, the rest to Chinese.
-    const QString source = sourceLanguageTag.startsWith(
-        QStringLiteral("zh"), Qt::CaseInsensitive)
-        ? QStringLiteral("zh")
-        : QStringLiteral("en");
-    for (const TranslationModelSpec& candidate : knownTranslationModels()) {
+        if (candidate.targetLanguage == normalizedTarget
+            && candidate.sourceLanguage == requestedSource) {
+            spec = candidate;
+            return true;
+        }
+        if (!targetLanguage.isEmpty()) {
+            continue;
+        }
+        // The OCR tag decides the direction when the caller did not ask
+        // for a specific target.
+        const QString source = sourceLanguageTag.startsWith(
+            QStringLiteral("zh"), Qt::CaseInsensitive)
+            ? QStringLiteral("zh")
+            : QStringLiteral("en");
         if (candidate.sourceLanguage == source
             && candidate.targetLanguage
                 == (source == QStringLiteral("zh") ? QStringLiteral("en")
@@ -163,6 +196,31 @@ bool findTranslationModelSpec(
         }
     }
     return false;
+}
+
+QString defaultOpusModelsBaseUrl()
+{
+    return QStringLiteral(
+        "https://github.com/YDLuo-1/SnipNexs/releases/download/translation-models-v1");
+}
+
+QString defaultLlamaModelsBaseUrl()
+{
+    return QStringLiteral(
+        "https://github.com/YDLuo-1/SnipNexs/releases/download/translation-models-hymt2-v1");
+}
+
+QString effectiveModelBaseUrl(const TranslationModelSpec& spec)
+{
+    // Users behind restrictive networks can point this at a mirror or a
+    // local server (http(s)/file URL) hosting the same asset layout;
+    // SHA-256 verification applies regardless of the source.
+    const QString overrideUrl = QSettings().value(
+        QStringLiteral("translation/modelBaseUrl")).toString().trimmed();
+    if (!overrideUrl.isEmpty()) {
+        return overrideUrl;
+    }
+    return spec.distributionBase;
 }
 
 QString translationModelsBaseUrl()

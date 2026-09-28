@@ -1,15 +1,32 @@
 #include "TranslationService.h"
 
+#include "LlamaTranslation.h"
 #include "LocalTranslation.h"
 #include "TranslationModels.h"
 #include "TranslationTextSplitter.h"
 
+#include <QDir>
 #include <QElapsedTimer>
 #include <QMetaObject>
 
 #include <utility>
 
 namespace snipnexs {
+
+namespace {
+
+struct SessionSlot {
+    void*& session;
+    QString& packageId;
+};
+
+QString modelFilePathFor(const TranslationModelSpec& spec)
+{
+    return QDir(translationModelDirectory(spec.id))
+        .filePath(spec.files.first().fileName);
+}
+
+} // namespace
 
 TranslationService::TranslationService(QObject* parent)
     : QObject(parent)
@@ -25,24 +42,28 @@ TranslationService::~TranslationService()
 {
     workerThread_.quit();
     workerThread_.wait();
-    if (session_) {
+    if (opusSession_) {
         local_translation::closeSession(
-            static_cast<local_translation::Session*>(session_));
-        session_ = nullptr;
+            static_cast<local_translation::Session*>(opusSession_));
+    }
+    if (llamaSession_) {
+        local_llama::closeSession(
+            static_cast<local_llama::Session*>(llamaSession_));
     }
 }
 
 bool TranslationService::translate(
     const QString& text,
     const QString& sourceLanguageTag,
-    const QString& targetLanguage)
+    const QString& targetLanguage,
+    TranslationEngineId engine)
 {
     if (busy_ || text.trimmed().isEmpty()) {
         return false;
     }
 
     TranslationModelSpec spec;
-    if (!findTranslationModelSpec(sourceLanguageTag, targetLanguage, spec)) {
+    if (!findTranslationModelSpec(engine, sourceLanguageTag, targetLanguage, spec)) {
         emit failed(tr("当前语言组合暂无本地翻译模型。"));
         return false;
     }
@@ -55,28 +76,48 @@ bool TranslationService::translate(
     emit busyChanged(true);
     QMetaObject::invokeMethod(
         workerContext_,
-        [this, text = text, spec = std::move(spec)]() {
+        [this, text = text, spec = std::move(spec), engine, targetLanguage]() {
             QElapsedTimer timer;
             timer.start();
 
             QString error;
-            if (!session_ || sessionPackageId_ != spec.id) {
-                if (session_) {
-                    local_translation::closeSession(
-                        static_cast<local_translation::Session*>(session_));
-                }
-                session_ = local_translation::openSession(
-                    translationModelDirectory(spec.id), &error);
-                sessionPackageId_ = session_ ? spec.id : QString();
-            }
-
             QString resultText;
-            if (session_) {
-                const QStringList segments = splitTranslationSegments(text);
-                resultText = local_translation::translateSegments(
-                    *static_cast<local_translation::Session*>(session_),
-                    segments,
-                    &error);
+            if (engine == TranslationEngineId::LlamaHyMT2) {
+                if (!llamaSession_ || llamaPackageId_ != spec.id) {
+                    if (llamaSession_) {
+                        local_llama::closeSession(
+                            static_cast<local_llama::Session*>(llamaSession_));
+                    }
+                    llamaSession_ = local_llama::openSession(
+                        modelFilePathFor(spec), &error);
+                    llamaPackageId_ = llamaSession_ ? spec.id : QString();
+                }
+                if (llamaSession_) {
+                    resultText = local_llama::translateSegments(
+                        *static_cast<local_llama::Session*>(llamaSession_),
+                        splitTranslationSegments(text),
+                        targetLanguage.startsWith(QStringLiteral("zh"),
+                                                  Qt::CaseInsensitive)
+                            ? QStringLiteral("zh")
+                            : QStringLiteral("en"),
+                        &error);
+                }
+            } else {
+                if (!opusSession_ || opusPackageId_ != spec.id) {
+                    if (opusSession_) {
+                        local_translation::closeSession(
+                            static_cast<local_translation::Session*>(opusSession_));
+                    }
+                    opusSession_ = local_translation::openSession(
+                        translationModelDirectory(spec.id), &error);
+                    opusPackageId_ = opusSession_ ? spec.id : QString();
+                }
+                if (opusSession_) {
+                    resultText = local_translation::translateSegments(
+                        *static_cast<local_translation::Session*>(opusSession_),
+                        splitTranslationSegments(text),
+                        &error);
+                }
             }
 
             const qint64 elapsedMs = timer.elapsed();

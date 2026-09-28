@@ -48,6 +48,7 @@ The optional translation language packages are converted from the Helsinki-NLP O
 
 - `opus-mt-en-zh-int8`: Helsinki-NLP/opus-mt-en-zh, Apache License 2.0
 - `opus-mt-zh-en-int8`: Helsinki-NLP/opus-mt-zh-en, CC-BY 4.0
+- `hy-mt2-1.8b-q4`: Tencent/Hy-MT2-1.8B GGUF Q4_K_M, Apache License 2.0 (prompt-driven; covers both Chinese-English directions)
 - Conversion pipeline and selection rationale: [docs/local-translation-decision.md](docs/local-translation-decision.md)
 - Each installed package records its file digests in `manifest.json`; attribution is also shown in the download prompt and can be reviewed offline in the package manifest.
 
@@ -59,6 +60,16 @@ The toolbar glyph geometry in `src/capture/ToolbarIcons.cpp` is derived from the
 - Source revision used by this distribution: tag `v1.48.0`
 - Code license: ISC License
 - License text: [licenses/Lucide-ISC.txt](licenses/Lucide-ISC.txt)
+
+## llama.cpp (high-quality local translation engine)
+
+SnipNexs dynamically links llama.cpp to run the optional high-quality translation model. The library is built from a pinned commit and distributed as separate shared libraries next to the Qt DLLs.
+
+- Project: <https://github.com/ggml-org/llama.cpp>
+- Source revision used by this distribution: commit `4da6337`
+- Code license: MIT License
+- License text: [licenses/llama.cpp-MIT.txt](licenses/llama.cpp-MIT.txt)
+- The distributed DLLs statically include ggml components shipped inside the llama.cpp repository at the revision listed above (MIT).
 
 ## Microsoft Visual C++ runtime
 

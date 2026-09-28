@@ -3,6 +3,7 @@
 #include <QString>
 #include <QWidget>
 
+class QComboBox;
 class QEvent;
 class QLabel;
 class QPlainTextEdit;
@@ -53,6 +54,7 @@ private:
     int downloadPercent_ = -1;
     qint64 translationElapsedMs_ = 0;
 
+    QComboBox* engineCombo_ = nullptr;
     QLabel* summaryLabel_ = nullptr;
     QPlainTextEdit* editor_ = nullptr;
     QLabel* translationStatusLabel_ = nullptr;

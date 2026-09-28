@@ -6,6 +6,7 @@
 #include "translate/TranslationService.h"
 
 #include <QClipboard>
+#include <QComboBox>
 #include <QDesktopServices>
 #include <QEvent>
 #include <QGuiApplication>
@@ -14,6 +15,7 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSettings>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -56,12 +58,15 @@ OcrResultWindow::OcrResultWindow(
 
     auto* buttons = new QHBoxLayout();
     copyButton_ = new QPushButton(this);
+    engineCombo_ = new QComboBox(this);
+    engineCombo_->setObjectName(QStringLiteral("engineCombo"));
     localTranslateButton_ = new QPushButton(this);
     chineseButton_ = new QPushButton(this);
     englishButton_ = new QPushButton(this);
     closeButton_ = new QPushButton(this);
     buttons->addWidget(copyButton_);
     buttons->addStretch();
+    buttons->addWidget(engineCombo_);
     buttons->addWidget(localTranslateButton_);
     buttons->addWidget(chineseButton_);
     buttons->addWidget(englishButton_);
@@ -86,6 +91,14 @@ OcrResultWindow::OcrResultWindow(
         translateTo(QStringLiteral("en"));
     });
     connect(closeButton_, &QPushButton::clicked, this, &QWidget::close);
+
+    connect(engineCombo_, &QComboBox::activated, this, [this](int index) {
+        if (index >= 0) {
+            QSettings settings;
+            settings.setValue(QStringLiteral("translation/engine"),
+                              engineCombo_->itemData(index).toString());
+        }
+    });
 
     if (translationService_) {
         connect(translationService_, &TranslationService::translated, this,
@@ -143,6 +156,24 @@ void OcrResultWindow::retranslateUi()
             .arg(languageTag_.isEmpty() ? tr("自动语言") : languageTag_)
             .arg(elapsedMs_));
     editor_->setPlaceholderText(tr("未识别到文字。"));
+    if (engineCombo_ != nullptr) {
+        const QVariant previous = engineCombo_->currentData();
+        engineCombo_->blockSignals(true);
+        engineCombo_->clear();
+        engineCombo_->addItem(tr("默认引擎(快)"), QStringLiteral("opusmt"));
+        engineCombo_->addItem(tr("高质量引擎(更准，较慢)"), QStringLiteral("hymt2"));
+        const QVariant saved = QSettings().value(
+            QStringLiteral("translation/engine"), QStringLiteral("opusmt"));
+        const int index = engineCombo_->findData(saved);
+        engineCombo_->setCurrentIndex(index >= 0 ? index : 0);
+        if (previous.isValid()) {
+            const int previousIndex = engineCombo_->findData(previous);
+            if (previousIndex >= 0) {
+                engineCombo_->setCurrentIndex(previousIndex);
+            }
+        }
+        engineCombo_->blockSignals(false);
+    }
     copyButton_->setText(tr("复制文字"));
     copyTranslationButton_->setText(tr("复制译文"));
     localTranslateButton_->setText(tr("本地翻译"));
@@ -188,7 +219,11 @@ void OcrResultWindow::startLocalTranslation()
     translationState_ = TranslationState::Translating;
     translationStatusLabel_->show();
     updateTranslationStatus();
-    if (!translationService_->translate(text, languageTag_, QString())) {
+    const TranslationEngineId engine = engineCombo_->currentData().toString()
+            == QStringLiteral("hymt2")
+        ? TranslationEngineId::LlamaHyMT2
+        : TranslationEngineId::OpusMt;
+    if (!translationService_->translate(text, languageTag_, QString(), engine)) {
         // translate() reports the reason through signals; busy or missing
         // models are handled by busyChanged/modelMissing handlers.
         if (translationState_ == TranslationState::Translating) {

@@ -87,7 +87,7 @@ void TranslationModelInstaller::downloadNextFile()
 
     const TranslationModelFile& file = spec_.files.at(nextFileIndex_);
     activeFileName_ = file.fileName;
-    const QUrl url(QDir(translationModelsBaseUrl()).filePath(file.remotePath));
+    const QUrl url(QDir(effectiveModelBaseUrl(spec_)).filePath(file.remotePath));
     if (!url.isValid()) {
         emit finished(false, tr("模型下载地址无效:%1").arg(file.remotePath));
         return;

@@ -57,6 +57,35 @@ FetchContent_MakeAvailable(sentencepiece)
 # so consumers must add the source include directory themselves.
 set(SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR "${sentencepiece_SOURCE_DIR}/src")
 
+# llama.cpp (MIT) runs the high-quality GGUF translation model
+# (tencent Hy-MT2-1.8B, Apache-2.0) fully on CPU. Shared build so the
+# runtime DLLs deploy next to SnipNexs.exe like the other engines.
+set(LLAMA_BUILD_IS_DEV OFF CACHE INTERNAL "No llama dev build")
+set(LLAMA_BUILD_TESTS OFF CACHE INTERNAL "No llama tests")
+set(LLAMA_BUILD_TOOLS OFF CACHE INTERNAL "No llama tools")
+set(LLAMA_BUILD_EXAMPLES OFF CACHE INTERNAL "No llama examples")
+set(LLAMA_BUILD_SERVER OFF CACHE INTERNAL "No llama server")
+set(LLAMA_CURL OFF CACHE INTERNAL "No curl dependency")
+set(BUILD_SHARED_LIBS ON)
+FetchContent_Declare(llama
+    GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
+    GIT_TAG 4da6337
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(llama)
+unset(BUILD_SHARED_LIBS)
+foreach(_llama_target llama ggml ggml-base ggml-cpu)
+    if(TARGET ${_llama_target})
+        set_target_properties(${_llama_target} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+        if(MSVC)
+            # llama.cpp uses u8 string literals but builds as C++17 upstream;
+            # our project-wide C++20 would break them without this.
+            target_compile_options(${_llama_target} PRIVATE /Zc:char8_t-)
+        endif()
+    endif()
+endforeach()
+
 set(SNIPNEXS_LICENSE_FILES
     LICENSE
     licenses/LGPL-3.0-only.txt
@@ -65,6 +94,7 @@ set(SNIPNEXS_LICENSE_FILES
     licenses/CTranslate2-MIT.txt
     licenses/SentencePiece-Apache-2.0.txt
     licenses/Lucide-ISC.txt
+    licenses/llama.cpp-MIT.txt
 )
 
 qt_add_executable(SnipNexs WIN32
@@ -111,6 +141,8 @@ qt_add_executable(SnipNexs WIN32
     src/recorder/ScreenRecorderService.h
     src/translate/BrowserTranslation.cpp
     src/translate/BrowserTranslation.h
+    src/translate/LlamaTranslation.cpp
+    src/translate/LlamaTranslation.h
     src/translate/LocalTranslation.cpp
     src/translate/LocalTranslation.h
     src/translate/TranslationModelInstaller.cpp
@@ -132,6 +164,7 @@ target_link_libraries(SnipNexs PRIVATE
     Qt6::Network
     ctranslate2
     sentencepiece-static
+    llama
     d3d11
     dwmapi
     dxgi
@@ -191,6 +224,7 @@ install(FILES
     licenses/CTranslate2-MIT.txt
     licenses/SentencePiece-Apache-2.0.txt
     licenses/Lucide-ISC.txt
+    licenses/llama.cpp-MIT.txt
     ${SNIPNEXS_QTBASE_SBOM}
     DESTINATION licenses
 )
@@ -441,6 +475,35 @@ if(BUILD_TESTING)
     add_test(NAME ToolbarIconsTests COMMAND ToolbarIconsTests)
     set_tests_properties(ToolbarIconsTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(TranslationModelsTests
+        tests/TranslationModelsTests.cpp
+        src/translate/TranslationModels.cpp
+        src/translate/TranslationModels.h
+    )
+    target_include_directories(TranslationModelsTests PRIVATE src)
+    target_link_libraries(TranslationModelsTests PRIVATE Qt6::Core)
+    add_test(NAME TranslationModelsTests COMMAND TranslationModelsTests)
+    set_tests_properties(TranslationModelsTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(LocalLlamaTests
+        tests/LocalLlamaTests.cpp
+        src/translate/LlamaTranslation.cpp
+        src/translate/LlamaTranslation.h
+        src/translate/TranslationTextSplitter.cpp
+        src/translate/TranslationTextSplitter.h
+    )
+    target_include_directories(LocalLlamaTests PRIVATE src)
+    target_link_libraries(LocalLlamaTests PRIVATE Qt6::Core llama)
+    add_test(NAME LocalLlamaTests COMMAND LocalLlamaTests)
+    set_tests_properties(LocalLlamaTests PROPERTIES
+        SKIP_RETURN_CODE 77
+        TIMEOUT 300
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
