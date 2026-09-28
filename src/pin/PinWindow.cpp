@@ -13,6 +13,7 @@
 #include <QPen>
 #include <QResizeEvent>
 #include <QScreen>
+#include <QTimer>
 #include <QToolButton>
 #include <QWheelEvent>
 
@@ -36,6 +37,15 @@ PinWindow::PinWindow(const QImage& image, QWidget* parent)
     pixmap_.setDevicePixelRatio(image.devicePixelRatio() > 0.0
         ? image.devicePixelRatio()
         : 1.0);
+
+    initialImageWidth_ = pixmap_.deviceIndependentSize().width();
+
+    zoomIndicatorTimer_ = new QTimer(this);
+    zoomIndicatorTimer_->setSingleShot(true);
+    connect(zoomIndicatorTimer_, &QTimer::timeout, this, [this]() {
+        zoomIndicatorVisible_ = false;
+        update();
+    });
 
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     setWindowTitle(QStringLiteral("SnipNexs Pin"));
@@ -200,6 +210,25 @@ void PinWindow::paintEvent(QPaintEvent*)
     painter.setPen(QPen(QColor(255, 255, 255, 70), 1.0));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(target.adjusted(0.5, 0.5, -0.5, -0.5));
+
+    if (zoomIndicatorVisible_) {
+        const QString text = QStringLiteral("%1%").arg(zoomPercent_);
+        QFont indicatorFont = font();
+        indicatorFont.setPixelSize(13);
+        indicatorFont.setBold(true);
+        painter.setFont(indicatorFont);
+        const QRectF textRect = painter.boundingRect(
+            QRectF(target), 0, text);
+        QRectF pill = textRect.adjusted(-10, -5, 10, 5);
+        pill.moveCenter(QPointF(target.center().x(),
+                                target.top() + pill.height() / 2 + 6));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(24, 30, 40, 220));
+        painter.drawRoundedRect(pill, 4, 4);
+        painter.setPen(QColor(240, 244, 249));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawText(pill, Qt::AlignCenter, text);
+    }
 }
 
 void PinWindow::resizeEvent(QResizeEvent* event)
@@ -217,6 +246,7 @@ void PinWindow::wheelEvent(QWheelEvent* event)
 
     const qreal steps = event->angleDelta().y() / 120.0;
     resizeBy(std::pow(1.1, steps), event->position());
+    showZoomIndicator();
     event->accept();
 }
 
@@ -256,6 +286,17 @@ void PinWindow::resizeBy(qreal factor, const QPointF& anchorPosition)
         resizedImage.left() + normalized.x() * resizedImage.width(),
         resizedImage.top() + normalized.y() * resizedImage.height());
     move(globalAnchor - resizedAnchor.toPoint());
+}
+
+void PinWindow::showZoomIndicator()
+{
+    if (initialImageWidth_ > 0.0) {
+        zoomPercent_ = qRound(
+            imageRect().width() / initialImageWidth_ * 100.0);
+    }
+    zoomIndicatorVisible_ = true;
+    zoomIndicatorTimer_->start(900);
+    update();
 }
 
 QRectF PinWindow::imageRect() const
