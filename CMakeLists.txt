@@ -358,6 +358,7 @@ if(BUILD_TESTING)
         Qt6::Gui
         Qt6::Widgets
         Qt6::Test
+        dbghelp
     )
     add_test(NAME PinWindowTests COMMAND PinWindowTests)
     set_tests_properties(PinWindowTests PROPERTIES

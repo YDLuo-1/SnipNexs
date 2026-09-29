@@ -1,5 +1,40 @@
 #include "pin/PinWindow.h"
 
+#include <windows.h>
+#include <dbghelp.h>
+#include <cstdio>
+
+namespace {
+
+LONG WINAPI crashHandler(EXCEPTION_POINTERS* info)
+{
+    void* frames[32] = {};
+    const USHORT count = CaptureStackBackTrace(0, 32, frames, nullptr);
+    fprintf(stderr, "CRASH code=%lx addr=%p\n",
+        static_cast<unsigned long>(info->ExceptionRecord->ExceptionCode),
+        info->ExceptionRecord->ExceptionAddress);
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+    SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+    for (USHORT i = 0; i < count; ++i) {
+        char buffer[sizeof(SYMBOL_INFO) + 256] = {};
+        auto* symbol = reinterpret_cast<SYMBOL_INFO*>(buffer);
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        symbol->MaxNameLen = 255;
+        DWORD64 displacement = 0;
+        if (SymFromAddr(GetCurrentProcess(),
+                reinterpret_cast<DWORD64>(frames[i]), &displacement, symbol)) {
+            fprintf(stderr, "  #%hu %s +0x%llx\n",
+                i, symbol->Name, static_cast<unsigned long long>(displacement));
+        } else {
+            fprintf(stderr, "  #%hu %p\n", i, frames[i]);
+        }
+    }
+    fflush(stderr);
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+} // namespace
+
 #include <QApplication>
 #include <QContextMenuEvent>
 #include <QFrame>
@@ -87,6 +122,7 @@ bool openMenuAndTrigger(snipnexs::PinWindow& pin, int actionIndex, bool& actionC
 
 int main(int argc, char* argv[])
 {
+    SetUnhandledExceptionFilter(crashHandler);
     QApplication app(argc, argv);
     QImage image(320, 200, QImage::Format_ARGB32_Premultiplied);
     image.fill(QColor(40, 160, 200));
