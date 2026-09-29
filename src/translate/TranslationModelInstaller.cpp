@@ -38,6 +38,7 @@ TranslationModelInstaller::~TranslationModelInstaller()
         activeReply_->abort();
     }
     delete activeFile_;
+    cleanupPartialFiles();
 }
 
 void TranslationModelInstaller::start()

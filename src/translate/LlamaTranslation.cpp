@@ -6,7 +6,6 @@
 
 #include <llama.h>
 
-#include <exception>
 #include <string>
 #include <thread>
 #include <vector>

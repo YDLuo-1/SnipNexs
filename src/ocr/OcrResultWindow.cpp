@@ -124,6 +124,7 @@ OcrResultWindow::OcrResultWindow(
                 localTranslateButton_->setEnabled(!busy);
             });
     } else {
+        engineCombo_->hide();
         localTranslateButton_->hide();
     }
 
