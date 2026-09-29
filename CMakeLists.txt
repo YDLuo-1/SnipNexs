@@ -172,6 +172,16 @@ target_link_libraries(SnipNexs PRIVATE
     windowsapp
 )
 
+if(MSVC)
+    # The translation engines load on first use instead of every startup:
+    # llama.dll pulls in the ggml family and ctranslate2.dll maps model
+    # machinery users may never touch (delay-load helper required).
+    target_link_options(SnipNexs PRIVATE
+        "/DELAYLOAD:ctranslate2.dll"
+        "/DELAYLOAD:llama.dll")
+    target_link_libraries(SnipNexs PRIVATE delayimp)
+endif()
+
 target_compile_definitions(SnipNexs PRIVATE
     UNICODE
     _UNICODE
