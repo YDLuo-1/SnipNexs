@@ -93,7 +93,7 @@ set(SNIPNEXS_LICENSE_FILES
     licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
     licenses/CTranslate2-MIT.txt
     licenses/SentencePiece-Apache-2.0.txt
-    licenses/Lucide-ISC.txt
+    licenses/Material-Symbols-Apache-2.0.txt
     licenses/llama.cpp-MIT.txt
 )
 
@@ -233,7 +233,7 @@ install(FILES
     licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
     licenses/CTranslate2-MIT.txt
     licenses/SentencePiece-Apache-2.0.txt
-    licenses/Lucide-ISC.txt
+    licenses/Material-Symbols-Apache-2.0.txt
     licenses/llama.cpp-MIT.txt
     ${SNIPNEXS_QTBASE_SBOM}
     DESTINATION licenses

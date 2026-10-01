@@ -52,14 +52,14 @@ The optional translation language packages are converted from the Helsinki-NLP O
 - Conversion pipeline and selection rationale: [docs/local-translation-decision.md](docs/local-translation-decision.md)
 - Each installed package records its file digests in `manifest.json`; attribution is also shown in the download prompt and can be reviewed offline in the package manifest.
 
-## Lucide Icons (toolbar icon geometry)
+## Material Symbols Rounded (toolbar icon geometry)
 
-The toolbar glyph geometry in `src/capture/ToolbarIcons.cpp` is derived from the Lucide Icons library. The 24x24 SVG path data was converted to build-time segment tables; no Lucide source files are distributed, only the derived coordinates plus this notice.
+The toolbar glyph geometry in `src/capture/ToolbarIcons.cpp` is derived from the Material Symbols Rounded set. Tools use the fill weight (solid silhouette) and geometric shapes the default outlined weight. The SVG path data was converted to build-time segment tables; no upstream source files are distributed, only the derived coordinates plus this notice.
 
-- Project: <https://lucide.dev>
-- Source revision used by this distribution: tag `v1.48.0`
-- Code license: ISC License
-- License text: [licenses/Lucide-ISC.txt](licenses/Lucide-ISC.txt)
+- Project: <https://fonts.google.com/icons> (google/material-design-icons)
+- Source revision used by this distribution: fonts.gstatic.com short-term release, fetched 2026-10-02
+- Code license: Apache License 2.0
+- License text: [licenses/Material-Symbols-Apache-2.0.txt](licenses/Material-Symbols-Apache-2.0.txt)
 
 ## llama.cpp (high-quality local translation engine)
 

@@ -177,9 +177,10 @@ OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
     tabs_->addTab(
         createLicenseBrowser(
             QStringLiteral("Toolbar icons"),
-            tr("工具栏图标的字形几何来自 Lucide Icons（ISC）；路径数据已转换为"
-               "构建期坐标表，未分发 Lucide 源文件本身。"),
-            resourceText(QStringLiteral(":/licenses/licenses/Lucide-ISC.txt")),
+            tr("工具栏图标的字形几何来自 Material Symbols Rounded（Apache-2.0）；"
+               "路径数据已转换为构建期坐标表，未分发上游源文件本身。"),
+            resourceText(QStringLiteral(
+                ":/licenses/licenses/Material-Symbols-Apache-2.0.txt")),
             tabs_),
         tr("图标"));
 
