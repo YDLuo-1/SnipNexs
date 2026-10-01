@@ -263,17 +263,10 @@ Glyph glyphFor(ToolbarIcon icon)
 
 } // namespace
 
-QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
+namespace {
+
+QPainterPath pathFor(ToolbarIcon icon)
 {
-    QPixmap pixmap(48, 48);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.scale(2.0, 2.0);
-    painter.setPen(QPen(color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    painter.setBrush(Qt::NoBrush);
-
     const Glyph glyph = glyphFor(icon);
     QPainterPath path;
     for (std::size_t i = 0; i < glyph.count; ++i) {
@@ -294,14 +287,44 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
             break;
         }
     }
-    painter.drawPath(path);
+    return path;
+}
+
+} // namespace
+
+QPixmap drawToolbarIconAt(
+    ToolbarIcon icon, const QColor& color, int logicalSize, qreal devicePixelRatio)
+{
+    const qreal deviceSize = logicalSize * devicePixelRatio;
+    QPixmap pixmap(qRound(deviceSize), qRound(deviceSize));
+    pixmap.fill(Qt::transparent);
+    pixmap.setDevicePixelRatio(devicePixelRatio);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    // A DPR-tagged pixmap paints in LOGICAL coordinates; scaling by
+    // deviceSize/24 would double-apply the ratio and clip the glyph.
+    const qreal scale = static_cast<qreal>(logicalSize) / 24.0;
+    painter.scale(scale, scale);
+    painter.setPen(QPen(color, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(pathFor(icon));
     painter.end();
     return pixmap;
+}
+
+QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
+{
+    return drawToolbarIconAt(icon, color, 24, 2.0);
 }
 
 QIcon makeToolbarIcon(ToolbarIcon icon, bool onDarkBackground)
 {
     QIcon result;
+    // Pixel-perfect variants for the display sizes toolbars actually use
+    // (23 = capture toolbar, 20 = pin toolbar) across common scale factors.
+    const QList<int> logicalSizes = { 20, 23 };
+    const QList<qreal> scaleFactors = { 1.0, 1.25, 1.5, 2.0 };
     // The confirm check is the one accent-colored action in the set.
     const bool accent = icon == ToolbarIcon::Check && !onDarkBackground;
     const QColor normal = accent
@@ -313,11 +336,22 @@ QIcon makeToolbarIcon(ToolbarIcon icon, bool onDarkBackground)
     const QColor disabled = onDarkBackground
         ? QColor(240, 244, 249, 90)
         : QColor(158, 168, 177);
-    result.addPixmap(drawToolbarIcon(icon, normal), QIcon::Normal, QIcon::Off);
-    result.addPixmap(drawToolbarIcon(icon, active), QIcon::Active, QIcon::Off);
-    result.addPixmap(drawToolbarIcon(icon, disabled), QIcon::Disabled, QIcon::Off);
-    result.addPixmap(drawToolbarIcon(icon, QColor(255, 255, 255)), QIcon::Normal, QIcon::On);
-    result.addPixmap(drawToolbarIcon(icon, QColor(255, 255, 255)), QIcon::Active, QIcon::On);
+    for (const int logicalSize : logicalSizes) {
+        for (const qreal scaleFactor : scaleFactors) {
+            result.addPixmap(drawToolbarIconAt(
+                icon, normal, logicalSize, scaleFactor), QIcon::Normal, QIcon::Off);
+            result.addPixmap(drawToolbarIconAt(
+                icon, active, logicalSize, scaleFactor), QIcon::Active, QIcon::Off);
+            result.addPixmap(drawToolbarIconAt(
+                icon, disabled, logicalSize, scaleFactor), QIcon::Disabled, QIcon::Off);
+            result.addPixmap(drawToolbarIconAt(
+                icon, QColor(255, 255, 255), logicalSize, scaleFactor),
+                QIcon::Normal, QIcon::On);
+            result.addPixmap(drawToolbarIconAt(
+                icon, QColor(255, 255, 255), logicalSize, scaleFactor),
+                QIcon::Active, QIcon::On);
+        }
+    }
     return result;
 }
 

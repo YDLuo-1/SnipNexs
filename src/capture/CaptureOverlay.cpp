@@ -10,6 +10,7 @@
 #include <QEvent>
 #include <QFrame>
 #include <QFont>
+#include <QGraphicsDropShadowEffect>
 #include <QFontMetrics>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -48,7 +49,7 @@ void configureToolbarButton(
     button->setIconSize(QSize(23, 23));
     button->setToolTip(tooltip);
     button->setAccessibleName(tooltip);
-    button->setFixedSize(36, 34);
+    button->setFixedSize(32, 30);
 }
 
 }
@@ -93,6 +94,11 @@ CaptureOverlay::CaptureOverlay(
     toolbar_ = new QFrame(this);
     toolbar_->setObjectName(QStringLiteral("captureToolbar"));
     toolbar_->setCursor(Qt::ArrowCursor);
+    auto* toolbarShadow = new QGraphicsDropShadowEffect(toolbar_);
+    toolbarShadow->setBlurRadius(16);
+    toolbarShadow->setOffset(0, 2);
+    toolbarShadow->setColor(QColor(0, 0, 0, 55));
+    toolbar_->setGraphicsEffect(toolbarShadow);
     auto* layout = new QHBoxLayout(toolbar_);
     layout->setContentsMargins(5, 5, 5, 5);
     layout->setSpacing(2);
@@ -133,8 +139,8 @@ CaptureOverlay::CaptureOverlay(
     configureToolbarButton(cancelButton, ToolbarIcon::Cancel, tr("取消"));
     auto addSeparator = [this, layout]() {
         auto* separator = new QFrame(toolbar_);
-        separator->setStyleSheet(QStringLiteral("background: #c3cdd6;"));
-        separator->setFixedSize(1, 22);
+        separator->setStyleSheet(QStringLiteral("background: #d5dde4;"));
+        separator->setFixedSize(1, 20);
         layout->addSpacing(2);
         layout->addWidget(separator);
         layout->addSpacing(2);
@@ -167,10 +173,10 @@ CaptureOverlay::CaptureOverlay(
     toolbar_->hide();
 
     toolbar_->setStyleSheet(QStringLiteral(R"(
-        QFrame#captureToolbar { background: #f7f9fb; border: 1px solid #b8c3cd; border-radius: 5px; }
-        QPushButton { padding: 0; background: transparent; border: 0; border-radius: 4px; }
-        QPushButton:hover { background: #e6edf3; }
-        QPushButton:pressed { background: #d8e2e9; }
+        QFrame#captureToolbar { background: #ffffff; border: 1px solid #c9d4de; border-radius: 6px; }
+        QPushButton { padding: 0; background: transparent; border: 0; border-radius: 5px; }
+        QPushButton:hover { background: #e8f1f9; }
+        QPushButton:pressed { background: #d7e7f4; }
         QPushButton:checked { background: #238bda; }
         QPushButton:disabled { background: transparent; }
     )"));
