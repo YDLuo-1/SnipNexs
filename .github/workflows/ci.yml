@@ -40,4 +40,4 @@ jobs:
       - name: Test
         # NativeScreenRecorderTests samples WGC timing and is sensitive to
         # VM scheduling; allow up to three attempts for that test only.
-        run: ctest --preset windows-release --output-on-failure --repeat until-pass,3
+        run: ctest --preset windows-release --output-on-failure --repeat until-pass:3
