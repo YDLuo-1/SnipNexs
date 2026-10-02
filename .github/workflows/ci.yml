@@ -12,23 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt 6.11.2
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.11.2'
-          arch: 'win64_msvc2022_64'
-          cache: true
-          # aqtinstall 3.3.0 fails to resolve new Qt patch metadata (3.2.x works)
-          aqtversion: '==3.2.*'
-          mirror: https://qt.mirror.constant.com
+      - name: Restore Qt 6.11.2 kit
+        # The online Qt repository has no desktop repository metadata for
+        # 6.11.2 yet (empty placeholder dirs), so CI restores our pinned kit
+        # from a release asset instead of aqtinstall.
+        run: |
+          curl -sL --retry 3 -o D:/qt-kit.zip https://github.com/YDLuo-1/SnipNexs/releases/download/ci-deps-qt-6.11.2/Qt-6.11.2-msvc2022_64.zip
+          Expand-Archive -Path D:/qt-kit.zip -DestinationPath D:/
+          Add-Content $env:GITHUB_ENV "SNIPNEXS_QT_DIR=D:/Qt/6.11.2/msvc2022_64"
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Configure
         run: cmake --preset windows-release
-        env:
-          SNIPNEXS_QT_DIR: ${{ env.QT_ROOT_DIR }}
 
       - name: Build
         run: cmake --build --preset windows-release --parallel
