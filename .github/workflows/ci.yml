@@ -24,6 +24,11 @@ jobs:
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Pin CMake 3.31
+        # CMake 4 rejects third_party cmake_minimum_required(VERSION <3.5)
+        # that CTranslate2 vendored dependencies still carry.
+        run: python -m pip install "cmake==3.31.*" && cmake --version
+
       - name: Configure
         run: cmake --preset windows-release
 
