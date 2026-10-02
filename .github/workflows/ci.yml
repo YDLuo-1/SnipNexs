@@ -18,6 +18,8 @@ jobs:
           version: '6.11.2'
           arch: 'win64_msvc2022_64'
           cache: true
+          # the default mirrors lag behind brand-new Qt patch releases
+          mirror: https://qt.mirror.constant.com
 
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
