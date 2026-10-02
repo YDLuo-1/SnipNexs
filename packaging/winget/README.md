@@ -3,7 +3,7 @@
 Submit to https://github.com/microsoft/winget-pkgs via PR:
 `manifests/y/YDLuo/SnipNexs/0.8.0/` with the three files below
 (`YDLuo.SnipNexs.yaml`, `.installer.yaml`, `.locale.en-US.yaml`).
-Fill `<SHA256>` with the SHA-256 of `SnipNexs-0.8.0-win64.zip` printed by
+Fill `0d074c2403b536c46e4849e698d4bba4b46aaefc67e390fe365c1f63934ff418` with the SHA-256 of `SnipNexs-0.8.0-win64.zip` printed by
 `scripts/package-release.ps1` (also shown on the GitHub Release).
 
 ---
@@ -37,7 +37,7 @@ Installers:
       - RelativeFilePath: bin/SnipNexs.exe
         PortableCommandAlias: snipnexs
     InstallerUrl: https://github.com/YDLuo-1/SnipNexs/releases/download/v0.8.0/SnipNexs-0.8.0-win64.zip
-    InstallerSha256: <SHA256>
+    InstallerSha256: 0d074c2403b536c46e4849e698d4bba4b46aaefc67e390fe365c1f63934ff418
 ManifestType: installer
 ManifestVersion: 1.6.0
 
