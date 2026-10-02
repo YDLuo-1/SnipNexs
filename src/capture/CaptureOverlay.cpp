@@ -134,7 +134,7 @@ CaptureOverlay::CaptureOverlay(
     configureToolbarButton(ocrButton, ToolbarIcon::Ocr, tr("识字"));
     configureToolbarButton(pinButton, ToolbarIcon::Pin, tr("贴图"));
     configureToolbarButton(recordButton_, ToolbarIcon::Record, tr("录屏"));
-    configureToolbarButton(copyButton, ToolbarIcon::Check, tr("确认复制"));
+    configureToolbarButton(copyButton, ToolbarIcon::Copy, tr("复制"));
     configureToolbarButton(saveButton, ToolbarIcon::Save, tr("保存"));
     configureToolbarButton(cancelButton, ToolbarIcon::Cancel, tr("取消"));
     auto addSeparator = [this, layout]() {

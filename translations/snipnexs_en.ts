@@ -117,7 +117,7 @@
         <translation>Missing model file: %1</translation>
     </message>
     <message>
-        <location filename="../src/translate/LlamaTranslation.cpp" line="+81"/>
+        <location filename="../src/translate/LlamaTranslation.cpp" line="+80"/>
         <location filename="../src/translate/LocalTranslation.cpp" line="+19"/>
         <source>加载翻译模型失败：%1</source>
         <translation>Failed to load the translation model: %1</translation>
@@ -219,7 +219,7 @@ You can still click the Region Capture button.</translation>
 <context>
     <name>snipnexs::AboutDialog</name>
     <message>
-        <location filename="../src/app/AboutDialog.cpp" line="+238"/>
+        <location filename="../src/app/AboutDialog.cpp" line="+239"/>
         <location line="+26"/>
         <source>关于 Qt</source>
         <translation>About Qt</translation>
@@ -388,12 +388,12 @@ You can still click the Region Capture button.</translation>
 <context>
     <name>snipnexs::CaptureOverlay</name>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="+72"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="+73"/>
         <source>SnipNexs Capture</source>
         <translation>SnipNexs Capture</translation>
     </message>
     <message>
-        <location line="+48"/>
+        <location line="+53"/>
         <source>画笔</source>
         <translation>Pen</translation>
     </message>
@@ -418,12 +418,11 @@ You can still click the Region Capture button.</translation>
         <translation>Color picker</translation>
     </message>
     <message>
-        <location line="+7"/>
         <source>确认复制</source>
-        <translation>Confirm and copy</translation>
+        <translation type="vanished">Confirm and copy</translation>
     </message>
     <message>
-        <location line="+61"/>
+        <location line="+68"/>
         <source>输入文字，回车完成</source>
         <translation>Type text and press Enter</translation>
     </message>
@@ -453,11 +452,12 @@ You can still click the Region Capture button.</translation>
         <translation>Record</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>复制</source>
-        <translation type="vanished">Copy</translation>
+        <translation>Copy</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+1"/>
         <source>保存</source>
         <translation>Save</translation>
     </message>
@@ -467,12 +467,12 @@ You can still click the Region Capture button.</translation>
         <translation>Cancel</translation>
     </message>
     <message>
-        <location line="-52"/>
+        <location line="-57"/>
         <source>拖动自定义区域 · 单击自动选择窗口 · Esc 或右键取消</source>
         <translation>Drag a custom region · Click to select a window · Esc or right-click to cancel</translation>
     </message>
     <message>
-        <location line="+526"/>
+        <location line="+531"/>
         <source>当前屏幕 · 按 , 查看截图记录</source>
         <translation>Current screen · Press , to view capture history</translation>
     </message>
@@ -567,7 +567,7 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
         <translation>Local translation failed</translation>
     </message>
     <message>
-        <location line="+35"/>
+        <location line="+36"/>
         <source>SnipNexs OCR</source>
         <translation>SnipNexs OCR</translation>
     </message>
@@ -724,7 +724,7 @@ Download now?</translation>
 <context>
     <name>snipnexs::OpenSourceLicensesDialog</name>
     <message>
-        <location filename="../src/app/AboutDialog.cpp" line="-147"/>
+        <location filename="../src/app/AboutDialog.cpp" line="-148"/>
         <source>开源许可</source>
         <translation>Open-source Licenses</translation>
     </message>
@@ -760,11 +760,15 @@ Download now?</translation>
     </message>
     <message>
         <location line="+5"/>
-        <source>工具栏图标的字形几何来自 Lucide Icons（ISC）；路径数据已转换为构建期坐标表，未分发 Lucide 源文件本身。</source>
-        <translation>Toolbar glyph geometry comes from Lucide Icons (ISC); the path data was converted into build-time segment tables. No Lucide source files are distributed.</translation>
+        <source>工具栏图标的字形几何来自 Material Symbols Rounded（Apache-2.0）；路径数据已转换为构建期坐标表，未分发上游源文件本身。</source>
+        <translation>Toolbar glyph geometry comes from Material Symbols Rounded (Apache-2.0); the path data was converted into build-time segment tables. No upstream source files are distributed.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <source>工具栏图标的字形几何来自 Lucide Icons（ISC）；路径数据已转换为构建期坐标表，未分发 Lucide 源文件本身。</source>
+        <translation type="vanished">Toolbar glyph geometry comes from Lucide Icons (ISC); the path data was converted into build-time segment tables. No Lucide source files are distributed.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>图标</source>
         <translation>Icons</translation>
     </message>
@@ -777,7 +781,7 @@ Download now?</translation>
 <context>
     <name>snipnexs::PinWindow</name>
     <message>
-        <location filename="../src/pin/PinWindow.cpp" line="+76"/>
+        <location filename="../src/pin/PinWindow.cpp" line="+86"/>
         <location line="+41"/>
         <source>复制图像</source>
         <translation>Copy Image</translation>
@@ -906,7 +910,7 @@ Download now?</translation>
 <context>
     <name>snipnexs::TranslationModelInstaller</name>
     <message>
-        <location filename="../src/translate/TranslationModelInstaller.cpp" line="+47"/>
+        <location filename="../src/translate/TranslationModelInstaller.cpp" line="+48"/>
         <source>无法创建模型目录:%1</source>
         <translation>Cannot create the model directory: %1</translation>
     </message>

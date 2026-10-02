@@ -473,24 +473,6 @@ const Seg kCancelSegs0[] = {
     {Seg::Line, {12.0f, 13.1f}},
     {Seg::Close, {}},
 };
-const Seg kCheckSegs0[] = {
-    {Seg::Move, {9.45f, 15.7f}},
-    {Seg::Line, {18.5f, 6.62f}},
-    {Seg::Cubic, {18.7f, 6.48f, 18.9f, 6.4f, 19.1f, 6.4f}},
-    {Seg::Cubic, {19.3f, 6.4f, 19.5f, 6.48f, 19.6f, 6.62f}},
-    {Seg::Cubic, {19.8f, 6.78f, 19.8f, 6.95f, 19.8f, 7.16f}},
-    {Seg::Cubic, {19.8f, 7.37f, 19.8f, 7.55f, 19.6f, 7.7f}},
-    {Seg::Line, {9.98f, 17.3f}},
-    {Seg::Cubic, {9.83f, 17.5f, 9.65f, 17.6f, 9.45f, 17.6f}},
-    {Seg::Cubic, {9.25f, 17.6f, 9.08f, 17.5f, 8.93f, 17.3f}},
-    {Seg::Line, {4.38f, 12.8f}},
-    {Seg::Cubic, {4.23f, 12.6f, 4.15f, 12.4f, 4.16f, 12.2f}},
-    {Seg::Cubic, {4.17f, 12.0f, 4.25f, 11.9f, 4.4f, 11.7f}},
-    {Seg::Cubic, {4.55f, 11.6f, 4.73f, 11.5f, 4.94f, 11.5f}},
-    {Seg::Cubic, {5.15f, 11.5f, 5.33f, 11.6f, 5.48f, 11.7f}},
-    {Seg::Line, {9.45f, 15.7f}},
-    {Seg::Close, {}},
-};
 
 const GlyphPart kPenParts[] = {
     {kPenSegs0, 27, true}
@@ -531,9 +513,6 @@ const GlyphPart kSaveParts[] = {
 const GlyphPart kCancelParts[] = {
     {kCancelSegs0, 26, true}
 };
-const GlyphPart kCheckParts[] = {
-    {kCheckSegs0, 16, true}
-};
 
 Glyph glyphFor(ToolbarIcon icon)
 {
@@ -551,7 +530,6 @@ Glyph glyphFor(ToolbarIcon icon)
     case ToolbarIcon::Copy: return {kCopyParts, 1};
     case ToolbarIcon::Save: return {kSaveParts, 1};
     case ToolbarIcon::Cancel: return {kCancelParts, 1};
-    case ToolbarIcon::Check: return {kCheckParts, 1};
     }
     return {nullptr, 0};
 }
@@ -615,14 +593,12 @@ QPixmap drawToolbarIcon(ToolbarIcon icon, const QColor& color)
 QIcon makeToolbarIcon(ToolbarIcon icon, bool onDarkBackground)
 {
     QIcon result;
-    // The confirm check is the one accent-colored action in the set.
-    const bool accent = icon == ToolbarIcon::Check && !onDarkBackground;
-    const QColor normal = accent
-        ? QColor(35, 139, 218)
-        : (onDarkBackground ? QColor(240, 244, 249) : QColor(53, 65, 76));
-    const QColor active = accent
-        ? QColor(24, 104, 165)
-        : (onDarkBackground ? QColor(255, 255, 255) : QColor(20, 29, 37));
+    const QColor normal = onDarkBackground
+        ? QColor(240, 244, 249)
+        : QColor(53, 65, 76);
+    const QColor active = onDarkBackground
+        ? QColor(255, 255, 255)
+        : QColor(20, 29, 37);
     const QColor disabled = onDarkBackground
         ? QColor(240, 244, 249, 90)
         : QColor(158, 168, 177);

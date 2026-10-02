@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
         snipnexs::ToolbarIcon::Redo, snipnexs::ToolbarIcon::Ocr,
         snipnexs::ToolbarIcon::Pin, snipnexs::ToolbarIcon::Record,
         snipnexs::ToolbarIcon::Copy, snipnexs::ToolbarIcon::Save,
-        snipnexs::ToolbarIcon::Cancel, snipnexs::ToolbarIcon::Check,
+        snipnexs::ToolbarIcon::Cancel,
     };
 
     bool ok = true;
