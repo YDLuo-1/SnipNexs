@@ -18,7 +18,7 @@ jobs:
         # from a release asset instead of aqtinstall.
         run: |
           curl -sL --retry 3 -o D:/qt-kit.zip https://github.com/YDLuo-1/SnipNexs/releases/download/ci-deps-qt-6.11.2/Qt-6.11.2-msvc2022_64.zip
-          Expand-Archive -Path D:/qt-kit.zip -DestinationPath D:/
+          Expand-Archive -Path D:/qt-kit.zip -DestinationPath D:/Qt/6.11.2
           Add-Content $env:GITHUB_ENV "SNIPNEXS_QT_DIR=D:/Qt/6.11.2/msvc2022_64"
 
       - name: Setup MSVC
