@@ -114,6 +114,8 @@ qt_add_executable(SnipNexs WIN32
     src/capture/CaptureHistoryStore.h
     src/capture/CaptureOverlay.cpp
     src/capture/CaptureOverlay.h
+    src/capture/CaptureToolbar.cpp
+    src/capture/CaptureToolbar.h
     src/editor/AnnotationDocument.cpp
     src/editor/AnnotationDocument.h
     src/ocr/OcrResultWindow.cpp
@@ -307,6 +309,8 @@ if(BUILD_TESTING)
         tests/CaptureOverlayTests.cpp
         src/capture/CaptureOverlay.cpp
         src/capture/CaptureOverlay.h
+        src/capture/CaptureToolbar.cpp
+        src/capture/CaptureToolbar.h
         src/capture/CaptureGeometry.h
         src/capture/ToolbarIcons.cpp
         src/capture/ToolbarIcons.h

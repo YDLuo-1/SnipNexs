@@ -1,7 +1,7 @@
 #include "CaptureOverlay.h"
 
 #include "CaptureGeometry.h"
-#include "ToolbarIcons.h"
+#include "CaptureToolbar.h"
 
 #include <QApplication>
 #include <QButtonGroup>
@@ -40,17 +40,7 @@ constexpr int kHandleSize = 8;
 constexpr int kHandleHitPadding = 3;
 constexpr int kMinimumSelectionSize = 3;
 
-void configureToolbarButton(
-    QPushButton* button,
-    ToolbarIcon icon,
-    const QString& tooltip)
-{
-    button->setIcon(makeToolbarIcon(icon));
-    button->setIconSize(QSize(23, 23));
-    button->setToolTip(tooltip);
-    button->setAccessibleName(tooltip);
-    button->setFixedSize(32, 30);
-}
+
 
 }
 
@@ -91,95 +81,13 @@ CaptureOverlay::CaptureOverlay(
         "border: 1px solid #34414e; border-radius: 6px; padding: 8px 13px;"));
     captureHint_->adjustSize();
 
-    toolbar_ = new QFrame(this);
-    toolbar_->setObjectName(QStringLiteral("captureToolbar"));
-    toolbar_->setCursor(Qt::ArrowCursor);
-    auto* toolbarShadow = new QGraphicsDropShadowEffect(toolbar_);
-    toolbarShadow->setBlurRadius(16);
-    toolbarShadow->setOffset(0, 2);
-    toolbarShadow->setColor(QColor(0, 0, 0, 55));
-    toolbar_->setGraphicsEffect(toolbarShadow);
-    auto* layout = new QHBoxLayout(toolbar_);
-    layout->setContentsMargins(5, 5, 5, 5);
-    layout->setSpacing(2);
-
-    auto* penButton = new QPushButton(toolbar_);
-    auto* rectangleButton = new QPushButton(toolbar_);
-    auto* arrowButton = new QPushButton(toolbar_);
-    auto* textButton = new QPushButton(toolbar_);
-    textButton->setObjectName(QStringLiteral("textButton"));
-    colorPickerButton_ = new QPushButton(toolbar_);
-    colorPickerButton_->setObjectName(QStringLiteral("colorPickerButton"));
-    undoButton_ = new QPushButton(toolbar_);
-    redoButton_ = new QPushButton(toolbar_);
-    auto* ocrButton = new QPushButton(toolbar_);
-    ocrButton->setObjectName(QStringLiteral("ocrButton"));
-    auto* pinButton = new QPushButton(toolbar_);
-    pinButton->setObjectName(QStringLiteral("pinButton"));
-    recordButton_ = new QPushButton(toolbar_);
-    recordButton_->setObjectName(QStringLiteral("recordButton"));
-    auto* copyButton = new QPushButton(toolbar_);
-    auto* saveButton = new QPushButton(toolbar_);
-    saveButton->setObjectName(QStringLiteral("saveButton"));
-    auto* cancelButton = new QPushButton(toolbar_);
-    copyButton->setObjectName(QStringLiteral("copyButton"));
-    configureToolbarButton(penButton, ToolbarIcon::Pen, tr("画笔"));
-    configureToolbarButton(rectangleButton, ToolbarIcon::Rectangle, tr("矩形"));
-    configureToolbarButton(arrowButton, ToolbarIcon::Arrow, tr("箭头"));
-    configureToolbarButton(textButton, ToolbarIcon::Text, tr("文字"));
-    configureToolbarButton(colorPickerButton_, ToolbarIcon::ColorPicker, tr("取色"));
-    colorPickerButton_->setCheckable(true);
-    configureToolbarButton(undoButton_, ToolbarIcon::Undo, tr("撤销"));
-    configureToolbarButton(redoButton_, ToolbarIcon::Redo, tr("重做"));
-    configureToolbarButton(ocrButton, ToolbarIcon::Ocr, tr("识字"));
-    configureToolbarButton(pinButton, ToolbarIcon::Pin, tr("贴图"));
-    configureToolbarButton(recordButton_, ToolbarIcon::Record, tr("录屏"));
-    configureToolbarButton(copyButton, ToolbarIcon::Copy, tr("复制"));
-    configureToolbarButton(saveButton, ToolbarIcon::Save, tr("保存"));
-    configureToolbarButton(cancelButton, ToolbarIcon::Cancel, tr("取消"));
-    auto addSeparator = [this, layout]() {
-        auto* separator = new QFrame(toolbar_);
-        separator->setStyleSheet(QStringLiteral("background: #d5dde4;"));
-        separator->setFixedSize(1, 20);
-        layout->addSpacing(2);
-        layout->addWidget(separator);
-        layout->addSpacing(2);
-    };
-    toolButtons_ = new QButtonGroup(this);
-    toolButtons_->setExclusive(true);
-    toolButtons_->addButton(penButton, static_cast<int>(AnnotationTool::Pen));
-    toolButtons_->addButton(rectangleButton, static_cast<int>(AnnotationTool::Rectangle));
-    toolButtons_->addButton(arrowButton, static_cast<int>(AnnotationTool::Arrow));
-    toolButtons_->addButton(textButton, static_cast<int>(AnnotationTool::Text));
-    for (auto* button : toolButtons_->buttons()) {
-        button->setCheckable(true);
-    }
-    layout->addWidget(penButton);
-    layout->addWidget(rectangleButton);
-    layout->addWidget(arrowButton);
-    layout->addWidget(textButton);
-    layout->addWidget(colorPickerButton_);
-    addSeparator();
-    layout->addWidget(undoButton_);
-    layout->addWidget(redoButton_);
-    addSeparator();
-    layout->addWidget(ocrButton);
-    layout->addWidget(pinButton);
-    layout->addWidget(recordButton_);
-    addSeparator();
-    layout->addWidget(copyButton);
-    layout->addWidget(saveButton);
-    layout->addWidget(cancelButton);
-    toolbar_->hide();
-
-    toolbar_->setStyleSheet(QStringLiteral(R"(
-        QFrame#captureToolbar { background: #ffffff; border: 1px solid #c9d4de; border-radius: 6px; }
-        QPushButton { padding: 0; background: transparent; border: 0; border-radius: 5px; }
-        QPushButton:hover { background: #e8f1f9; }
-        QPushButton:pressed { background: #d7e7f4; }
-        QPushButton:checked { background: #238bda; }
-        QPushButton:disabled { background: transparent; }
-    )"));
+    const CaptureToolbar toolbar = buildCaptureToolbar(this);
+    toolbar_ = toolbar.widget;
+    toolButtons_ = toolbar.toolButtons;
+    colorPickerButton_ = toolbar.colorPickerButton;
+    undoButton_ = toolbar.undoButton;
+    redoButton_ = toolbar.redoButton;
+    recordButton_ = toolbar.recordButton;
 
     selectionSizeLabel_ = new QLabel(this);
     selectionSizeLabel_->setObjectName(QStringLiteral("selectionSizeLabel"));
@@ -205,12 +113,12 @@ CaptureOverlay::CaptureOverlay(
     textEditor_->installEventFilter(this);
     textEditor_->hide();
 
-    connect(copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
-    connect(ocrButton, &QPushButton::clicked, this, &CaptureOverlay::acceptOcr);
-    connect(pinButton, &QPushButton::clicked, this, &CaptureOverlay::acceptPin);
+    connect(toolbar.copyButton, &QPushButton::clicked, this, &CaptureOverlay::acceptCopy);
+    connect(toolbar.ocrButton, &QPushButton::clicked, this, &CaptureOverlay::acceptOcr);
+    connect(toolbar.pinButton, &QPushButton::clicked, this, &CaptureOverlay::acceptPin);
     connect(recordButton_, &QPushButton::clicked, this, &CaptureOverlay::acceptRecord);
-    connect(saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
-    connect(cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
+    connect(toolbar.saveButton, &QPushButton::clicked, this, &CaptureOverlay::acceptSave);
+    connect(toolbar.cancelButton, &QPushButton::clicked, this, &CaptureOverlay::canceled);
     connect(colorPickerButton_, &QPushButton::clicked, this, [this](bool checked) {
         setColorPickerActive(checked);
     });

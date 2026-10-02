@@ -117,7 +117,10 @@ Result recognize(const QImage& input)
         const OcrEngine engine = OcrEngine::TryCreateFromUserProfileLanguages();
         if (!engine) {
             output.error = QCoreApplication::translate(
-                "WindowsOcr", "未安装与当前用户语言匹配的 Windows OCR 语言包。");
+                "WindowsOcr",
+                "未安装与当前用户语言匹配的 Windows OCR 语言包。"
+                "请打开 系统设置 > 时间和语言 > 语言和区域，"
+                "在对应语言的功能选项中勾选“文本识别”并安装，然后重试。");
             return output;
         }
 

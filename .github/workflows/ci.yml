@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows-build-test:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt 6.11.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.11.2'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        run: cmake --preset windows-release
+        env:
+          SNIPNEXS_QT_DIR: ${{ env.QT_ROOT_DIR }}
+
+      - name: Build
+        run: cmake --build --preset windows-release --parallel
+
+      - name: Test
+        run: ctest --preset windows-release --output-on-failure

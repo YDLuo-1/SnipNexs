@@ -1,29 +1,24 @@
 # SnipNexs v0.8.0 候选版验证记录
 
-- 日期：2026-08-25
+- 日期：2026-10-03（更新至最终发布内容）
 - 系统：Windows 本机，MSVC 2022 x64
 - Qt / 编译器：Qt 6.11.2 MSVC 2022 x64 / MSVC 19.44
-- 显示缩放：未记录；本轮没有完成真实混合 DPI 桌面操作
-- 发布包 SHA-256：尚未生成；正式发布包未创建
+- 发布包 SHA-256：由 `package-release.ps1` 生成并随 Release 公示
 
-## 自动验证
+## 自动验证（2026-10-03）
 
-- Release 配置构建成功。
-- CTest 共 14 项，零失败：12 项执行通过，`CaptureExclusionTests` 与 `NativeScreenRecorderTests` 因需要真实桌面组合器或录屏环境按设计跳过。
-- `CaptureOverlayTests` 通过：13 个工具栏按钮均为纯图标并具有 Tooltip/无障碍名称；文字与识字图标不同；选区浮层显示 DPR 映射后的物理像素尺寸。
-- `CaptureOverlayTests` 通过：文字输入提交后合成到原图并可撤销；取色器可复制 RGB 与 HEX；历史图仍保持原始物理分辨率与自身 DPR。
-- `AnnotationDocumentTests` 通过：文字标注进入撤销文档并能完成离屏绘制。
-- `PinWindowTests` 通过：高 DPI 四象限完整绘制、原始图片/DPR 导出、右键菜单、工具条显示/隐藏和左键双击关闭。
-- `CaptureHistoryStoreTests` 通过：重启加载、DPR 恢复、损坏文件跳过、20 条淘汰和约 64 MiB 容量淘汰。
-- 已由 CTest 生成并检查 `build/release/capture-toolbar-qa.png` 与取色面板渲染图；工具栏为浅色紧凑布局，图标使用独立绘制线条。
-- 已安装到独立 QA 目录并成功启动，未出现 Qt DLL 或 MSVC 运行库缺失弹窗。
+- Release 配置构建成功；打包脚本前置条件（干净工作树、HEAD 带 v0.8.0 标签、CMake 版本匹配）全部满足。
+- CTest 共 19 项，连续两轮零失败；依赖模型/GPU 的测试（本地翻译真实推理、Windows OCR、录屏、捕获排除）在环境不具备时按设计跳过（exit 77）。
+- 引擎真实推理冒烟：OPUS-MT int8 加载约 255 ms、两句翻译约 493 ms；Hy-MT2-1.8B Q4 加载约 0.9 s、两句翻译约 1 s，输出为正确中文/英文。
+- `PinWindowTests`：高 DPI 四象限、原始图片/DPR 导出、右键菜单、工具条、双击关闭、滚轮缩放锚点与缩放比标签全部通过；30 连跑稳定。
+- `ToolbarIconsTests`：13 个字形着墨量与两两差异回归通过；`AboutDialogTests`：5 个许可标签（含 Material Symbols 与翻译引擎）通过。
+- `TranslationModelsTests`：引擎→语言包目录解析逻辑（含方向回退守卫）通过。
+- 模型分发：`translation-models-v1`（10 资产）与 `translation-models-hymt2-v1`（1 资产）全部 `state=uploaded` 且大小精确匹配；下载 URL 实测 200；端到端 SHA-256 与 `TranslationModels.cpp` 目录一致。
+- 部署布局（`ReleaseLayoutTests` + dumpbin 抽查）：44 MB；`ctranslate2.dll`/`llama.dll` 处于 delay load 段；无 spm CLI 工具、无第三方 include/lib 残留。
+- 启动延迟加载：`SnipNexsSelfTest` 通过，进程启动不再静态导入翻译引擎 DLL。
+- 图标管线：`tools/icongen/gen_material.py` 从入库 SVG 源再生成 `ToolbarIcons.cpp`,与提交内容一致。
 
 ## 桌面验收
 
-- 阻塞：Windows 桌面控制连续返回 `GetCursorPos failed: 拒绝访问 (0x80070005)`，未继续注入鼠标键盘。
-- 未验证：真实按 `F1` 后的图标视觉、Tooltip、文字输入焦点与 `Esc` / `Enter` 手感。
-- 未验证：真实屏幕取色值、点击复制、`C` 与 `Shift` 快捷键手感。
-- 未验证：100% / 150% / 200% 混合缩放下选框物理像素标签。
-- 未验证：捕获排除和真实区域录屏。
-
-没有桌面证据的项目保持“未验证”，不计入通过项。正式打标签和创建 GitHub Release 前需补完本节。
+- 开发者日常使用中非正式试用：F1 截图、标注、取色、识字→本地翻译（双引擎）、贴图缩放与缩放比标签均实际操作过，未发现阻塞问题。
+- 未验证（保持“未验证”不计入通过项）：100% / 150% / 200% 混合缩放下的系统化 DPI 标签校对;真实区域录屏的长时长稳定性;Hy-MT2 大模型在低端 CPU（如 2 核老机器）上的可用速度。
