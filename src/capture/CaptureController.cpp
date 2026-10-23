@@ -1,6 +1,7 @@
 #include "CaptureController.h"
 
 #include "CaptureOverlay.h"
+#include "app/ImageSaveDialog.h"
 #include "app/MainWindow.h"
 #include "ocr/OcrResultWindow.h"
 #include "pin/PinWindow.h"
@@ -201,7 +202,7 @@ void CaptureController::savePinnedImage(const QImage& image)
     const QString suggestedName = QStringLiteral("SnipNexs-%1.png")
         .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss")));
     const QString initialPath = QDir(pictures).filePath(suggestedName);
-    const QString fileName = QFileDialog::getSaveFileName(
+    const QString fileName = getImageSaveFileName(
         nullptr,
         tr("保存贴图"),
         initialPath,
@@ -250,7 +251,7 @@ void CaptureController::saveImage(const QImage& image)
     const QString suggestedName = QStringLiteral("SnipNexs-%1.png")
         .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss")));
     const QString initialPath = QDir(pictures).filePath(suggestedName);
-    const QString fileName = QFileDialog::getSaveFileName(
+    const QString fileName = getImageSaveFileName(
         nullptr,
         tr("保存截图"),
         initialPath,
