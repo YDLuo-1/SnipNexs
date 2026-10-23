@@ -20,6 +20,10 @@ namespace snipnexs {
 namespace {
 
 constexpr auto kRepositoryUrl = "https://github.com/YDLuo-1/SnipNexs";
+// The Qt 6.11.2 source archive is published once, with the first release that
+// used that Qt version. Later application releases must not assume a copy
+// exists under their own tag.
+constexpr auto kQtSourceTag = "v0.7.0";
 
 constexpr auto kDarkDialogStyle = R"(
     QDialog { background: #11161d; color: #f1f5f9; }
@@ -80,9 +84,9 @@ QString sourceLink(const QString& url)
 QString qtSourceUrl()
 {
     return QStringLiteral(
-        "https://github.com/YDLuo-1/SnipNexs/releases/download/v%1/"
+        "https://github.com/YDLuo-1/SnipNexs/releases/download/%1/"
         "qtbase-everywhere-src-6.11.2.tar.xz")
-        .arg(QStringLiteral(SNIPNEXS_VERSION));
+        .arg(QString::fromLatin1(kQtSourceTag));
 }
 
 QString resourceText(const QString& path)
@@ -164,13 +168,17 @@ OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
     tabs_->addTab(
         createLicenseBrowser(
             QStringLiteral("Local translation"),
-            tr("本地翻译使用 CTranslate2（MIT）与 SentencePiece（Apache-2.0）。"
-               "语言包由 Helsinki-NLP 的 OPUS-MT 模型转换而来，首次使用时按需下载，"
+            tr("本地翻译使用 CTranslate2（MIT）、SentencePiece（Apache-2.0）"
+               "与 llama.cpp（MIT）。语言包由 Helsinki-NLP 的 OPUS-MT 模型和"
+               "腾讯 Hy-MT2 模型转换而来，首次使用时按需下载，"
                "模型许可与文件校验值见第三方声明与各语言包内的 manifest.json。"),
             resourceText(QStringLiteral(":/licenses/licenses/CTranslate2-MIT.txt"))
                 + QStringLiteral("\n\n")
                 + resourceText(QStringLiteral(
-                    ":/licenses/licenses/SentencePiece-Apache-2.0.txt")),
+                    ":/licenses/licenses/SentencePiece-Apache-2.0.txt"))
+                + QStringLiteral("\n\n")
+                + resourceText(QStringLiteral(
+                    ":/licenses/licenses/llama.cpp-MIT.txt")),
             tabs_),
         tr("翻译引擎"));
 

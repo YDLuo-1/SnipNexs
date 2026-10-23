@@ -77,9 +77,13 @@ int main(int argc, char* argv[])
     ok &= allLicenseText.contains(QStringLiteral("GNU LESSER GENERAL PUBLIC LICENSE"));
     ok &= allLicenseText.contains(QStringLiteral("Qt 6.11.2"));
     ok &= allLicenseText.contains(QStringLiteral("qtbase-everywhere-src-6.11.2.tar.xz"));
+    ok &= allLicenseText.contains(QStringLiteral("releases/download/v0.7.0/"));
+    ok &= !allLicenseText.contains(QStringLiteral("releases/download/v0.8.0/"));
     ok &= allLicenseText.contains(QStringLiteral("Microsoft SimpleRecorder"));
     ok &= allLicenseText.contains(QStringLiteral("SYSTRAN"));
     ok &= allLicenseText.contains(QStringLiteral("Apache License"));
+    ok &= allLicenseText.contains(QStringLiteral("llama.cpp"));
+    ok &= allLicenseText.contains(QStringLiteral("The ggml authors"));
 
     QTextStream(stdout)
         << "about dialog: " << (ok ? "ok" : "failed")
