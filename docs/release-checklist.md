@@ -1,9 +1,9 @@
-# v0.8.0 发布清单
+# v0.8.1 发布清单
 
 ## 自动门禁
 
-1. `CMakeLists.txt` 版本为 `0.8.0`，HEAD 精确带有 `v0.8.0` 标签，工作树干净。
-2. 运行 `scripts/package-release.ps1 -Version 0.8.0`。脚本必须完成配置、构建、CTest、安装、文件版本检查、`--self-test` 与 `--self-test-runtime` 部署自检和 ZIP 生成，输出 ZIP 的 SHA-256，并在成功后清理本地 `dist` 旧版应用目录与 ZIP。
+1. `CMakeLists.txt` 版本为 `0.8.1`，HEAD 精确带有 `v0.8.1` 标签，工作树干净。
+2. 运行 `scripts/package-release.ps1 -Version 0.8.1`。脚本必须完成配置、构建、CTest、安装、文件版本检查、`--self-test` 与 `--self-test-runtime` 部署自检和 ZIP 生成，输出 ZIP 的 SHA-256，并在成功后清理本地 `dist` 旧版应用目录与 ZIP。
 3. CTest 共 20 项，必须零失败；输出中被跳过的项目必须逐项记录，不能把“执行通过”和“跳过”合并成总数。
 4. ZIP 必须包含 Qt Core/Gui/Widgets/Network、Windows 平台插件、**Qt TLS 后端插件（`plugins/tls/qschannelbackend.dll`）**、MSVC CRT 与 **`vcomp140.dll`**、`ctranslate2.dll`/`llama.dll`/`ggml*.dll`、GPL/LGPL/MIT 文本、Qt 人类可读声明和 `qtbase-6.11.2.spdx`。
 5. 包内 `THIRD_PARTY_NOTICES.md` 指向的 Qt 对应源码必须由本仓库控制且可下载。Qt 6.11.2 当前复用 `v0.7.0` 中的 `qtbase-everywhere-src-6.11.2.tar.xz`，其 SHA-256 必须是 `5b2e00eccaf5a4d8c14134ffa0ea8dfd0a35ae1ffc7f8d87fa4305a1ed23cf22`。
@@ -14,7 +14,7 @@
 
 - 在未安装 Qt、Visual Studio 或 VC++ Redistributable 的干净 Windows 10/11 x64 上解压 ZIP：可直接启动且无系统错误框；首次“本地翻译”能下载模型（验证 TLS 插件），两个引擎都能完成一次翻译（验证 `vcomp140.dll`）。
 - 全新解压到不含 Qt/VC DLL 的目录后可直接启动，无系统错误框。
-- Explorer 中 `SnipNexs.exe` 显示应用图标，文件属性显示 0.8.0 版本与产品信息；嵌入式清单标识不是 `com.yourcompany`。
+- Explorer 中 `SnipNexs.exe` 显示应用图标，文件属性显示 0.8.1 版本与产品信息；嵌入式清单标识不是 `com.yourcompany`。
 - 有托盘时启动不显示主界面；双击托盘、菜单“打开 SnipNexs”和再次运行程序均可打开主界面。
 - 截图开始前主界面消失；截图中托盘、关于入口和再次运行均不能让主界面覆盖截图；取消后可正常恢复。
 - 鼠标悬停传统 Win32/Qt 窗口时可依次命中原生子窗口、客户区和整窗；没有独立 HWND 的内部视觉元素应回退而不是卡死。
@@ -24,7 +24,7 @@
 - 区域录屏可开始、停止并生成 MP4；悬浮条默认位于目标屏幕右下角，空白处可拖动且停止按钮仍可点击；捕获排除可在真实桌面组合器下验证。
 - 从托盘退出后没有残留 `SnipNexs.exe` 进程。
 
-桌面验收应写入 `docs/releases/validation-v0.8.0.md`，记录日期、系统、显示缩放、发布包哈希、逐项结果和未验证项。没有证据的项目必须写“未验证”，不能写“通过”。
+桌面验收应写入 `docs/releases/validation-v0.8.1.md`，记录日期、系统、显示缩放、发布包哈希、逐项结果和未验证项。没有证据的项目必须写“未验证”，不能写“通过”。
 
 ## GitHub 发布
 
@@ -32,10 +32,10 @@
 
 ```powershell
 git push origin main
-git push origin v0.8.0
-gh release create v0.8.0 `
-  dist\SnipNexs-0.8.0-win64.zip `
-  --title "SnipNexs v0.8.0" --notes-file docs\releases\release-notes-v0.8.0.md
+git push origin v0.8.1
+gh release create v0.8.1 `
+  dist\SnipNexs-0.8.1-win64.zip `
+  --title "SnipNexs v0.8.1" --notes-file docs\releases\release-notes-v0.8.1.md
 ```
 
 普通用户只需下载应用 ZIP；GitHub 会在附件旁直接显示 SHA-256 摘要。Qt 6.11.2 源码复用本仓库 [`v0.7.0` Release](https://github.com/YDLuo-1/SnipNexs/releases/tag/v0.7.0) 中已发布且校验一致的副本。
