@@ -69,6 +69,7 @@ void RecorderController::startRegion(
     if (!partial.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         mainWindow_.setCaptureStatus(
             tr("无法创建录屏文件：%1").arg(QDir::toNativeSeparators(partialPath_)));
+        partialPath_.clear();
         mainWindow_.showAndActivate();
         return;
     }
@@ -83,8 +84,10 @@ void RecorderController::startRegion(
 
     if (!service_.start(settings)) {
         QFile::remove(partialPath_);
+        partialPath_.clear();
         mainWindow_.showNotification(
             tr("正在录屏"), tr("请先停止当前录制。"));
+        mainWindow_.showAndActivate();
         return;
     }
 
@@ -115,27 +118,33 @@ void RecorderController::handleCompleted(const RecordingResult& result)
 
     if (!result.succeeded) {
         QFile::remove(partialPath_);
+        partialPath_.clear();
         mainWindow_.setCaptureStatus(result.error);
         mainWindow_.showNotification(tr("录屏失败"), result.error);
         mainWindow_.showAndActivate();
         return;
     }
 
-    const std::wstring partialNative = QDir::toNativeSeparators(partialPath_).toStdWString();
+    const QString partialPath = partialPath_;
+    const std::wstring partialNative = QDir::toNativeSeparators(partialPath).toStdWString();
     const std::wstring finalNative = QDir::toNativeSeparators(finalPath_).toStdWString();
     if (!MoveFileExW(
             partialNative.c_str(),
             finalNative.c_str(),
             MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        // The message promises the user a recoverable file, so forget the
+        // partial path and let the file survive application shutdown.
+        partialPath_.clear();
         const QString message = tr(
             "MP4 已生成，但无法原子移动到目标路径（错误 %1）。临时文件保留在：%2")
             .arg(GetLastError())
-            .arg(QDir::toNativeSeparators(partialPath_));
+            .arg(QDir::toNativeSeparators(partialPath));
         mainWindow_.setCaptureStatus(message);
         mainWindow_.showNotification(tr("录屏文件未移动"), message);
         mainWindow_.showAndActivate();
         return;
     }
+    partialPath_.clear();
 
     const QString nativePath = QDir::toNativeSeparators(finalPath_);
     mainWindow_.setCaptureStatus(

@@ -654,7 +654,7 @@ QImage CaptureOverlay::selectedImage() const
         return {};
     }
 
-    QImage image = screenshot_.toImage().copy(pixelRect);
+    QImage image = liveScreenshotImage().copy(pixelRect);
     image.setDevicePixelRatio(devicePixelRatio_);
     {
         QPainter painter(&image);
@@ -670,6 +670,16 @@ QRect CaptureOverlay::selectedPixelRect() const
         return {};
     }
     return logicalToPixelRect(selection_, devicePixelRatio_, screenshot_.size());
+}
+
+const QImage& CaptureOverlay::liveScreenshotImage() const
+{
+    // The color picker samples this on every mouse move; convert once.
+    if (liveScreenshotImage_.isNull()) {
+        liveScreenshotImage_ = liveScreenshot_.toImage();
+        liveScreenshotImage_.setDevicePixelRatio(devicePixelRatio_);
+    }
+    return liveScreenshotImage_;
 }
 
 void CaptureOverlay::acceptCopy()
@@ -738,15 +748,15 @@ QColor CaptureOverlay::colorAt(const QPoint& point, QPoint* sourcePoint) const
         return {};
     }
 
-    QImage source;
+    const QImage& source = activeHistoryImage_.isNull()
+        ? liveScreenshotImage()
+        : activeHistoryImage_;
     QPoint pixel;
     if (activeHistoryImage_.isNull()) {
-        source = screenshot_.toImage();
         pixel = QPoint(
             qFloor(point.x() * devicePixelRatio_),
             qFloor(point.y() * devicePixelRatio_));
     } else {
-        source = activeHistoryImage_;
         const qreal relativeX = qreal(point.x() - selection_.left())
             / std::max(1, selection_.width());
         const qreal relativeY = qreal(point.y() - selection_.top())
@@ -818,8 +828,8 @@ void CaptureOverlay::drawColorPicker(QPainter& painter) const
     if (!selectedColor.isValid()) {
         return;
     }
-    const QImage source = activeHistoryImage_.isNull()
-        ? screenshot_.toImage()
+    const QImage& source = activeHistoryImage_.isNull()
+        ? liveScreenshotImage()
         : activeHistoryImage_;
 
     constexpr int cellSize = 9;

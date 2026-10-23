@@ -89,6 +89,7 @@ private:
     void drawColorPicker(QPainter& painter) const;
     void drawHistoryHint(QPainter& painter) const;
     [[nodiscard]] QRect handleRect(ResizeHandle handle) const;
+    [[nodiscard]] const QImage& liveScreenshotImage() const;
     void positionCaptureHint();
     void positionSelectionSizeLabel();
     [[nodiscard]] ResizeHandle resizeHandleAt(const QPoint& point) const;
@@ -108,6 +109,7 @@ private:
     QPixmap liveScreenshot_;
     QPixmap screenshot_;
     QPixmap dimmedScreenshot_;
+    mutable QImage liveScreenshotImage_;
     QList<QImage> history_;
     QImage activeHistoryImage_;
     qsizetype historyIndex_ = 0;

@@ -60,6 +60,20 @@ int main(int argc, char* argv[])
             && historyFiles(temporary.path()).size() == 1;
     }
 
+    QTemporaryDir recoveryDirectory;
+    snipnexs::CaptureHistoryStore recoveryStore(recoveryDirectory.path());
+    const bool recoveryWrites = recoveryStore.append(first)
+        && recoveryStore.append(second);
+    const bool indexRemoved = QFile::remove(
+        QDir(recoveryDirectory.path()).filePath(QStringLiteral("index.json")));
+    const QList<QImage> recovered = recoveryStore.load();
+    const bool recoveryOk = recoveryWrites && indexRemoved
+        && recovered.size() == 2
+        && historyFiles(recoveryDirectory.path()).size() == 2;
+    const bool appendAfterLoss = recoveryStore.append(
+        makeImage(QColor(10, 200, 90), QSize(18, 9), 1.0))
+        && recoveryStore.load().size() == 3;
+
     QTemporaryDir capacityDirectory;
     snipnexs::CaptureHistoryStore capacityStore(capacityDirectory.path());
     bool entriesWritten = true;
@@ -79,11 +93,14 @@ int main(int argc, char* argv[])
 
     const bool ok = firstWritten && secondWritten && orderAndDprOk
         && corruptionSkipped && entriesWritten && entryLimitOk
+        && recoveryOk && appendAfterLoss
         && firstLargeWritten && secondLargeWritten && byteLimitOk;
     QTextStream(stdout)
         << "capture history store: " << (ok ? "ok" : "failed")
         << " persistence=" << (firstWritten && secondWritten && orderAndDprOk)
         << " corruption=" << corruptionSkipped
+        << " recovery=" << recoveryOk
+        << " appendAfterLoss=" << appendAfterLoss
         << " entryLimit=" << entryLimitOk
         << " byteLimit=" << byteLimitOk
         << " largeWrites=" << firstLargeWritten << ',' << secondLargeWritten

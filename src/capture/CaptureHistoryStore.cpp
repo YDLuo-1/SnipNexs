@@ -173,39 +173,77 @@ bool prune(QList<Entry>& entries)
     return changed;
 }
 
-QList<Entry> validEntries(
-    const QString& directory, bool& changed, bool& indexExists)
+bool entryIsUsable(const QDir& directory, const Entry& entry)
+{
+    return isSafeFileName(entry.fileName)
+        && entry.devicePixelRatio > 0.0
+        && entry.devicePixelRatio <= 16.0
+        && QFileInfo::exists(directory.filePath(entry.fileName));
+}
+
+QList<Entry> entriesFromFiles(const QDir& directory, const QSet<QString>& known)
+{
+    QList<Entry> entries;
+    const QFileInfoList files = directory.entryInfoList(
+        {QStringLiteral("capture-*.png")}, QDir::Files, QDir::Name);
+    for (const QFileInfo& file : files) {
+        if (!isSafeFileName(file.fileName()) || known.contains(file.fileName())) {
+            continue;
+        }
+        QImage image(file.absoluteFilePath());
+        if (image.isNull()) {
+            continue;
+        }
+        Entry entry;
+        entry.fileName = file.fileName();
+        entry.createdUtc = file.lastModified().toUTC().toString(Qt::ISODateWithMs);
+        entry.devicePixelRatio = image.devicePixelRatio() > 0.0
+            ? image.devicePixelRatio()
+            : 1.0;
+        entry.bytes = image.sizeInBytes();
+        entries.append(entry);
+    }
+    return entries;
+}
+
+// Reads the index without decoding every PNG. Missing files are dropped;
+// readable PNGs that are not in the index (interrupted append or a damaged
+// index) are adopted instead of deleted.
+QList<Entry> loadEntries(const QDir& directory, bool& changed, bool& indexValid)
 {
     QList<Entry> indexed;
-    const bool validIndex = readIndex(directory, indexed);
-    indexExists = QFileInfo::exists(indexPath(directory));
-    if (!validIndex) {
-        changed = indexExists;
-        indexed.clear();
-        return indexed;
+    indexValid = readIndex(directory.absolutePath(), indexed);
+    if (!indexValid) {
+        changed = true;
+        QList<Entry> entries = entriesFromFiles(directory, {});
+        std::sort(entries.begin(), entries.end(),
+            [](const Entry& left, const Entry& right) {
+                return left.fileName < right.fileName;
+            });
+        return entries;
     }
 
-    QList<Entry> result;
-    for (Entry entry : indexed) {
-        QImage image(QDir(directory).filePath(entry.fileName));
-        if (image.isNull()) {
+    QSet<QString> known;
+    QList<Entry> entries;
+    for (const Entry& entry : indexed) {
+        if (!entryIsUsable(directory, entry)) {
             changed = true;
             continue;
         }
-        const qreal dpr = entry.devicePixelRatio > 0.0
-            ? entry.devicePixelRatio
-            : 1.0;
-        if (entry.bytes != image.sizeInBytes()) {
-            entry.bytes = image.sizeInBytes();
-            changed = true;
-        }
-        entry.devicePixelRatio = dpr;
-        result.append(entry);
+        known.insert(entry.fileName);
+        entries.append(entry);
     }
-    if (result.size() != indexed.size()) {
+
+    const QList<Entry> adopted = entriesFromFiles(directory, known);
+    if (!adopted.isEmpty()) {
         changed = true;
+        entries.append(adopted);
     }
-    return result;
+    std::sort(entries.begin(), entries.end(),
+        [](const Entry& left, const Entry& right) {
+            return left.fileName < right.fileName;
+        });
+    return entries;
 }
 
 } // namespace
@@ -217,28 +255,40 @@ CaptureHistoryStore::CaptureHistoryStore(QString directory)
 
 QList<QImage> CaptureHistoryStore::load()
 {
-    bool changed = false;
-    bool indexExists = false;
-    QList<Entry> entries = validEntries(directory_, changed, indexExists);
-    changed |= prune(entries);
-    bool indexWriteOk = true;
-    if (changed || indexExists) {
-        if (!entries.isEmpty() || indexExists) {
-            indexWriteOk = writeIndex(directory_, entries);
-        }
-    }
-    if (indexWriteOk) {
-        removeOrphans(directory_, entries);
+    const QDir directory(directory_);
+    if (!directory.exists()) {
+        return {};
     }
 
+    bool changed = false;
+    bool indexValid = false;
+    QList<Entry> entries = loadEntries(directory, changed, indexValid);
+    changed |= prune(entries);
+
+    bool indexReady = indexValid && !changed;
+    if (changed || !indexValid) {
+        indexReady = writeIndex(directory_, entries);
+    }
+
+    QList<Entry> kept;
     QList<QImage> images;
+    images.reserve(entries.size());
     for (const Entry& entry : entries) {
-        QImage image(QDir(directory_).filePath(entry.fileName));
+        QImage image(directory.filePath(entry.fileName));
         if (image.isNull()) {
+            changed = true;
             continue;
         }
         image.setDevicePixelRatio(entry.devicePixelRatio);
+        kept.append(entry);
         images.append(std::move(image));
+    }
+    if (kept.size() != entries.size()) {
+        entries = std::move(kept);
+        indexReady = writeIndex(directory_, entries) && indexReady;
+    }
+    if (indexReady) {
+        removeOrphans(directory_, entries);
     }
     return images;
 }
@@ -252,15 +302,18 @@ bool CaptureHistoryStore::append(const QImage& image)
         return false;
     }
 
+    const QDir directory(directory_);
     bool changed = false;
-    bool indexExists = false;
-    QList<Entry> entries = validEntries(directory_, changed, indexExists);
-    changed |= prune(entries);
+    bool indexValid = false;
+    QList<Entry> entries = loadEntries(directory, changed, indexValid);
+    Q_UNUSED(changed);
+    Q_UNUSED(indexValid);
+    prune(entries);
 
     const QString fileName = QStringLiteral("capture-%1-%2.png")
         .arg(QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd-HHmmss-zzz")))
         .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    const QString filePath = QDir(directory_).filePath(fileName);
+    const QString filePath = directory.filePath(fileName);
     QSaveFile imageFile(filePath);
     if (!imageFile.open(QIODevice::WriteOnly) || !image.save(&imageFile, "PNG")
         || !imageFile.commit()) {
@@ -285,8 +338,6 @@ bool CaptureHistoryStore::append(const QImage& image)
     }
 
     removeOrphans(directory_, retained);
-    Q_UNUSED(changed);
-    Q_UNUSED(indexExists);
     return true;
 }
 
