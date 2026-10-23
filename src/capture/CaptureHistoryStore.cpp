@@ -15,6 +15,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <atomic>
 #include <utility>
 
 namespace snipnexs {
@@ -310,8 +311,14 @@ bool CaptureHistoryStore::append(const QImage& image)
     Q_UNUSED(indexValid);
     prune(entries);
 
-    const QString fileName = QStringLiteral("capture-%1-%2.png")
+    // The load path orders entries by file name, so two captures inside the
+    // same millisecond must not fall back to random UUID ordering: a
+    // process-wide, zero-padded sequence keeps file names strictly
+    // increasing in write order.
+    static std::atomic<int> writeSequence = 0;
+    const QString fileName = QStringLiteral("capture-%1-%2-%3.png")
         .arg(QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd-HHmmss-zzz")))
+        .arg(writeSequence.fetch_add(1), 6, 10, QLatin1Char('0'))
         .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     const QString filePath = directory.filePath(fileName);
     QSaveFile imageFile(filePath);
