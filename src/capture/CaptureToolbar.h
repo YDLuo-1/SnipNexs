@@ -19,6 +19,8 @@ struct CaptureToolbar {
     QPushButton* rectangleButton = nullptr;
     QPushButton* arrowButton = nullptr;
     QPushButton* textButton = nullptr;
+    QPushButton* mosaicButton = nullptr;
+    QPushButton* blurButton = nullptr;
     QPushButton* colorPickerButton = nullptr;
     QPushButton* undoButton = nullptr;
     QPushButton* redoButton = nullptr;

@@ -51,6 +51,7 @@ int main(int argc, char* argv[])
     const std::vector<snipnexs::ToolbarIcon> icons = {
         snipnexs::ToolbarIcon::Pen, snipnexs::ToolbarIcon::Rectangle,
         snipnexs::ToolbarIcon::Arrow, snipnexs::ToolbarIcon::Text,
+        snipnexs::ToolbarIcon::Mosaic, snipnexs::ToolbarIcon::Blur,
         snipnexs::ToolbarIcon::ColorPicker, snipnexs::ToolbarIcon::Undo,
         snipnexs::ToolbarIcon::Redo, snipnexs::ToolbarIcon::Ocr,
         snipnexs::ToolbarIcon::Pin, snipnexs::ToolbarIcon::Record,

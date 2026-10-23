@@ -36,7 +36,7 @@ app
 - `capture/CaptureController` 协调窗口隐藏、显示器采集、剪贴板和文件保存；捕获期间 `MainWindow` 会拒绝托盘或重复启动触发的重新显示。Windows 10 2004 及以上还会在捕获前请求 `WDA_EXCLUDEFROMCAPTURE`，避免 DWM 的旧窗口帧进入截图。
 - `capture/CaptureOverlay` 负责窗口悬停预选、手动选区、物理像素尺寸浮层、图标工具栏、标注与本地取色交互；取色直接读取当前截图或历史原图，不上传像素。原始 `QPixmap` 保持隐式共享，实时截图的 `QImage` 在覆盖层生命周期内缓存一次，避免取色时每次鼠标移动都做全屏转换；用户确认后才裁剪并合成标注。`platform/windows/WindowTargeting` 按顶层窗口 Z 序枚举可见、未最小化且未被 DWM 隐藏的窗口，再把可见原生子 HWND 按小区域优先排列，并追加客户区和整窗边界作为回退。没有独立 HWND 的网页画布、Qt Quick 等内部视觉元素不会被进一步细分；当前不引入控件级 UI Automation。
 - `capture/CaptureHistoryStore` 将成功复制、保存或贴出的原始截图以 PNG 写入 `SnipNexs.exe` 同目录的 `history` 文件夹，并以原子替换维护 `index.json`；`,` / `.` 向前或向后浏览，程序重启后仍可加载。若程序目录不可写，则回退到 Windows 本地应用数据目录。历史同时受 20 条和约 64 MiB 上限约束；索引正常时不会为了计算大小而解码历史 PNG，索引缺失或损坏时会从现有 PNG 重建并收养未登记的可读文件，而不是直接删除用户历史。历史原图与缩小预览矩形分开保存，导出始终保留原始物理分辨率和图片自己的 DPR；历史模式固定整图选择，标注坐标在导出时映射回原图。
-- `editor/AnnotationDocument` 保存画笔、矩形、箭头和单行文字数据及撤销游标；复制、保存或贴图时才合成标注。
+- `editor/AnnotationDocument` 保存画笔、矩形、箭头、单行文字和马赛克/模糊笔刷数据及撤销游标；效果笔刷不存储光栅像素，合成时按当前表面的设备像素比采样未修改的原始截图做块化或盒式模糊，因此撤销轻量、预览与导出一致；复制、保存或贴图时才合成标注。
 - `pin/PinWindow` 是持有原始 `QImage` 和一份隐式共享 `QPixmap` 的置顶窗口，支持移动、以鼠标内容为锚点的累积有界缩放、双击左键关闭和右键菜单；复制/保存信号交回 `CaptureController`，默认隐藏的轻量工具条只提供复制、保存和关闭。绘制源矩形使用完整物理 `QPixmap::rect()`，避免高 DPI 下只显示左上区域；阴影由窗口直接绘制，不在每次缩放时创建图形场景或模糊效果。
 - `ocr/OcrService` 复用一个工作线程，避免 OCR 阻塞 UI；同一时刻只接受一个识别任务。
 - `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型。

@@ -11,6 +11,8 @@ enum class ToolbarIcon {
     Rectangle,
     Arrow,
     Text,
+    Mosaic,
+    Blur,
     ColorPicker,
     Undo,
     Redo,

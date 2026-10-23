@@ -53,6 +53,8 @@ CaptureToolbar buildCaptureToolbar(QWidget* parent)
     toolbar.arrowButton = new QPushButton(toolbar.widget);
     toolbar.textButton = new QPushButton(toolbar.widget);
     toolbar.textButton->setObjectName(QStringLiteral("textButton"));
+    toolbar.mosaicButton = new QPushButton(toolbar.widget);
+    toolbar.blurButton = new QPushButton(toolbar.widget);
     toolbar.colorPickerButton = new QPushButton(toolbar.widget);
     toolbar.colorPickerButton->setObjectName(QStringLiteral("colorPickerButton"));
     toolbar.undoButton = new QPushButton(toolbar.widget);
@@ -77,6 +79,10 @@ CaptureToolbar buildCaptureToolbar(QWidget* parent)
                            overlayTranslate("箭头"));
     configureToolbarButton(toolbar.textButton, ToolbarIcon::Text,
                            overlayTranslate("文字"));
+    configureToolbarButton(toolbar.mosaicButton, ToolbarIcon::Mosaic,
+                           overlayTranslate("马赛克"));
+    configureToolbarButton(toolbar.blurButton, ToolbarIcon::Blur,
+                           overlayTranslate("模糊"));
     configureToolbarButton(toolbar.colorPickerButton, ToolbarIcon::ColorPicker,
                            overlayTranslate("取色"));
     toolbar.colorPickerButton->setCheckable(true);
@@ -116,6 +122,10 @@ CaptureToolbar buildCaptureToolbar(QWidget* parent)
         toolbar.arrowButton, static_cast<int>(AnnotationTool::Arrow));
     toolbar.toolButtons->addButton(
         toolbar.textButton, static_cast<int>(AnnotationTool::Text));
+    toolbar.toolButtons->addButton(
+        toolbar.mosaicButton, static_cast<int>(AnnotationTool::Mosaic));
+    toolbar.toolButtons->addButton(
+        toolbar.blurButton, static_cast<int>(AnnotationTool::Blur));
     for (auto* button : toolbar.toolButtons->buttons()) {
         button->setCheckable(true);
     }
@@ -124,6 +134,8 @@ CaptureToolbar buildCaptureToolbar(QWidget* parent)
     layout->addWidget(toolbar.rectangleButton);
     layout->addWidget(toolbar.arrowButton);
     layout->addWidget(toolbar.textButton);
+    layout->addWidget(toolbar.mosaicButton);
+    layout->addWidget(toolbar.blurButton);
     layout->addWidget(toolbar.colorPickerButton);
     addSeparator();
     layout->addWidget(toolbar.undoButton);

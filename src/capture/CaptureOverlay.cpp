@@ -419,7 +419,7 @@ void CaptureOverlay::paintEvent(QPaintEvent*)
         painter.setClipRect(previewRect);
         painter.drawPixmap(rect(), screenshot_);
         if (selection_.isValid()) {
-            annotations_.paint(painter);
+            annotations_.paint(painter, effectSource());
         }
         painter.restore();
 
@@ -644,7 +644,7 @@ QImage CaptureOverlay::selectedImage() const
             logicalSize.width() / selection_.width(),
             logicalSize.height() / selection_.height());
         painter.translate(-selection_.left(), -selection_.top());
-        annotations_.paint(painter);
+        annotations_.paint(painter, effectSource());
         return image;
     }
 
@@ -659,7 +659,7 @@ QImage CaptureOverlay::selectedImage() const
     {
         QPainter painter(&image);
         painter.translate(-selection_.topLeft());
-        annotations_.paint(painter);
+        annotations_.paint(painter, effectSource());
     }
     return image;
 }
@@ -680,6 +680,30 @@ const QImage& CaptureOverlay::liveScreenshotImage() const
         liveScreenshotImage_.setDevicePixelRatio(devicePixelRatio_);
     }
     return liveScreenshotImage_;
+}
+
+AnnotationSource CaptureOverlay::effectSource() const
+{
+    // History mode shows the stored image inside selection_ (the centered
+    // target rect from activateHistoryIndex); annotation coordinates are
+    // overlay coordinates in both modes.
+    if (!activeHistoryImage_.isNull()) {
+        const QImage& image = activeHistoryImage_;
+        return AnnotationSource{
+            &image,
+            QTransform::fromScale(
+                image.width() / static_cast<qreal>(selection_.width()),
+                image.height() / static_cast<qreal>(selection_.height()))
+                * QTransform::fromTranslate(
+                    -static_cast<qreal>(selection_.x()),
+                    -static_cast<qreal>(selection_.y()))};
+    }
+    const QImage& image = liveScreenshotImage();
+    return AnnotationSource{
+        &image,
+        QTransform::fromScale(
+            image.width() / static_cast<qreal>(width()),
+            image.height() / static_cast<qreal>(height()))};
 }
 
 void CaptureOverlay::acceptCopy()

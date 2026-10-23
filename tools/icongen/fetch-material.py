@@ -18,6 +18,8 @@ GLYPHS = {
     "arrow_outward": ["default"],
     "text_fields": ["default"],
     "title": ["fill1"],
+    "blur_on": ["fill1"],
+    "blur_circular": ["default"],
     "colorize": ["fill1"],
     "undo": ["default"],
     "redo": ["default"],

@@ -20,6 +20,8 @@ FINAL = {
     "Rectangle": "crop_square-default.svg",
     "Arrow": "arrow_outward-default.svg",
     "Text": "title-fill1.svg",
+    "Mosaic": "blur_on-fill1.svg",
+    "Blur": "blur_circular-default.svg",
     "ColorPicker": "colorize-fill1.svg",
     "Undo": "undo-default.svg",
     "Redo": "redo-default.svg",

@@ -413,6 +413,16 @@ You can still click the Region Capture button.</translation>
         <translation>Text</translation>
     </message>
     <message>
+        <location filename="../src/capture/CaptureToolbar.cpp" line="83"/>
+        <source>马赛克</source>
+        <translation>Mosaic</translation>
+    </message>
+    <message>
+        <location filename="../src/capture/CaptureToolbar.cpp" line="85"/>
+        <source>模糊</source>
+        <translation>Blur</translation>
+    </message>
+    <message>
         <location line="+1"/>
         <source>取色</source>
         <translation>Color picker</translation>

@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
                     && button->accessibleName() == button->toolTip();
             }
         }
-        toolbarButtonsOk &= toolbarButtonCount == 13;
+        toolbarButtonsOk &= toolbarButtonCount == 15;
         const auto* textButton = captureToolbar->findChild<QPushButton*>(
             QStringLiteral("textButton"));
         const auto* colorPickerButton = captureToolbar->findChild<QPushButton*>(

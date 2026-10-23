@@ -88,6 +88,7 @@ private:
     void copyPickedColor();
     void drawColorPicker(QPainter& painter) const;
     void drawHistoryHint(QPainter& painter) const;
+    [[nodiscard]] AnnotationSource effectSource() const;
     [[nodiscard]] QRect handleRect(ResizeHandle handle) const;
     [[nodiscard]] const QImage& liveScreenshotImage() const;
     void positionCaptureHint();
