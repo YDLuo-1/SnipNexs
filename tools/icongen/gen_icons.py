@@ -1,8 +1,8 @@
-"""Generates QPainterPath command tables from icon-library SVGs.
+"""Generates QPainterPath command tables from SVG sources.
 
-Parses the subset of SVG used by Lucide/Tabler (path/circle/ellipse/rect/
-line/polyline on a 24x24 grid), converts SVG endpoint arcs to cubic
-beziers, and emits C++ segment tables plus a candidates preview.
+Parses the SVG subset used by the vendored icons (path/circle/ellipse/rect/
+line/polyline on a 24x24 grid), converts endpoint arcs to cubic beziers, and
+emits C++ segment tables. gen_material.py owns glyph selection.
 """
 import math
 import re
@@ -339,40 +339,3 @@ def emit_prims(prims, indent="    "):
             coords = ", ".join(fmt(v) for v in prim[1:])
             lines.append(f"{indent}{{Seg::Cubic, {{{coords}}}}},")
     return "\n".join(lines)
-
-
-# slot -> list of (variant label, svg file)
-CANDIDATES = {
-    "Pen": [("lucide-pencil", "lucide-pencil.svg"),
-            ("lucide-pencil-line", "lucide-pencil-line.svg"),
-            ("tabler-pencil", "tabler-pencil.svg")],
-    "Text": [("lucide-text-cursor", "lucide-text-cursor.svg"),
-             ("tabler-cursor-text", "tabler-cursor-text.svg")],
-    "ColorPicker": [("lucide-pipette", "lucide-pipette.svg"),
-                    ("lucide-palette", "lucide-palette.svg")],
-    "Undo": [("lucide-undo-2", "lucide-undo-2.svg"),
-             ("tabler-arrow-back-up", "tabler-arrow-back-up.svg")],
-    "Redo": [("lucide-redo-2", "lucide-redo-2.svg"),
-             ("tabler-arrow-forward-up", "tabler-arrow-forward-up.svg")],
-    "Ocr": [("lucide-scan-text", "lucide-scan-text.svg"),
-            ("tabler-scan", "tabler-scan.svg")],
-    "Pin": [("lucide-pin", "lucide-pin.svg"),
-            ("tabler-pin", "tabler-pin.svg")],
-    "Record": [("lucide-video", "lucide-video.svg")],
-    "Copy": [("lucide-copy", "lucide-copy.svg")],
-    "Save": [("lucide-save", "lucide-save.svg"),
-             ("tabler-device-floppy", "tabler-device-floppy.svg")],
-    "Rectangle": [("lucide-square", "lucide-square.svg")],
-    "Arrow": [("lucide-arrow-up-right", "lucide-arrow-up-right.svg")],
-    "Cancel": [("lucide-x", "lucide-x.svg")],
-    "Check": [("lucide-check", "lucide-check.svg")],
-}
-
-if __name__ == "__main__":
-    for slot, variants in CANDIDATES.items():
-        for label, filename in variants:
-            try:
-                prims, fills = parse_svg(filename)
-                print(f"{label}: {len(prims)} stroke prims, {len(fills)} fill prims")
-            except Exception as error:  # noqa: BLE001
-                print(f"{label}: FAILED {error}")

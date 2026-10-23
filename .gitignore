@@ -13,6 +13,8 @@ SnipNexs-*.jpeg
 SnipNexs-*.bmp
 SnipNexs-*.mp4
 *.snipnexs-*.partial.mp4
+__pycache__/
+*.py[cod]
 
 CMakeUserPresets.json
 *.user

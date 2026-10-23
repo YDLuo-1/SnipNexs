@@ -9,10 +9,10 @@ import io
 import os
 import sys
 
-sys.path.insert(0, r"D:\CodexProjects\ScreenBox\build\iconwork")
+ICON_DIR = os.path.dirname(os.path.abspath(__file__))
+MATERIAL_DIR = os.path.join(ICON_DIR, "material-sources")
+sys.path.insert(0, ICON_DIR)
 import gen_icons
-
-MATERIAL_DIR = r"D:\CodexProjects\ScreenBox\build\iconwork\material"
 
 # slot -> (material file, licence note in commit message only)
 FINAL = {
@@ -197,7 +197,10 @@ def parse_material(filename):
 if __name__ == "__main__":
     parts_tables = []
     for slot, filename in FINAL.items():
-        parts = parse_material(os.path.join(MATERIAL_DIR, "mat-" + filename))
+        source = os.path.join(MATERIAL_DIR, "mat-" + filename)
+        if not os.path.isfile(source):
+            raise SystemExit(f"missing vendored glyph: {source}")
+        parts = parse_material(source)
         parts_tables.append((slot, filename, parts))
         print(slot, "parts:", [len(p) for p in parts])
 
@@ -213,7 +216,7 @@ if __name__ == "__main__":
             part_entries.append(f"{{{seg_name}, {len(prims)}, true}}")
         part_defs.append(
             f"const GlyphPart k{slot}Parts[] = {{\n    "
-            + ",\n    ".join(part_entries) + "\n}};\n")
+            + ",\n    ".join(part_entries) + "\n};\n")
         lookup.append(
             f"    case ToolbarIcon::{slot}: "
             f"return {{k{slot}Parts, {len(parts)}}};")
