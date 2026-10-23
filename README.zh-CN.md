@@ -77,6 +77,8 @@ cmake --install build/release --prefix $installRoot
 
 部署后的程序位于 `dist/SnipNexs/bin/SnipNexs.exe`。
 
+如果仓库被移动或改名，请用 `cmake --fresh --preset windows-release` 重新配置（或删除 `build/release`）；CMake 与 Ninja 会保存绝对源码路径。
+
 正式发布必须在干净且已打对应版本标签的提交上运行：
 
 ```powershell

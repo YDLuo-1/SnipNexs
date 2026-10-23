@@ -77,6 +77,8 @@ cmake --install build/release --prefix $installRoot
 
 The deployed executable is `dist/SnipNexs/bin/SnipNexs.exe`.
 
+If the repository has been moved or renamed, reconfigure with `cmake --fresh --preset windows-release` (or delete `build/release`); CMake and Ninja store absolute source paths.
+
 For a formal release, run this only from a clean commit carrying the matching version tag:
 
 ```powershell
