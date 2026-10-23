@@ -108,17 +108,64 @@ if (Test-Path -LiteralPath (Join-Path $distRoot 'SHA256SUMS.txt')) {
 & $cmake.Source --install build/release --config Release --prefix $stageDir
 if ($LASTEXITCODE -ne 0) { throw 'Release install failed.' }
 
+$deployedExe = Join-Path $stageDir 'bin\SnipNexs.exe'
+$deployedVersion = (Get-Item -LiteralPath $deployedExe).VersionInfo.FileVersion
+if ($deployedVersion -ne $Version) {
+    throw "Deployed file version '$deployedVersion' does not match $Version."
+}
+
+function Invoke-DeployedSelfTest {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExePath,
+        [Parameter(Mandatory = $true)][string]$Argument,
+        [int]$TimeoutMs = 60000
+    )
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $ExePath
+    $startInfo.Arguments = $Argument
+    $startInfo.WorkingDirectory = Split-Path -Parent $ExePath
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    try {
+        if (-not $process.WaitForExit($TimeoutMs)) {
+            $process.Kill()
+            throw "Self-test timed out: $Argument"
+        }
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+        if ($process.ExitCode -ne 0) {
+            throw "Self-test failed ($Argument):`n$stdout`n$stderr"
+        }
+    } finally {
+        $process.Dispose()
+    }
+}
+
 $previousQpa = $env:QT_QPA_PLATFORM
 $previousQpaPluginPath = $env:QT_QPA_PLATFORM_PLUGIN_PATH
 $env:QT_QPA_PLATFORM = 'offscreen'
 $env:QT_QPA_PLATFORM_PLUGIN_PATH = Join-Path $qtDir 'plugins\platforms'
 try {
-    $selfTest = Start-Process -FilePath (Join-Path $stageDir 'bin\SnipNexs.exe') `
-        -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
-    if ($selfTest.ExitCode -ne 0) { throw 'The deployed application self-test failed.' }
+    Invoke-DeployedSelfTest -ExePath (Join-Path $stageDir 'bin\SnipNexs.exe') `
+        -Argument '--self-test' -TimeoutMs 60000
 } finally {
     $env:QT_QPA_PLATFORM = $previousQpa
     $env:QT_QPA_PLATFORM_PLUGIN_PATH = $previousQpaPluginPath
+}
+
+# No GUI platform plugin is needed here: this mode verifies that the Qt TLS
+# backend and both translation engines load from the deployed layout itself.
+$previousPluginPath = $env:QT_PLUGIN_PATH
+$env:QT_PLUGIN_PATH = Join-Path $stageDir 'plugins'
+try {
+    Invoke-DeployedSelfTest -ExePath (Join-Path $stageDir 'bin\SnipNexs.exe') `
+        -Argument '--self-test-runtime' -TimeoutMs 30000
+} finally {
+    $env:QT_PLUGIN_PATH = $previousPluginPath
 }
 
 Compress-Archive -Path (Join-Path $stageDir '*') `

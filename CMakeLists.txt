@@ -6,6 +6,10 @@ project(SnipNexs
     LANGUAGES CXX
 )
 
+if(WIN32)
+    enable_language(RC)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -97,10 +101,17 @@ set(SNIPNEXS_LICENSE_FILES
     licenses/llama.cpp-MIT.txt
 )
 
+set(SNIPNEXS_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/SnipNexs.rc")
+configure_file(resources/SnipNexs.rc.in "${SNIPNEXS_RC_FILE}" @ONLY)
+set_source_files_properties("${SNIPNEXS_RC_FILE}" PROPERTIES
+    COMPILE_FLAGS "/I\"${CMAKE_CURRENT_SOURCE_DIR}/resources\"")
+
 qt_add_executable(SnipNexs WIN32
+    "${SNIPNEXS_RC_FILE}"
     src/main.cpp
     src/app/AppIcon.cpp
     src/app/AppIcon.h
+    src/app/ImageSaveDialog.h
     src/app/AboutDialog.cpp
     src/app/AboutDialog.h
     src/app/MainWindow.cpp
@@ -157,6 +168,11 @@ qt_add_executable(SnipNexs WIN32
     src/translate/TranslationTextSplitter.h
 )
 
+set_target_properties(SnipNexs PROPERTIES
+    QT_WINDOWS_APP_PROJECT_IDENTIFIER "io.github.ydluo.snipnexs"
+    QT_WINDOWS_APP_PROJECT_EXECUTION_LEVEL "asInvoker"
+)
+
 target_include_directories(SnipNexs PRIVATE src ${SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR})
 
 target_link_libraries(SnipNexs PRIVATE
@@ -211,6 +227,9 @@ endif()
 include(GNUInstallDirs)
 if(MSVC)
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_INSTALL_BINDIR})
+    # CTranslate2 and ggml are built with /openmp, so the portable package
+    # must ship vcomp140.dll next to the application-local CRT DLLs.
+    set(CMAKE_INSTALL_OPENMP_LIBRARIES TRUE)
     include(InstallRequiredSystemLibraries)
 endif()
 
@@ -251,7 +270,7 @@ qt_generate_deploy_app_script(
         --no-system-dxc-compiler
         --no-opengl-sw
         --no-compiler-runtime
-        --skip-plugin-types generic,iconengines,networkinformation,tls
+        --skip-plugin-types generic,iconengines,networkinformation
         --exclude-plugins qsvg
 )
 install(SCRIPT ${deploy_script})
@@ -273,11 +292,27 @@ include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Test)
 
+    # Some security configurations deny unsigned test executables access to
+    # the user's default temp folder. Keep test scratch files inside the build
+    # tree so CTest is reproducible without changing the product paths.
+    set(SNIPNEXS_TEST_TEMP_DIR "${CMAKE_BINARY_DIR}/test-temp")
+    file(MAKE_DIRECTORY "${SNIPNEXS_TEST_TEMP_DIR}")
+
     add_test(NAME SnipNexsSelfTest COMMAND SnipNexs --self-test)
     set_tests_properties(SnipNexsSelfTest PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
         PASS_REGULAR_EXPRESSION "self-test: ok"
+    )
+
+    # Runs without a GUI platform plugin so the deployed layout can be
+    # checked in place: Qt TLS backend, ctranslate2.dll and llama.dll must all
+    # load from the application directory and its plugins/ folder.
+    add_test(NAME SnipNexsRuntimeSelfTest COMMAND SnipNexs --self-test-runtime)
+    set_tests_properties(SnipNexsRuntimeSelfTest PROPERTIES
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        PASS_REGULAR_EXPRESSION "runtime-self-test: ok"
+        TIMEOUT 60
     )
 
     add_executable(CaptureGeometryTests tests/CaptureGeometryTests.cpp)
@@ -301,7 +336,7 @@ if(BUILD_TESTING)
     )
     add_test(NAME CaptureHistoryStoreTests COMMAND CaptureHistoryStoreTests)
     set_tests_properties(CaptureHistoryStoreTests PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;TEMP=${SNIPNEXS_TEST_TEMP_DIR};TMP=${SNIPNEXS_TEST_TEMP_DIR}"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
@@ -596,6 +631,7 @@ if(BUILD_TESTING)
     set_tests_properties(NativeScreenRecorderTests PROPERTIES
         SKIP_RETURN_CODE 77
         TIMEOUT 20
+        ENVIRONMENT "TEMP=${SNIPNEXS_TEST_TEMP_DIR};TMP=${SNIPNEXS_TEST_TEMP_DIR}"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 

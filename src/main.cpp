@@ -9,12 +9,15 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QComboBox>
+#include <QCoreApplication>
+#include <QLibrary>
 #include <QLibraryInfo>
 #include <QLabel>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QSettings>
 #include <QPushButton>
+#include <QSslSocket>
 #include <QTextStream>
 #include <QTimer>
 #include <QTranslator>
@@ -90,6 +93,41 @@ void configureCaptureHotkey(
             window.showNotification(title, message);
         }
     }
+}
+
+int runRuntimeSelfTest(int argc, char* argv[])
+{
+    QCoreApplication app(argc, argv);
+    QCoreApplication::setApplicationName(QStringLiteral("SnipNexs"));
+    QCoreApplication::setApplicationVersion(QStringLiteral(SNIPNEXS_VERSION));
+
+    // Deliberately avoids QApplication: this mode is also used against the
+    // deployed layout, where only the plugins/ folder shipped with the app is
+    // available (no qoffscreen/qwindows platform plugin required).
+    const bool tlsOk = QSslSocket::supportsSsl();
+    QLibrary ctranslate2(QStringLiteral("ctranslate2"));
+    const bool ctranslate2Ok = ctranslate2.load();
+    QLibrary llama(QStringLiteral("llama"));
+    const bool llamaOk = llama.load();
+
+    const bool ok = tlsOk && ctranslate2Ok && llamaOk;
+    QTextStream output(stdout);
+    output << "SnipNexs " << QCoreApplication::applicationVersion() << '\n'
+           << "tls: " << (tlsOk ? "ok" : "failed")
+           << " (" << QSslSocket::sslLibraryVersionString() << ")\n"
+           << "ctranslate2: " << (ctranslate2Ok ? "ok" : "failed");
+    if (!ctranslate2Ok) {
+        output << " (" << ctranslate2.errorString() << ')';
+    }
+    output << '\n'
+           << "llama: " << (llamaOk ? "ok" : "failed");
+    if (!llamaOk) {
+        output << " (" << llama.errorString() << ')';
+    }
+    output << '\n'
+           << "runtime-self-test: " << (ok ? "ok" : "failed") << '\n';
+    output.flush();
+    return ok ? 0 : 1;
 }
 
 int runSelfTest(
@@ -201,6 +239,12 @@ int runSelfTest(
 
 int main(int argc, char* argv[])
 {
+    for (int index = 1; index < argc; ++index) {
+        if (qstrcmp(argv[index], "--self-test-runtime") == 0) {
+            return runRuntimeSelfTest(argc, argv);
+        }
+    }
+
     QApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("SnipNexs"));
     QCoreApplication::setApplicationVersion(QStringLiteral(SNIPNEXS_VERSION));
@@ -245,12 +289,20 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    QLocalServer::removeServer(QString::fromLatin1(kInstanceName));
+    const QString instanceName = QString::fromLatin1(kInstanceName);
     QLocalServer instanceServer;
-    if (!instanceServer.listen(QString::fromLatin1(kInstanceName))) {
-        QTextStream(stderr) << "Failed to create the single-instance endpoint: "
-                            << instanceServer.errorString() << '\n';
-        return 2;
+    if (!instanceServer.listen(instanceName)) {
+        // A live instance may have started after the probe above. Ask it to
+        // activate before removing an endpoint that may still be in use.
+        if (notifyExistingInstance(QByteArrayLiteral("activate\n"))) {
+            return 0;
+        }
+        QLocalServer::removeServer(instanceName);
+        if (!instanceServer.listen(instanceName)) {
+            QTextStream(stderr) << "Failed to create the single-instance endpoint: "
+                                << instanceServer.errorString() << '\n';
+            return 2;
+        }
     }
 
     snipnexs::MainWindow window;

@@ -19,6 +19,7 @@ AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
+SetupIconFile=..\resources\app.ico
 LicenseFile=..\LICENSE
 OutputDir=..\dist
 OutputBaseFilename=SnipNexs-{#AppVersion}-setup
@@ -27,6 +28,7 @@ SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
 PrivilegesRequired=admin
+CloseApplications=yes
 UninstallDisplayIcon={app}\{#AppExe}
 
 [Languages]
@@ -46,7 +48,5 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
-[UninstallDelete]
-; capture history and downloaded translation models are user data; keep them
-Type: filesandordirs; Name: "{app}\bin\history"
-Type: filesandordirs; Name: "{app}\bin\models"
+; bin\history and bin\models are user data. They are deliberately not listed
+; in [UninstallDelete]; Inno Setup leaves files it did not install in place.

@@ -24,7 +24,16 @@ set(required_files
     bin/msvcp140_atomic_wait.dll
     bin/vcruntime140.dll
     bin/vcruntime140_1.dll
+    bin/vcomp140.dll
+    bin/ctranslate2.dll
+    bin/llama.dll
+    bin/ggml.dll
+    bin/ggml-base.dll
+    bin/ggml-cpu.dll
+    bin/qt.conf
     plugins/platforms/qwindows.dll
+    plugins/styles/qmodernwindowsstyle.dll
+    plugins/imageformats/qjpeg.dll
     LICENSE
     THIRD_PARTY_NOTICES.md
     licenses/LGPL-3.0-only.txt
@@ -39,8 +48,28 @@ foreach(relative_path IN LISTS required_files)
     endif()
 endforeach()
 
+file(GLOB tls_plugins "${SNIPNEXS_STAGE_DIR}/plugins/tls/*.dll")
+if(NOT tls_plugins)
+    message(FATAL_ERROR "Missing Qt TLS backend plugin under plugins/tls")
+endif()
+
 if(EXISTS "${SNIPNEXS_STAGE_DIR}/bin/vc_redist.x64.exe")
     message(FATAL_ERROR "Redundant VC++ installer must not be included with app-local runtime DLLs")
+endif()
+
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E env
+        "QT_PLUGIN_PATH=${SNIPNEXS_STAGE_DIR}/plugins"
+        "${SNIPNEXS_STAGE_DIR}/bin/SnipNexs.exe" --self-test-runtime
+    RESULT_VARIABLE runtime_result
+    OUTPUT_VARIABLE runtime_output
+    ERROR_VARIABLE runtime_error
+    TIMEOUT 60
+)
+if(NOT runtime_result EQUAL 0)
+    message(FATAL_ERROR
+        "Deployed runtime self-test failed (${runtime_result}):\n"
+        "${runtime_output}\n${runtime_error}")
 endif()
 
 message(STATUS "Release layout contains all required runtime and license files")

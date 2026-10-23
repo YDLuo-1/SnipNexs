@@ -2,12 +2,19 @@
 
 | 依赖 | 当前用途 | 链接方式 | 许可证注意事项 |
 |---|---|---|---|
-| Qt 6.11.2 Core/Gui/Widgets/Network/LinguistTools | UI、事件循环、单实例通信、屏幕采集、标注、贴图与中英翻译资源生成 | 运行库动态链接；LinguistTools 仅构建时使用 | LGPL-3.0-only；随包发布许可、第三方声明、qtbase SBOM，并允许替换 DLL |
-| Microsoft Visual C++ v143 运行库 | 支持在未全局安装 VC++ Redistributable 的 Windows 10 x64 机器上直接运行便携包 | 从 Visual Studio `Redist` 目录应用本地部署 DLL | 仅复制 Visual Studio 标记为可再发行的 CRT 文件；遵循对应 Visual Studio 许可，不属于 GPL 代码 |
+| Qt 6.11.2 Core/Gui/Widgets/Network/LinguistTools | UI、事件循环、单实例通信、屏幕采集、标注、贴图、中英翻译资源与模型 HTTPS 下载 | 运行库动态链接；随包部署 Schannel TLS 插件；LinguistTools 仅构建时使用 | LGPL-3.0-only；随包发布许可、第三方声明、qtbase SBOM，并允许替换 DLL |
+| Microsoft Visual C++ v143 运行库（CRT + OpenMP） | 支持在未全局安装 VC++ Redistributable 的 Windows 10 x64 机器上直接运行便携包 | 从 Visual Studio `Redist` 目录应用本地部署 DLL，含 `vcomp140.dll` | 仅复制 Visual Studio 标记为可再发行的运行库文件；遵循对应 Visual Studio 许可，不属于 GPL 代码 |
+| CTranslate2 v4.8.1 | 默认本地翻译引擎（OPUS-MT CPU 推理） | 动态 `ctranslate2.dll` | MIT；Ruy、cpu_features（Apache-2.0）与 spdlog（MIT）静态编入 |
+| SentencePiece v0.2.0 | OPUS-MT 分词 | 静态链接 | Apache-2.0；abseil-cpp 与 protobuf 随其源码仓库 |
+| llama.cpp 固定提交 `4da6337` | 高质量本地翻译引擎（Hy-MT2 GGUF CPU 推理） | 动态 `llama.dll` + `ggml*.dll` | MIT |
+| Helsinki-NLP OPUS-MT / 腾讯 Hy-MT2 模型 | 本地翻译语言包，按需下载，不随安装包分发 | 数据文件 | OPUS-MT Apache-2.0 / CC-BY 4.0；Hy-MT2 Apache-2.0；每个文件登记 SHA-256 |
+| Material Symbols Rounded | 工具栏字形几何 | 构建期坐标表 | Apache-2.0；不分发上游 SVG |
 | Windows SDK / User32 | Windows 10 API、全局快捷键 | 系统组件 | 随 MSVC/Windows SDK 条款 |
 | Windows.Media.Ocr / C++/WinRT | 本地 OCR；语言模型由 Windows 语言包提供 | 系统 API、`windowsapp.lib` | 不随 SnipNexs 分发 OCR 模型或第三方 OCR DLL |
 | Windows.Graphics.Capture / D3D11 | 显示器 GPU 捕获、区域纹理复制、鼠标指针捕获 | 系统 API、`d3d11.lib` | Windows 10 2004 已支持；不分发捕获运行时 |
 | Windows.Media / Shcore | `MediaStreamSource`、`MediaTranscoder`、随机访问输出流；H.264/MP4 | 系统 API、`windowsapp.lib`、`shcore.lib` | 编码能力由 Windows 和显卡驱动提供；不捆绑 FFmpeg |
+
+本地翻译模型通过 Qt Network 从 GitHub Release（或用户配置的 `translation/modelBaseUrl` 镜像）逐文件下载；HTTPS 依赖随包的 `plugins/tls/qschannelbackend.dll`，文件完整性始终由内置 SHA-256 目录校验。CTranslate2 与 ggml 以 `/openmp` 构建，因此便携包必须同时携带 `vcomp140.dll`，否则首次加载翻译引擎会失败。
 
 当前没有复制 eSearch、Flameshot、Ksnip、ShareX、OBS 或 Snipaste 的源代码，也没有引入 Apache-2.0 OCR 组件。录屏结构参考了微软 MIT 许可的 SimpleRecorder 示例，许可与来源已列入第三方声明。`translate.google.com` 只是用户确认后由默认浏览器打开的外部服务，不是链接或捆绑依赖；发送内容上限为 4000 个字符，不发送图像。
 
