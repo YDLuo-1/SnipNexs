@@ -101,6 +101,7 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 - 2-bit 依赖 Draft 状态的 int2/STQ PR；用当前固定的 llama.cpp `4da6337` 实测加载该文件会在 GGUF tensor offset 校验处失败，确认不能直接替换。
 - 当前 Q4_K_M 的官方文件大小与本地 SHA-256 已核对一致（`dc5f44fc…c06699`），在主线 llama.cpp 上可稳定运行。
 - 待上述 PR 合入主线后，优先评估 1.25-bit：需要新增独立模型包资产、更新 `TranslationModels.cpp` 的 SHA-256 目录，并补充中英质量/速度回归；若质量下降明显，则保留 Q4_K_M。
+- 2026-10-24 核查：[#19357](https://github.com/ggml-org/llama.cpp/pull/19357)、[#22836](https://github.com/ggml-org/llama.cpp/pull/22836)、[#27377](https://github.com/ggml-org/llama.cpp/pull/27377) 均仍未合入，自 `4da6337`（2026-09-27）以来上游亦无混元相关的实质合入。llama.cpp 对每个提交都发布 pre-release（如 `b11840`），滚动版本号本身不构成升级依据；继续使用固定提交 + Q4_K_M。
 - 官方推荐采样参数为 `temperature=0.7, top_p=0.6, top_k=20, repetition_penalty=1.05, max_tokens=4096`，`max_context=8192`。当前实现继续使用贪心采样以保持翻译结果确定、可复现；600 字符分段与 2048 token 窗口留有余量。若后续质量反馈需要，再评估切换到官方采样。
 
 ## 实现验证记录（2026-08-28）
