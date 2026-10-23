@@ -1,6 +1,6 @@
 # 本地翻译引擎选型决策
 
-状态：已采纳（v0.9.0 开发中）
+状态：已采纳并随 v0.8.0 发布（2026-10-03）
 决策日期：2026-08-28
 关联文档：[架构约束](architecture.md)、[依赖与许可](dependencies.md)、[第三方声明](../THIRD_PARTY_NOTICES.md)
 
@@ -84,6 +84,24 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 - llama.cpp 对该模型架构（GGUF `general.architecture = "hunyuan-dense"`）原生支持；MSVC 下需对 llama 目标追加 `/Zc:char8_t-`（上游按 C++17 构建，本项目全局 C++20 会破坏其 u8 字面量）。
 - 两个引擎各自独立的会话槽位（懒加载、常驻复用），`TranslationService` 对上层只暴露引擎枚举参数，`OcrResultWindow` 用下拉框让用户按次选择并持久化。
 - 高质量包走同一套"逐文件 SHA-256 校验 + 原子 manifest"安装机制，分发于独立 Release（`translation-models-hymt2-v1`）。
+- 高质量引擎每次翻译前清空 KV cache，避免多段文本或连续翻译耗尽 `n_ctx`；目标语言由显式参数或 OCR `languageTag` 推导，未知源语言对 Opus 固定模型会被拒绝，对 prompt 驱动的 Llama 回退到中文。
+- Llama 使用 600 字符分段（OPUS 仍为 300 字符），并取逻辑处理器的一半、上限 8 作为推理线程数，在保留 UI 余量的同时利用多核。
+
+## 上游模型更新评估（2026-10-19）
+
+核对 [Tencent-Hunyuan/Hy-MT2](https://github.com/Tencent-Hunyuan/Hy-MT2) 与官方 GGUF 仓库后，结论是**暂不切换模型包**：
+
+| 官方变体 | 文件大小 | llama.cpp 依赖 | 结论 |
+|---|---:|---|---|
+| [`Hy-MT2-1.8B-Q4_K_M.gguf`](https://huggingface.co/tencent/Hy-MT2-1.8B-GGUF)（当前） | 1,133,080,448 B | 主线支持，当前固定提交可运行 | 继续使用 |
+| [`Hy-MT2-1.8B-2Bit.gguf`](https://huggingface.co/tencent/Hy-MT2-1.8B-2bit-GGUF) | 600,534,880 B | PR [#19357](https://github.com/ggml-org/llama.cpp/pull/19357)（Draft，int2/STQ） | 暂不采用 |
+| [`Hy-MT2-1.8B-1.25Bit.gguf`](https://huggingface.co/tencent/Hy-MT2-1.8B-1.25bit-GGUF) | 461,860,800 B | PR [#22836](https://github.com/ggml-org/llama.cpp/pull/22836)（Open，STQ1_0 kernel） | 暂不采用 |
+
+- 1.25-bit 是官方主推的端侧包（约 440 MB，官方称推理速度提升 1.5x），但依赖尚未合入的 STQ1_0 内核；x86 还需要 PR [#27377](https://github.com/ggml-org/llama.cpp/pull/27377) 的 AVX2 vec_dot（Open）。直接使用需要固定未合并 PR 或 fork，破坏当前可复现构建。
+- 2-bit 依赖 Draft 状态的 int2/STQ PR；用当前固定的 llama.cpp `4da6337` 实测加载该文件会在 GGUF tensor offset 校验处失败，确认不能直接替换。
+- 当前 Q4_K_M 的官方文件大小与本地 SHA-256 已核对一致（`dc5f44fc…c06699`），在主线 llama.cpp 上可稳定运行。
+- 待上述 PR 合入主线后，优先评估 1.25-bit：需要新增独立模型包资产、更新 `TranslationModels.cpp` 的 SHA-256 目录，并补充中英质量/速度回归；若质量下降明显，则保留 Q4_K_M。
+- 官方推荐采样参数为 `temperature=0.7, top_p=0.6, top_k=20, repetition_penalty=1.05, max_tokens=4096`，`max_context=8192`。当前实现继续使用贪心采样以保持翻译结果确定、可复现；600 字符分段与 2048 token 窗口留有余量。若后续质量反馈需要，再评估切换到官方采样。
 
 ## 实现验证记录（2026-08-28）
 
@@ -93,7 +111,8 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 2. **MSVC 工具链上"自动计算类型 + 多 worker"会挂死**。`ComputeType::DEFAULT` 对 int8 权重模型走 Ruy 的 int8 路径并配合多线程时测试无限期阻塞；固定 `ComputeType::FLOAT32` + `num_threads_per_replica = 1` 后稳定（int8 权重在加载时反量化，下载体积优势保留）。实测 en-zh 模型加载约 255 ms、两句翻译约 493 ms，满足"OCR 级短文本亚秒级"预期。
 3. **模型包自转换成功**：Helsinki-NLP opus-mt-en-zh / opus-mt-zh-en 经 `ct2-transformers-converter --quantization int8` 转换，模型约 79.5 MB/方向，双语方向均实测可翻译；文件 SHA-256 已静态登记于 `src/translate/TranslationModels.cpp`。
 4. **分词边界**：SentencePiece 静态链接并通过序列化 proto 加载 `.spm`（规避 Windows 非 ASCII 路径的 `std::ifstream` 问题）；CTranslate2 词表只认 `.json`/`.txt`（`model_reader.cc`），转换产物直接兼容。
-5. **测试**：`TranslationTextSplitterTests`（分句不变式）+ `LocalTranslationTests`（真实推理，模型缺失时 exit 77 跳过）；CTest 全套 16/16 通过。
+5. **测试**：`TranslationTextSplitterTests`（分句不变式）+ `TranslationModelsTests`（方向/引擎解析）+ `LocalTranslationTests`（真实 OPUS 推理，模型缺失时 exit 77 跳过）+ `LocalLlamaTests`（真实 Hy-MT2 推理，需手动设置 `SNIPNEXS_TEST_LLAMA_MODEL`）。CTest 共 20 项；环境不具备的引擎/OCR/录屏测试按设计返回 77，不计为通过。
+6. **部署依赖**：模型下载依赖随包的 Qt Schannel TLS 插件；CTranslate2 与 ggml 以 `/openmp` 构建，便携包必须携带 `vcomp140.dll`。`--self-test-runtime` 会在部署目录内验证 TLS 后端和两个引擎 DLL 可加载。
 
 ## 决策的边界条件（何时应重新审视）
 

@@ -73,4 +73,4 @@ SnipNexs dynamically links llama.cpp to run the optional high-quality translatio
 
 ## Microsoft Visual C++ runtime
 
-The portable ZIP includes application-local release CRT DLLs copied only from the Visual Studio 2022 `VC/Redist/MSVC/.../x64/Microsoft.VC143.CRT` directory. This avoids an administrator-level prerequisite installation. These Microsoft files are distributed under the applicable Visual Studio license terms and are not part of SnipNexs or covered by its GPL license.
+The portable ZIP includes application-local release CRT DLLs copied only from the Visual Studio 2022 `VC/Redist/MSVC/.../x64/Microsoft.VC143.CRT` directory, plus the OpenMP runtime `vcomp140.dll` from the matching `Microsoft.VC143.OpenMP` directory (CTranslate2 and ggml are built with `/openmp`). This avoids an administrator-level prerequisite installation. These Microsoft files are distributed under the applicable Visual Studio license terms and are not part of SnipNexs or covered by its GPL license.

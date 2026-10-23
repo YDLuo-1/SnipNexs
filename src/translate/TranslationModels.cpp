@@ -123,6 +123,9 @@ QString defaultModelsDirectory()
 
 TranslationModelSpec createHyMt2Model()
 {
+    // Upstream's 2-bit and 1.25-bit GGUFs need unmerged llama.cpp kernels
+    // (PR #19357/#22836); Q4_K_M is the smallest package the pinned build
+    // can run reproducibly.
     TranslationModelSpec spec;
     spec.id = QStringLiteral("hy-mt2-1.8b-q4");
     spec.engine = TranslationEngineId::LlamaHyMT2;
@@ -150,47 +153,86 @@ QList<TranslationModelSpec> knownTranslationModels()
     return models;
 }
 
+QString normalizedTranslationLanguage(const QString& languageTag)
+{
+    const QString trimmed = languageTag.trimmed();
+    if (trimmed.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)) {
+        return QStringLiteral("zh");
+    }
+    if (trimmed.startsWith(QStringLiteral("en"), Qt::CaseInsensitive)) {
+        return QStringLiteral("en");
+    }
+    return {};
+}
+
+QString translationTargetLanguage(
+    TranslationEngineId engine,
+    const QString& sourceLanguageTag,
+    const QString& requestedTarget)
+{
+    const QString requested = normalizedTranslationLanguage(requestedTarget);
+    if (!requested.isEmpty()) {
+        return requested;
+    }
+    if (!requestedTarget.trimmed().isEmpty()) {
+        return {};
+    }
+
+    const QString source = normalizedTranslationLanguage(sourceLanguageTag);
+    if (source == QStringLiteral("zh")) {
+        return QStringLiteral("en");
+    }
+    if (source == QStringLiteral("en")) {
+        return QStringLiteral("zh");
+    }
+    // The prompt-driven model can still translate an unknown source to
+    // Chinese; the fixed OPUS-MT pairs cannot cover it.
+    return engine == TranslationEngineId::LlamaHyMT2
+        ? QStringLiteral("zh")
+        : QString();
+}
+
 bool findTranslationModelSpec(
     TranslationEngineId engine,
     const QString& sourceLanguageTag,
     const QString& targetLanguage,
     TranslationModelSpec& spec)
 {
-    const QString normalizedTarget = targetLanguage.startsWith(
-        QStringLiteral("zh"), Qt::CaseInsensitive)
-        ? QStringLiteral("zh")
-        : QStringLiteral("en");
-    const QString requestedSource = normalizedTarget == QStringLiteral("zh")
+    const bool sourceProvided = !sourceLanguageTag.trimmed().isEmpty();
+    const QString source = normalizedTranslationLanguage(sourceLanguageTag);
+    const QString target = translationTargetLanguage(
+        engine, sourceLanguageTag, targetLanguage);
+    if (target.isEmpty()) {
+        return false;
+    }
+    if (!source.isEmpty() && source == target) {
+        return false;
+    }
+    if (engine == TranslationEngineId::LlamaHyMT2) {
+        // One prompt-driven model covers both zh-en directions and can be
+        // asked to translate an unsupported source tag into Chinese.
+        for (const TranslationModelSpec& candidate : knownTranslationModels()) {
+            if (candidate.engine == engine) {
+                spec = candidate;
+                return true;
+            }
+        }
+        return false;
+    }
+    if (sourceProvided && source.isEmpty()) {
+        return false;
+    }
+
+    const QString expectedSource = target == QStringLiteral("zh")
         ? QStringLiteral("en")
         : QStringLiteral("zh");
-
+    if (!source.isEmpty() && source != expectedSource) {
+        return false;
+    }
     for (const TranslationModelSpec& candidate : knownTranslationModels()) {
-        if (candidate.engine != engine) {
-            continue;
-        }
-        if (candidate.engine == TranslationEngineId::LlamaHyMT2) {
-            // One prompt-driven model covers both zh-en directions.
-            spec = candidate;
-            return true;
-        }
-        if (candidate.targetLanguage == normalizedTarget
-            && candidate.sourceLanguage == requestedSource) {
-            spec = candidate;
-            return true;
-        }
-        if (!targetLanguage.isEmpty()) {
-            continue;
-        }
-        // The OCR tag decides the direction when the caller did not ask
-        // for a specific target.
-        const QString source = sourceLanguageTag.startsWith(
-            QStringLiteral("zh"), Qt::CaseInsensitive)
-            ? QStringLiteral("zh")
-            : QStringLiteral("en");
-        if (candidate.sourceLanguage == source
-            && candidate.targetLanguage
-                == (source == QStringLiteral("zh") ? QStringLiteral("en")
-                                                   : QStringLiteral("zh"))) {
+        if (candidate.engine == engine
+            && candidate.targetLanguage == target
+            && candidate.sourceLanguage == expectedSource) {
             spec = candidate;
             return true;
         }
@@ -221,20 +263,6 @@ QString effectiveModelBaseUrl(const TranslationModelSpec& spec)
         return overrideUrl;
     }
     return spec.distributionBase;
-}
-
-QString translationModelsBaseUrl()
-{
-    // Users behind restrictive networks can point this at a mirror or a
-    // local server (http(s)/file URL) hosting the same directory layout;
-    // SHA-256 verification applies regardless of the source.
-    const QString overrideUrl = QSettings().value(
-        QStringLiteral("translation/modelBaseUrl")).toString().trimmed();
-    if (!overrideUrl.isEmpty()) {
-        return overrideUrl;
-    }
-    return QStringLiteral(
-        "https://github.com/YDLuo-1/SnipNexs/releases/download/translation-models-v1");
 }
 
 QString translationModelsRoot()

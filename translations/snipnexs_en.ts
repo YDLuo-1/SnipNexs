@@ -209,7 +209,7 @@ You can still click the Region Capture button.</translation>
     </message>
 </context>
 <context>
-    <name>snipnexs</name>
+    <name>snipnexs::TranslationService</name>
     <message>
         <location filename="../src/translate/TranslationService.cpp" line="+67"/>
         <source>当前语言组合暂无本地翻译模型。</source>
@@ -750,8 +750,8 @@ Download now?</translation>
     </message>
     <message>
         <location line="+9"/>
-        <source>本地翻译使用 CTranslate2（MIT）与 SentencePiece（Apache-2.0）。语言包由 Helsinki-NLP 的 OPUS-MT 模型转换而来，首次使用时按需下载，模型许可与文件校验值见第三方声明与各语言包内的 manifest.json。</source>
-        <translation>Local translation uses CTranslate2 (MIT) and SentencePiece (Apache-2.0). Language packages are converted from the Helsinki-NLP OPUS-MT models and downloaded on first use; model licenses and file digests are listed in the third-party notices and in each package&apos;s manifest.json.</translation>
+        <source>本地翻译使用 CTranslate2（MIT）、SentencePiece（Apache-2.0）与 llama.cpp（MIT）。语言包由 Helsinki-NLP 的 OPUS-MT 模型和腾讯 Hy-MT2 模型转换而来，首次使用时按需下载，模型许可与文件校验值见第三方声明与各语言包内的 manifest.json。</source>
+        <translation>Local translation uses CTranslate2 (MIT), SentencePiece (Apache-2.0), and llama.cpp (MIT). Language packages are converted from the Helsinki-NLP OPUS-MT and Tencent Hy-MT2 models and downloaded on first use; model licenses and file digests are listed in the third-party notices and in each package&apos;s manifest.json.</translation>
     </message>
     <message>
         <location line="+8"/>

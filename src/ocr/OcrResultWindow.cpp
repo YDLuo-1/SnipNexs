@@ -103,6 +103,10 @@ OcrResultWindow::OcrResultWindow(
     if (translationService_) {
         connect(translationService_, &TranslationService::translated, this,
             [this](const QString& text, qint64 elapsed) {
+                if (!awaitingTranslation_) {
+                    return;
+                }
+                awaitingTranslation_ = false;
                 translationState_ = TranslationState::Done;
                 translationElapsedMs_ = elapsed;
                 translationEditor_->setPlainText(text);
@@ -113,12 +117,22 @@ OcrResultWindow::OcrResultWindow(
             });
         connect(translationService_, &TranslationService::failed, this,
             [this](const QString& message) {
+                if (!awaitingTranslation_) {
+                    return;
+                }
+                awaitingTranslation_ = false;
                 translationState_ = TranslationState::Hidden;
                 updateTranslationStatus();
                 QMessageBox::warning(this, tr("本地翻译失败"), message);
             });
         connect(translationService_, &TranslationService::modelMissing, this,
-            &OcrResultWindow::requestModelDownload);
+            [this](const QString& packageId, const QString& licenseNote) {
+                if (!awaitingTranslation_) {
+                    return;
+                }
+                awaitingTranslation_ = false;
+                requestModelDownload(packageId, licenseNote);
+            });
         connect(translationService_, &TranslationService::busyChanged, this,
             [this](bool busy) {
                 localTranslateButton_->setEnabled(!busy);
@@ -216,8 +230,14 @@ void OcrResultWindow::startLocalTranslation()
     if (!translationService_) {
         return;
     }
+    if (awaitingTranslation_
+        || translationState_ == TranslationState::Translating
+        || translationState_ == TranslationState::Downloading) {
+        return;
+    }
 
     translationState_ = TranslationState::Translating;
+    awaitingTranslation_ = true;
     translationStatusLabel_->show();
     updateTranslationStatus();
     const TranslationEngineId engine = engineCombo_->currentData().toString()
@@ -227,6 +247,7 @@ void OcrResultWindow::startLocalTranslation()
     if (!translationService_->translate(text, languageTag_, QString(), engine)) {
         // translate() reports the reason through signals; busy or missing
         // models are handled by busyChanged/modelMissing handlers.
+        awaitingTranslation_ = false;
         if (translationState_ == TranslationState::Translating) {
             translationState_ = TranslationState::Hidden;
             updateTranslationStatus();
@@ -239,22 +260,30 @@ void OcrResultWindow::requestModelDownload(
 {
     translationState_ = TranslationState::Hidden;
     updateTranslationStatus();
-    if (modelInstaller_ && modelInstaller_->packageId() != packageId) {
+    if (modelInstaller_ != nullptr) {
         QMessageBox::information(
             this, tr("正在下载其他模型"),
             tr("另一个模型包正在下载，请等待其完成后再试。"));
         return;
     }
 
+    TranslationModelSpec modelSpec;
     qint64 totalBytes = 0;
-    const QList<TranslationModelSpec> models = knownTranslationModels();
-    for (const TranslationModelSpec& spec : models) {
-        if (spec.id == packageId) {
-            for (const auto& file : spec.files) {
-                totalBytes += file.sizeBytes;
-            }
+    for (const TranslationModelSpec& spec : knownTranslationModels()) {
+        if (spec.id != packageId) {
+            continue;
         }
+        modelSpec = spec;
+        for (const TranslationModelFile& file : spec.files) {
+            totalBytes += file.sizeBytes;
+        }
+        break;
     }
+    if (modelSpec.id.isEmpty()) {
+        QMessageBox::warning(this, tr("下载本地翻译模型"), tr("未找到该语言包。"));
+        return;
+    }
+
     const QString sizeText = totalBytes > 0
         ? tr("约 %1 MB").arg(QString::number(totalBytes / (1024.0 * 1024.0), 'f', 0))
         : tr("一百余 MB");
@@ -269,56 +298,48 @@ void OcrResultWindow::requestModelDownload(
         return;
     }
 
-    if (!modelInstaller_) {
-        for (const TranslationModelSpec& spec : knownTranslationModels()) {
-            if (spec.id == packageId) {
-                modelInstaller_ = new TranslationModelInstaller(spec, this);
-                break;
-            }
-        }
-    }
-    if (!modelInstaller_) {
-        QMessageBox::warning(this, tr("下载本地翻译模型"), tr("未找到该语言包。"));
-        return;
-    }
-
+    // One installer per attempt: a failed download must not accumulate
+    // progress/finished connections or reuse stale file counters.
+    auto* installer = new TranslationModelInstaller(modelSpec, this);
+    modelInstaller_ = installer;
     pendingModelPackage_ = packageId;
+    downloadPercent_ = -1;
     translationState_ = TranslationState::Downloading;
     translationStatusLabel_->show();
     updateTranslationStatus();
 
-    connect(modelInstaller_, &TranslationModelInstaller::progress, this,
-        [this](qint64 received, qint64 total, const QString&) {
+    connect(installer, &TranslationModelInstaller::progress, this,
+        [this, installer](qint64 received, qint64 total, const QString&) {
+            if (modelInstaller_ != installer) {
+                return;
+            }
             downloadPercent_ = total > 0
                 ? static_cast<int>(received * 100 / total)
                 : -1;
             updateTranslationStatus();
         });
-    connect(modelInstaller_, &TranslationModelInstaller::finished, this,
-        [this](bool success, const QString& error) {
+    connect(installer, &TranslationModelInstaller::finished, this,
+        [this, installer](bool success, const QString& error) {
+            if (modelInstaller_ != installer) {
+                return;
+            }
+            modelInstaller_ = nullptr;
+            installer->deleteLater();
             if (pendingModelPackage_.isEmpty()) {
                 return;
             }
+            pendingModelPackage_.clear();
+            translationState_ = TranslationState::Hidden;
+            downloadPercent_ = -1;
+            updateTranslationStatus();
             if (success) {
-                translationState_ = TranslationState::Hidden;
-                downloadPercent_ = -1;
-                const QString packageId = pendingModelPackage_;
-                pendingModelPackage_.clear();
-                updateTranslationStatus();
-                if (modelInstaller_->packageId() == packageId) {
-                    startLocalTranslation();
-                }
-            } else {
-                translationState_ = TranslationState::Hidden;
-                downloadPercent_ = -1;
-                updateTranslationStatus();
-                if (!error.isEmpty()) {
-                    QMessageBox::warning(this, tr("下载本地翻译模型"), error);
-                }
+                startLocalTranslation();
+            } else if (!error.isEmpty()) {
+                QMessageBox::warning(this, tr("下载本地翻译模型"), error);
             }
         });
 
-    modelInstaller_->start();
+    installer->start();
 }
 
 void OcrResultWindow::updateTranslationStatus()

@@ -31,6 +31,19 @@ struct TranslationModelSpec {
 
 [[nodiscard]] QList<TranslationModelSpec> knownTranslationModels();
 
+// Normalizes "zh-Hans"/"en-US" to "zh"/"en"; empty for an absent or
+// unsupported tag.
+[[nodiscard]] QString normalizedTranslationLanguage(const QString& languageTag);
+
+// Resolves the effective target language for an engine. An explicit target
+// wins; otherwise the OCR tag decides the direction. The prompt-driven Llama
+// engine defaults unknown sources to Chinese, while Opus returns empty so
+// callers can reject unsupported language pairs.
+[[nodiscard]] QString translationTargetLanguage(
+    TranslationEngineId engine,
+    const QString& sourceLanguageTag,
+    const QString& requestedTarget);
+
 // Resolves a model package for the requested engine. The OCR tag decides
 // the direction when the caller did not ask for a specific target.
 // Returns false when no package covers the request.

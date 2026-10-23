@@ -20,6 +20,10 @@ struct SessionSlot {
     QString& packageId;
 };
 
+// Hy-MT2 has a much larger context than OPUS-MT, so fewer, longer segments
+// preserve more sentence context while still fitting the 2048-token window.
+constexpr int kLlamaSegmentCharacters = 600;
+
 QString modelFilePathFor(const TranslationModelSpec& spec)
 {
     return QDir(translationModelDirectory(spec.id))
@@ -62,8 +66,11 @@ bool TranslationService::translate(
         return false;
     }
 
+    const QString target = translationTargetLanguage(
+        engine, sourceLanguageTag, targetLanguage);
     TranslationModelSpec spec;
-    if (!findTranslationModelSpec(engine, sourceLanguageTag, targetLanguage, spec)) {
+    if (target.isEmpty()
+        || !findTranslationModelSpec(engine, sourceLanguageTag, target, spec)) {
         emit failed(tr("当前语言组合暂无本地翻译模型。"));
         return false;
     }
@@ -76,7 +83,7 @@ bool TranslationService::translate(
     emit busyChanged(true);
     QMetaObject::invokeMethod(
         workerContext_,
-        [this, text = text, spec = std::move(spec), engine, targetLanguage]() {
+        [this, text = text, spec = std::move(spec), engine, target]() {
             QElapsedTimer timer;
             timer.start();
 
@@ -95,11 +102,8 @@ bool TranslationService::translate(
                 if (llamaSession_) {
                     resultText = local_llama::translateSegments(
                         *static_cast<local_llama::Session*>(llamaSession_),
-                        splitTranslationSegments(text),
-                        targetLanguage.startsWith(QStringLiteral("zh"),
-                                                  Qt::CaseInsensitive)
-                            ? QStringLiteral("zh")
-                            : QStringLiteral("en"),
+                        splitTranslationSegments(text, kLlamaSegmentCharacters),
+                        target,
                         &error);
                 }
             } else {

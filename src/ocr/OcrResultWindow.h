@@ -51,6 +51,7 @@ private:
     TranslationModelInstaller* modelInstaller_ = nullptr;
     QString pendingModelPackage_;
     TranslationState translationState_ = TranslationState::Hidden;
+    bool awaitingTranslation_ = false;
     int downloadPercent_ = -1;
     qint64 translationElapsedMs_ = 0;
 

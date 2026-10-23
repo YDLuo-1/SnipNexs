@@ -43,13 +43,24 @@ TranslationModelInstaller::~TranslationModelInstaller()
 
 void TranslationModelInstaller::start()
 {
+    if (activeReply_ != nullptr) {
+        return;
+    }
+
+    canceled_ = false;
+    finished_ = false;
+    nextFileIndex_ = 0;
+    receivedBytes_ = 0;
+    totalBytes_ = 0;
+    activeFileName_.clear();
+
     const QDir packageDir = translationModelDirectory(spec_.id);
     if (!QDir().mkpath(packageDir.absolutePath())) {
         emit finished(false, tr("无法创建模型目录:%1").arg(packageDir.absolutePath()));
         return;
     }
 
-    totalBytes_ = 0;
+    cleanupPartialFiles();
     for (const TranslationModelFile& file : spec_.files) {
         totalBytes_ += file.sizeBytes > 0 ? file.sizeBytes : 0;
     }
@@ -88,8 +99,17 @@ void TranslationModelInstaller::downloadNextFile()
 
     const TranslationModelFile& file = spec_.files.at(nextFileIndex_);
     activeFileName_ = file.fileName;
-    const QUrl url(QDir(effectiveModelBaseUrl(spec_)).filePath(file.remotePath));
-    if (!url.isValid()) {
+    // QDir would collapse the "//" in "https://"; resolve the asset name
+    // against a directory URL instead.
+    const QUrl base(effectiveModelBaseUrl(spec_));
+    QString basePath = base.path();
+    if (!basePath.endsWith(QLatin1Char('/'))) {
+        basePath += QLatin1Char('/');
+    }
+    QUrl baseDirectory = base;
+    baseDirectory.setPath(basePath);
+    const QUrl url = baseDirectory.resolved(QUrl(file.remotePath));
+    if (!url.isValid() || url.scheme().isEmpty()) {
         emit finished(false, tr("模型下载地址无效:%1").arg(file.remotePath));
         return;
     }

@@ -6,6 +6,7 @@
 
 #include <llama.h>
 
+#include <algorithm>
 #include <string>
 #include <thread>
 #include <vector>
@@ -36,8 +37,8 @@ QString promptFor(const QString& segment, bool sourceIsChinese, const QString& t
         .arg(target, segment);
 }
 
-// Two sampling threads leave headroom for the UI while roughly doubling
-// generation speed over a single thread.
+// Use half the logical processors, capped at 8. This leaves headroom for the
+// UI on large CPUs without oversubscribing small ones.
 int32_t generationThreads()
 {
     static const int32_t threads = [] {
@@ -45,7 +46,7 @@ int32_t generationThreads()
         if (hardware <= 2u) {
             return 1;
         }
-        return hardware / 2u > 6u ? 4 : static_cast<int32_t>(hardware / 2u);
+        return static_cast<int32_t>(std::clamp(hardware / 2u, 1u, 8u));
     }();
     return threads;
 }
@@ -131,6 +132,13 @@ QString generateOnce(
     const QString& userMessage,
     QString* error)
 {
+    // Each segment is translated independently. Without this, repeated or
+    // long translations accumulate tokens until n_ctx is exhausted.
+    if (llama_memory_t memory = llama_get_memory(session.context)) {
+        llama_memory_clear(memory, true);
+    }
+    llama_sampler_reset(session.sampler);
+
     // Rendered manually after llama.cpp's automatic chat-template detection
     // misfired for this model: the official Hy-MT2 dense format is
     // <｜hy_begin▁of▁sentence｜><｜hy_User｜>{content}<｜hy_Assistant｜>
