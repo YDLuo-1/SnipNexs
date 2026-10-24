@@ -5,6 +5,7 @@
 #include "translate/TranslationModels.h"
 #include "translate/TranslationService.h"
 
+#include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
 #include <QDesktopServices>
@@ -15,7 +16,9 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollBar>
 #include <QSettings>
+#include <QSplitter>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -25,12 +28,14 @@ namespace snipnexs {
 
 OcrResultWindow::OcrResultWindow(
     QString text,
+    const QStringList& lines,
     const QString& languageTag,
     qint64 elapsedMs,
     TranslationService* translationService,
     QWidget* parent)
     : QWidget(parent)
     , languageTag_(languageTag)
+    , ocrLines_(lines)
     , elapsedMs_(elapsedMs)
     , translationService_(translationService)
 {
@@ -51,7 +56,29 @@ OcrResultWindow::OcrResultWindow(
     translationEditor_->setReadOnly(true);
     translationEditor_->hide();
 
+    alignedSourceEdit_ = new QPlainTextEdit(this);
+    alignedSourceEdit_->setReadOnly(true);
+    alignedSourceEdit_->setPlainText(ocrLines_.join(QLatin1Char('\n')));
+    alignedTargetEdit_ = new QPlainTextEdit(this);
+    alignedTargetEdit_->setReadOnly(true);
+    alignedSplitter_ = new QSplitter(Qt::Horizontal, this);
+    alignedSplitter_->addWidget(alignedSourceEdit_);
+    alignedSplitter_->addWidget(alignedTargetEdit_);
+    alignedSplitter_->setStretchFactor(0, 1);
+    alignedSplitter_->setStretchFactor(1, 1);
+    alignedSplitter_->hide();
+    // Side-by-side reading works only when both panes scroll together.
+    connect(alignedSourceEdit_->verticalScrollBar(), &QScrollBar::valueChanged,
+        alignedTargetEdit_->verticalScrollBar(), &QScrollBar::setValue);
+    connect(alignedTargetEdit_->verticalScrollBar(), &QScrollBar::valueChanged,
+        alignedSourceEdit_->verticalScrollBar(), &QScrollBar::setValue);
+
+    alignCheck_ = new QCheckBox(this);
+    alignCheck_->setObjectName(QStringLiteral("alignCheck"));
+    alignCheck_->hide();
+
     auto* translationButtons = new QHBoxLayout();
+    translationButtons->addWidget(alignCheck_);
     copyTranslationButton_ = new QPushButton(this);
     translationButtons->addWidget(copyTranslationButton_);
     translationButtons->addStretch();
@@ -76,9 +103,11 @@ OcrResultWindow::OcrResultWindow(
     layout->addWidget(editor_, 1);
     layout->addWidget(translationStatusLabel_);
     layout->addWidget(translationEditor_, 1);
+    layout->addWidget(alignedSplitter_, 1);
     layout->addLayout(translationButtons);
     layout->addLayout(buttons);
 
+    connect(alignCheck_, &QCheckBox::toggled, this, &OcrResultWindow::setAlignedMode);
     connect(copyButton_, &QPushButton::clicked, this, &OcrResultWindow::copyText);
     connect(copyTranslationButton_, &QPushButton::clicked, this,
         &OcrResultWindow::copyTranslation);
@@ -111,35 +140,57 @@ OcrResultWindow::OcrResultWindow(
                 translationElapsedMs_ = elapsed;
                 translationEditor_->setPlainText(text);
                 translationStatusLabel_->show();
-                translationEditor_->show();
+                if (!alignedMode_) {
+                    translationEditor_->show();
+                }
+                copyTranslationButton_->show();
+                updateTranslationStatus();
+            });
+        connect(translationService_, &TranslationService::linesTranslated, this,
+            [this](const QStringList& lines, qint64 elapsed) {
+                if (!awaitingLines_) {
+                    return;
+                }
+                awaitingLines_ = false;
+                translationState_ = TranslationState::Done;
+                translationElapsedMs_ = elapsed;
+                showAlignedTranslation(lines, elapsed);
                 copyTranslationButton_->show();
                 updateTranslationStatus();
             });
         connect(translationService_, &TranslationService::failed, this,
             [this](const QString& message) {
-                if (!awaitingTranslation_) {
+                if (!awaitingTranslation_ && !awaitingLines_) {
                     return;
                 }
                 awaitingTranslation_ = false;
+                awaitingLines_ = false;
                 translationState_ = TranslationState::Hidden;
                 updateTranslationStatus();
                 QMessageBox::warning(this, tr("本地翻译失败"), message);
             });
         connect(translationService_, &TranslationService::modelMissing, this,
             [this](const QString& packageId, const QString& licenseNote) {
-                if (!awaitingTranslation_) {
+                if (!awaitingTranslation_ && !awaitingLines_) {
                     return;
                 }
                 awaitingTranslation_ = false;
+                awaitingLines_ = false;
                 requestModelDownload(packageId, licenseNote);
             });
         connect(translationService_, &TranslationService::busyChanged, this,
             [this](bool busy) {
                 localTranslateButton_->setEnabled(!busy);
+                updateTranslationStatus();
             });
+        // Line alignment needs at least two lines to be worth the space.
+        if (ocrLines_.size() >= 2) {
+            alignCheck_->show();
+        }
     } else {
         engineCombo_->hide();
         localTranslateButton_->hide();
+        alignCheck_->hide();
     }
 
     retranslateUi();
@@ -160,7 +211,9 @@ void OcrResultWindow::copyText()
 
 void OcrResultWindow::copyTranslation()
 {
-    QGuiApplication::clipboard()->setText(translationEditor_->toPlainText());
+    QGuiApplication::clipboard()->setText(
+        alignedMode_ ? alignedTargetEdit_->toPlainText()
+                     : translationEditor_->toPlainText());
 }
 
 void OcrResultWindow::retranslateUi()
@@ -191,6 +244,7 @@ void OcrResultWindow::retranslateUi()
     }
     copyButton_->setText(tr("复制文字"));
     copyTranslationButton_->setText(tr("复制译文"));
+    alignCheck_->setText(tr("对照"));
     localTranslateButton_->setText(tr("本地翻译"));
     chineseButton_->setText(tr("浏览器翻译为中文"));
     englishButton_->setText(tr("浏览器翻译为英文"));
@@ -230,6 +284,10 @@ void OcrResultWindow::startLocalTranslation()
     if (!translationService_) {
         return;
     }
+    if (alignedMode_) {
+        startAlignedTranslation();
+        return;
+    }
     if (awaitingTranslation_
         || translationState_ == TranslationState::Translating
         || translationState_ == TranslationState::Downloading) {
@@ -253,6 +311,64 @@ void OcrResultWindow::startLocalTranslation()
             updateTranslationStatus();
         }
     }
+}
+
+void OcrResultWindow::startAlignedTranslation()
+{
+    if (awaitingLines_
+        || translationState_ == TranslationState::Translating
+        || translationState_ == TranslationState::Downloading) {
+        return;
+    }
+    if (translatedLines_.size() == ocrLines_.size() && !translatedLines_.isEmpty()) {
+        showAlignedTranslation(translatedLines_, translationElapsedMs_);
+        return;
+    }
+
+    translationState_ = TranslationState::Translating;
+    awaitingLines_ = true;
+    translationStatusLabel_->show();
+    updateTranslationStatus();
+    const TranslationEngineId engine = engineCombo_->currentData().toString()
+            == QStringLiteral("hymt2")
+        ? TranslationEngineId::LlamaHyMT2
+        : TranslationEngineId::OpusMt;
+    if (!translationService_->translateLines(ocrLines_, languageTag_, engine)) {
+        // Same signal-based error handling as the plain-text path.
+        awaitingLines_ = false;
+        if (translationState_ == TranslationState::Translating) {
+            translationState_ = TranslationState::Hidden;
+            updateTranslationStatus();
+        }
+    }
+}
+
+void OcrResultWindow::setAlignedMode(bool aligned)
+{
+    alignedMode_ = aligned;
+    if (aligned) {
+        translationEditor_->hide();
+        alignedSplitter_->show();
+        startAlignedTranslation();
+    } else {
+        alignedSplitter_->hide();
+        if (translationState_ == TranslationState::Done) {
+            translationEditor_->show();
+        }
+    }
+}
+
+void OcrResultWindow::showAlignedTranslation(
+    const QStringList& lines, qint64 elapsedMs)
+{
+    translatedLines_ = lines;
+    translationElapsedMs_ = elapsedMs;
+    alignedTargetEdit_->setPlainText(lines.join(QLatin1Char('\n')));
+    translationStatusLabel_->show();
+    if (alignedMode_) {
+        alignedSplitter_->show();
+    }
+    updateTranslationStatus();
 }
 
 void OcrResultWindow::requestModelDownload(
@@ -344,6 +460,9 @@ void OcrResultWindow::requestModelDownload(
 
 void OcrResultWindow::updateTranslationStatus()
 {
+    const bool busy = translationState_ == TranslationState::Translating
+        || translationState_ == TranslationState::Downloading;
+    alignCheck_->setEnabled(!busy);
     switch (translationState_) {
     case TranslationState::Downloading:
         translationStatusLabel_->setText(

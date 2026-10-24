@@ -19,4 +19,11 @@ void closeSession(Session* session);
 [[nodiscard]] QString translateSegments(
     Session& session, const QStringList& segments, QString* error);
 
+// Translates each line independently; the result list always has the same
+// size as the input so callers can align lines one to one. Whitespace-only
+// lines (and lines the tokenizer cannot encode) are passed through
+// untranslated in place.
+[[nodiscard]] QStringList translateLines(
+    Session& session, const QStringList& lines, QString* error);
+
 } // namespace local_translation

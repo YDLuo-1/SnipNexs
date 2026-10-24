@@ -48,9 +48,10 @@ CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent)
     }
 
     connect(&ocrService_, &OcrService::recognized, this,
-        [this](const QString& text, const QString& languageTag, qint64 elapsedMs) {
+        [this](const QString& text, const QStringList& lines,
+               const QString& languageTag, qint64 elapsedMs) {
             auto* window = new OcrResultWindow(
-                text, languageTag, elapsedMs, &translationService_);
+                text, lines, languageTag, elapsedMs, &translationService_);
             window->show();
             window->raise();
             window->activateWindow();

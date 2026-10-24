@@ -93,6 +93,24 @@ int main()
         ok = false;
     }
 
+    // Line-aligned translation: one entry per input line with blank lines
+    // passed through, for the bilingual OCR view.
+    const QStringList lineResults = local_llama::translateLines(
+        *session,
+        { QStringLiteral("Hello again."), QString(),
+          QStringLiteral("Second line here.") },
+        QStringLiteral("zh"),
+        &error);
+    if (!error.isEmpty() || lineResults.size() != 3
+        || lineResults.at(1) != QString()
+        || !containsCjk(lineResults.at(0))
+        || !containsCjk(lineResults.at(2))) {
+        QTextStream(stderr) << "line-aligned batch failed: "
+                            << lineResults.join(QStringLiteral(" | "))
+                            << " (" << error << ")\n";
+        ok = false;
+    }
+
     local_llama::closeSession(session);
 
     QTextStream(stdout)

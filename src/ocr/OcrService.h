@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QStringList>
 #include <QThread>
 
 class QImage;
@@ -19,7 +20,8 @@ public:
     [[nodiscard]] bool recognize(QImage image);
 
 signals:
-    void recognized(const QString& text, const QString& languageTag, qint64 elapsedMs);
+    void recognized(const QString& text, const QStringList& lines,
+        const QString& languageTag, qint64 elapsedMs);
     void failed(const QString& message);
 
 private:

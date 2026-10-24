@@ -11,7 +11,7 @@ namespace {
 QImage createTestImage()
 {
     constexpr int width = 1200;
-    constexpr int height = 260;
+    constexpr int height = 400;
     BITMAPINFO info{};
     info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     info.bmiHeader.biWidth = width;
@@ -36,14 +36,16 @@ QImage createTestImage()
     HGDIOBJ previousBitmap = SelectObject(device, bitmap);
     PatBlt(device, 0, 0, width, height, WHITENESS);
     HFONT font = CreateFontW(
-        -150, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+        -120, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
         CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Arial");
     HGDIOBJ previousFont = SelectObject(device, font);
     SetBkMode(device, TRANSPARENT);
     SetTextColor(device, RGB(0, 0, 0));
     const wchar_t text[] = L"1234567890";
-    TextOutW(device, 65, 45, text, 10);
+    TextOutW(device, 65, 50, text, 10);
+    const wchar_t secondLine[] = L"0987654321";
+    TextOutW(device, 65, 230, secondLine, 10);
 
     QImage image(
         static_cast<const uchar*>(bits),
@@ -79,7 +81,15 @@ int main(int argc, char* argv[])
         return 77;
     }
 
-    const bool ok = result.text.contains(QStringLiteral("1234567890"));
+    bool ok = result.text.contains(QStringLiteral("1234567890"))
+        && result.text.contains(QStringLiteral("0987654321"));
+    // The line list drives the bilingual view: joining it must reproduce the
+    // joined text, and the two rendered rows must come back as two lines.
+    ok &= !result.lines.isEmpty()
+        && result.lines.join(QLatin1Char('\n')).trimmed() == result.text.trimmed();
+    ok &= result.lines.size() == 2
+        && result.lines.constFirst().contains(QStringLiteral("1234567890"))
+        && result.lines.constLast().contains(QStringLiteral("0987654321"));
     QTextStream(stdout) << (ok ? "windows ocr: ok" : "windows ocr: failed")
                         << " (" << result.languageTag << ", " << result.elapsedMs << " ms, text="
                         << result.text << ")\n";

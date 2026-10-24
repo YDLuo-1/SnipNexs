@@ -428,6 +428,10 @@ You can still click the Region Capture button.</translation>
         <translation>Color picker</translation>
     </message>
     <message>
+        <source>对照</source>
+        <translation>Side by side</translation>
+    </message>
+    <message>
         <source>确认复制</source>
         <translation type="vanished">Confirm and copy</translation>
     </message>

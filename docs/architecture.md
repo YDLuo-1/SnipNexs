@@ -39,7 +39,8 @@ app
 - `editor/AnnotationDocument` 保存画笔、矩形、箭头、单行文字和马赛克/模糊笔刷数据及撤销游标；效果笔刷不存储光栅像素，合成时按当前表面的设备像素比采样未修改的原始截图做块化或盒式模糊，因此撤销轻量、预览与导出一致；复制、保存或贴图时才合成标注。
 - `pin/PinWindow` 是持有原始 `QImage` 和一份隐式共享 `QPixmap` 的置顶窗口，支持移动、以鼠标内容为锚点的累积有界缩放、双击左键关闭和右键菜单；复制/保存信号交回 `CaptureController`，默认隐藏的轻量工具条只提供复制、保存和关闭。绘制源矩形使用完整物理 `QPixmap::rect()`，避免高 DPI 下只显示左上区域；阴影由窗口直接绘制，不在每次缩放时创建图形场景或模糊效果。
 - `ocr/OcrService` 复用一个工作线程，避免 OCR 阻塞 UI；同一时刻只接受一个识别任务。
-- `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型。
+- `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型；识别结果同时给出拼接文本与逐行列表（CJK 行内词间不补空格），行列表与文本恒一致。
+- `ocr/OcrResultWindow` 在识别出两行及以上时提供"对照"视图：左右两个同步滚动的只读窗格逐行对照原文与译文；逐行翻译走 `TranslationService::translateLines`（引擎各自实现 `translateLines`，空行原样透传保证 1:1 对齐）。
 - `translate/BrowserTranslation` 只构造文本翻译 URL；结果窗口在打开浏览器前明确提示传输边界。
 - `translate/TranslationService` 提供本地（离线）翻译：接口镜像 `OcrService`（单工作线程、同时一个任务），引擎封装在 `translate/LocalTranslation`（CTranslate2 v4.8.1 CPU + SentencePiece v0.2.0，头文件不外泄），OPUS-MT zh⇄en 模型按语言对按需下载（`TranslationModelInstaller` 逐文件下载 + SHA-256 校验 + 原子 manifest），模型目录规则与历史一致（程序目录可写则 `models/translation`，否则本地应用数据）。CTranslate2 的 GEMM 后端为自带 Ruy；在此 MSVC 工具链上自动 int8 + 多线程会挂死，已固定 FLOAT32 + 单 worker（见 [选型决策](local-translation-decision.md)）。高质量引擎由 `translate/LlamaTranslation` 封装 llama.cpp 固定提交 `4da6337`，运行 Hy-MT2-1.8B GGUF；每次翻译前清空 KV cache，避免多段文本耗尽 `n_ctx`。Llama 按 600 字符分段，推理线程取逻辑处理器的一半、上限 8；OPUS 仍按 300 字符分段并使用单 worker。目标语言由显式参数或 OCR `languageTag` 推导，未知源语言对 Opus 固定模型会被拒绝，对 prompt 驱动的 Llama 则回退到中文。
 - `recorder/RecorderController` 管理路径、临时文件、悬浮停止条和录制生命周期；悬浮条默认放在目标屏幕可用区域右下角，并可拖动空白区域移动。完成的 MP4 通过同目录原子替换落到用户目标路径。

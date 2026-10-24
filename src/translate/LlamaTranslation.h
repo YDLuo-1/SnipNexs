@@ -23,4 +23,14 @@ void closeSession(Session* session);
     const QString& targetLanguage,
     QString* error);
 
+// Translates each line independently; the result list always has the same
+// size as the input so callers can align lines one to one. Whitespace-only
+// lines pass through untranslated; lines longer than the segment limit are
+// split internally and their translations re-joined into one entry.
+[[nodiscard]] QStringList translateLines(
+    Session& session,
+    const QStringList& lines,
+    const QString& targetLanguage,
+    QString* error);
+
 } // namespace local_llama

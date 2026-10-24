@@ -143,4 +143,97 @@ bool TranslationService::translate(
     return true;
 }
 
+bool TranslationService::translateLines(
+    const QStringList& lines,
+    const QString& sourceLanguageTag,
+    TranslationEngineId engine)
+{
+    if (busy_ || lines.isEmpty()) {
+        return false;
+    }
+    bool anyContent = false;
+    for (const QString& line : lines) {
+        if (!line.trimmed().isEmpty()) {
+            anyContent = true;
+            break;
+        }
+    }
+    if (!anyContent) {
+        return false;
+    }
+
+    const QString target = translationTargetLanguage(
+        engine, sourceLanguageTag, QString());
+    TranslationModelSpec spec;
+    if (target.isEmpty()
+        || !findTranslationModelSpec(engine, sourceLanguageTag, target, spec)) {
+        emit failed(tr("当前语言组合暂无本地翻译模型。"));
+        return false;
+    }
+    if (!isTranslationModelInstalled(spec)) {
+        emit modelMissing(spec.id, spec.licenseNote);
+        return false;
+    }
+
+    busy_ = true;
+    emit busyChanged(true);
+    QMetaObject::invokeMethod(
+        workerContext_,
+        [this, lines = lines, spec = std::move(spec), engine, target]() {
+            QElapsedTimer timer;
+            timer.start();
+
+            QString error;
+            QStringList resultLines;
+            if (engine == TranslationEngineId::LlamaHyMT2) {
+                if (!llamaSession_ || llamaPackageId_ != spec.id) {
+                    if (llamaSession_) {
+                        local_llama::closeSession(
+                            static_cast<local_llama::Session*>(llamaSession_));
+                    }
+                    llamaSession_ = local_llama::openSession(
+                        modelFilePathFor(spec), &error);
+                    llamaPackageId_ = llamaSession_ ? spec.id : QString();
+                }
+                if (llamaSession_) {
+                    resultLines = local_llama::translateLines(
+                        *static_cast<local_llama::Session*>(llamaSession_),
+                        lines, target, &error);
+                }
+            } else {
+                if (!opusSession_ || opusPackageId_ != spec.id) {
+                    if (opusSession_) {
+                        local_translation::closeSession(
+                            static_cast<local_translation::Session*>(opusSession_));
+                    }
+                    opusSession_ = local_translation::openSession(
+                        translationModelDirectory(spec.id), &error);
+                    opusPackageId_ = opusSession_ ? spec.id : QString();
+                }
+                if (opusSession_) {
+                    resultLines = local_translation::translateLines(
+                        *static_cast<local_translation::Session*>(opusSession_),
+                        lines, &error);
+                }
+            }
+
+            const qint64 elapsedMs = timer.elapsed();
+            QMetaObject::invokeMethod(
+                this,
+                [this, resultLines = std::move(resultLines),
+                 error = std::move(error), elapsedMs]() {
+                    busy_ = false;
+                    emit busyChanged(false);
+                    if (!error.isEmpty()) {
+                        emit failed(error);
+                    } else {
+                        emit linesTranslated(resultLines, elapsedMs);
+                    }
+                },
+                Qt::QueuedConnection);
+        },
+        Qt::QueuedConnection);
+    return true;
+}
+
 } // namespace snipnexs

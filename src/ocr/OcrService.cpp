@@ -43,7 +43,8 @@ bool OcrService::recognize(QImage image)
                     if (!result.error.isEmpty()) {
                         emit failed(result.error);
                     } else {
-                        emit recognized(result.text, result.languageTag, result.elapsedMs);
+                        emit recognized(result.text, result.lines,
+                            result.languageTag, result.elapsedMs);
                     }
                 },
                 Qt::QueuedConnection);

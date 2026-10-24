@@ -87,6 +87,22 @@ int main()
         ok = false;
     }
 
+    // Line-aligned translation: exactly one result per input line, with
+    // blank lines passed through in place for 1:1 alignment.
+    const QStringList lineResults = local_translation::translateLines(
+        *session,
+        { QStringLiteral("Hello again."), QString(),
+          QStringLiteral("Second line here.") },
+        &error);
+    if (!error.isEmpty() || lineResults.size() != 3
+        || lineResults.at(1) != QString()
+        || !containsCjk(lineResults.at(0))
+        || !containsCjk(lineResults.at(2))) {
+        QTextStream(stderr) << "line-aligned batch failed: " << lineResults.join(
+            QStringLiteral(" | ")) << " (" << error << ")\n";
+        ok = false;
+    }
+
     local_translation::closeSession(session);
 
     QTextStream(stdout)

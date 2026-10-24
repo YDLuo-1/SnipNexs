@@ -1,4 +1,5 @@
 #include "LlamaTranslation.h"
+#include "TranslationTextSplitter.h"
 
 #include <QFileInfo>
 #include <QObject>
@@ -226,6 +227,32 @@ QString generateOnce(
 
 } // namespace
 
+namespace {
+
+bool sourceLooksChinese(const QString& text)
+{
+    for (const QChar& character : text) {
+        const char16_t code = character.unicode();
+        if ((code >= 0x4E00 && code <= 0x9FFF)
+            || (code >= 0x3400 && code <= 0x4DBF)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QString cleanTranslation(QString translated, const QString& fallback)
+{
+    // The model echoes the backtick delimiters used in the prompt.
+    if (translated.size() >= 2
+        && translated.startsWith(u'`') && translated.endsWith(u'`')) {
+        translated = translated.mid(1, translated.size() - 2).trimmed();
+    }
+    return translated.isEmpty() ? fallback.trimmed() : translated;
+}
+
+} // namespace
+
 QString translateSegments(
     Session& session,
     const QStringList& segments,
@@ -238,36 +265,56 @@ QString translateSegments(
             output += segment;
             continue;
         }
-        const bool sourceIsChinese = [](const QString& text) {
-            for (const QChar& character : text) {
-                const char16_t code = character.unicode();
-                if ((code >= 0x4E00 && code <= 0x9FFF)
-                    || (code >= 0x3400 && code <= 0x4DBF)) {
-                    return true;
-                }
-            }
-            return false;
-        }(segment);
         QString segmentError;
-        const QString translated = generateOnce(
-            session,
-            promptFor(segment, sourceIsChinese, targetLanguage),
-            &segmentError);
+        const QString translated = cleanTranslation(
+            generateOnce(
+                session,
+                promptFor(segment, sourceLooksChinese(segment), targetLanguage),
+                &segmentError),
+            segment);
         if (!segmentError.isEmpty()) {
             if (error) {
                 *error = segmentError;
             }
             return QString();
         }
-        QString cleaned = translated;
-        // The model echoes the backtick delimiters used in the prompt.
-        if (cleaned.size() >= 2 && cleaned.startsWith(u'`') && cleaned.endsWith(u'`')) {
-            cleaned = cleaned.mid(1, cleaned.size() - 2).trimmed();
-        }
-        output += cleaned.isEmpty() ? segment.trimmed() : cleaned;
+        output += translated;
         output += QLatin1Char(' ');
     }
     return output.trimmed();
+}
+
+QStringList translateLines(
+    Session& session,
+    const QStringList& lines,
+    const QString& targetLanguage,
+    QString* error)
+{
+    // Long OCR lines are split to the same segment budget as whole-text
+    // translation; the sub-results are re-joined into the line's entry.
+    constexpr int kSegmentCharacters = 600;
+    QStringList results;
+    results.reserve(lines.size());
+    for (const QString& line : lines) {
+        if (line.trimmed().isEmpty()) {
+            results.append(line);
+            continue;
+        }
+        QString lineError;
+        const QString translated = translateSegments(
+            session,
+            snipnexs::splitTranslationSegments(line, kSegmentCharacters),
+            targetLanguage,
+            &lineError);
+        if (!lineError.isEmpty()) {
+            if (error) {
+                *error = lineError;
+            }
+            return {};
+        }
+        results.append(translated);
+    }
+    return results;
 }
 
 } // namespace local_llama

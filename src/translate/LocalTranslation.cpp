@@ -119,7 +119,9 @@ void closeSession(Session* session)
     delete session;
 }
 
-QString translateSegments(
+// Core batch translation: results always has the same size as segments,
+// with untranslatable entries passed through in place.
+QStringList translateBatch(
     Session& session, const QStringList& segments, QString* error)
 {
     std::vector<std::vector<std::string>> batch;
@@ -143,13 +145,12 @@ QString translateSegments(
         batchSegmentIndexes.push_back(index);
     }
 
-    QString output;
-    output.reserve(segments.isEmpty() ? 0 : segments.front().size() * 2);
+    QStringList results = segments;
     if (batch.empty()) {
         if (hasTranslatableContent && error) {
             *error = QObject::tr("分词失败：无法对输入文本编码。");
         }
-        return output;
+        return results;
     }
 
     try {
@@ -157,14 +158,14 @@ QString translateSegments(
         options.beam_size = 2;
         options.max_input_length = 512;
         options.max_decoding_length = 512;
-        const std::vector<ctranslate2::TranslationResult> results =
+        const std::vector<ctranslate2::TranslationResult> translations =
             session.translator->translate_batch(batch, options);
 
         int cursor = 0;
         for (int index = 0; index < segments.size(); ++index) {
             if (cursor < static_cast<int>(batchSegmentIndexes.size())
                 && batchSegmentIndexes[static_cast<std::size_t>(cursor)] == index) {
-                const auto& hypothesis = results
+                const auto& hypothesis = translations
                     .at(static_cast<std::size_t>(cursor))
                     .hypotheses.at(0);
                 std::string translated;
@@ -173,10 +174,10 @@ QString translateSegments(
                         .ok()) {
                     translated.clear();
                 }
-                output += QString::fromStdString(translated);
+                if (!translated.empty()) {
+                    results[index] = QString::fromStdString(translated);
+                }
                 ++cursor;
-            } else {
-                output += segments.at(index);
             }
         }
     } catch (const std::exception& exception) {
@@ -184,10 +185,26 @@ QString translateSegments(
             *error = QObject::tr("翻译失败：%1")
                 .arg(QString::fromStdString(exception.what()));
         }
-        return QString();
+        return {};
     }
 
-    return output;
+    return results;
+}
+
+QString translateSegments(
+    Session& session, const QStringList& segments, QString* error)
+{
+    const QStringList results = translateBatch(session, segments, error);
+    if (!error || error->isEmpty()) {
+        return results.join(QString());
+    }
+    return QString();
+}
+
+QStringList translateLines(
+    Session& session, const QStringList& lines, QString* error)
+{
+    return translateBatch(session, lines, error);
 }
 
 } // namespace local_translation

@@ -77,23 +77,30 @@ winrt::Windows::Graphics::Imaging::SoftwareBitmap toSoftwareBitmap(const QImage&
     return bitmap;
 }
 
-QString textFromResult(
+QStringList linesFromResult(
     const winrt::Windows::Media::Ocr::OcrResult& result,
     const QString& languageTag)
 {
-    if (!languageTag.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)
-        && !languageTag.startsWith(QStringLiteral("ja"), Qt::CaseInsensitive)) {
-        return fromHString(result.Text()).trimmed();
-    }
-
     QStringList lines;
+    const bool joinWithoutSpaces = languageTag.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)
+        || languageTag.startsWith(QStringLiteral("ja"), Qt::CaseInsensitive);
     for (const auto& line : result.Lines()) {
         QString text;
+        bool firstWord = true;
         for (const auto& word : line.Words()) {
+            if (!firstWord && !joinWithoutSpaces) {
+                text += QLatin1Char(' ');
+            }
             text += fromHString(word.Text());
+            firstWord = false;
         }
         lines.append(text);
     }
+    return lines;
+}
+
+QString textFromResult(const QStringList& lines)
+{
     return lines.join(QLatin1Char('\n')).trimmed();
 }
 
@@ -133,7 +140,8 @@ Result recognize(const QImage& input)
         const auto bitmap = toSoftwareBitmap(image);
         const auto result = engine.RecognizeAsync(bitmap).get();
         output.languageTag = fromHString(engine.RecognizerLanguage().LanguageTag());
-        output.text = textFromResult(result, output.languageTag);
+        output.lines = linesFromResult(result, output.languageTag);
+        output.text = textFromResult(output.lines);
         output.elapsedMs = timer.elapsed();
         return output;
     } catch (const winrt::hresult_error& error) {

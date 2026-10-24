@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QStringList>
 #include <QThread>
 
 #include "translate/TranslationModels.h"
@@ -31,8 +32,17 @@ public:
         const QString& targetLanguage,
         TranslationEngineId engine);
 
+    // Line-aligned variant for the bilingual OCR view: translates every line
+    // independently; linesTranslated() returns exactly one entry per input
+    // line. Same busy/model handling as translate().
+    [[nodiscard]] bool translateLines(
+        const QStringList& lines,
+        const QString& sourceLanguageTag,
+        TranslationEngineId engine);
+
 signals:
     void translated(const QString& text, qint64 elapsedMs);
+    void linesTranslated(const QStringList& lines, qint64 elapsedMs);
     void failed(const QString& message);
     void modelMissing(const QString& packageId, const QString& licenseNote);
     void busyChanged(bool busy);
