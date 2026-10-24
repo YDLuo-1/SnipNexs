@@ -45,7 +45,7 @@ app
 - `translate/TranslationService` 提供本地（离线）翻译：接口镜像 `OcrService`（单工作线程、同时一个任务），引擎封装在 `translate/LocalTranslation`（CTranslate2 v4.8.1 CPU + SentencePiece v0.2.0，头文件不外泄），OPUS-MT zh⇄en 模型按语言对按需下载（`TranslationModelInstaller` 逐文件下载 + SHA-256 校验 + 原子 manifest），模型目录规则与历史一致（程序目录可写则 `models/translation`，否则本地应用数据）。CTranslate2 的 GEMM 后端为自带 Ruy；在此 MSVC 工具链上自动 int8 + 多线程会挂死，已固定 FLOAT32 + 单 worker（见 [选型决策](local-translation-decision.md)）。高质量引擎由 `translate/LlamaTranslation` 封装 llama.cpp 固定提交 `4da6337`，运行 Hy-MT2-1.8B GGUF；每次翻译前清空 KV cache，避免多段文本耗尽 `n_ctx`。Llama 按 600 字符分段，推理线程取逻辑处理器的一半、上限 8；OPUS 仍按 300 字符分段并使用单 worker。目标语言由显式参数或 OCR `languageTag` 推导，未知源语言对 Opus 固定模型会被拒绝，对 prompt 驱动的 Llama 则回退到中文。
 - `recorder/RecorderController` 管理路径、临时文件、悬浮停止条和录制生命周期；悬浮条默认放在目标屏幕可用区域右下角，并可拖动空白区域移动。完成的 MP4 通过同目录原子替换落到用户目标路径。
 - `recorder/ScreenRecorderService` 只维护一个后台录制线程；停止请求是原子标志，不阻塞 UI。
-- `recorder/NativeScreenRecorder` 使用 Windows Graphics Capture 获取 GPU 表面，D3D11 裁剪后直接交给 Windows 媒体管线，不做 CPU 像素回读。
+- `recorder/NativeScreenRecorder` 使用 Windows Graphics Capture 获取 GPU 表面，D3D11 裁剪后直接交给 Windows 媒体管线，不做 CPU 像素回读。音频由 WASAPI 共享模式采集：默认系统回路（静音期间由采集线程补零保持时间线连续），可选麦克风；float32 混合格式在采集线程转为 s16 后以双描述符 `MediaStreamSource`（视频 + PCM 音频）送入同一转码管线，音频时间戳按已交付帧数推导（QPC 基准），与视频时间轴无漂移；音频端点缺失或格式不支持时自动回退纯视频，不中止录制。
 - 帧池容量为 2，应用只保存最新帧；慢编码时覆盖旧帧，不让内存随录制时长增长。
 - `platform/windows/GlobalHotkey` 是唯一的 Win32 快捷键边界，使用 `RegisterHotKey`；默认注册 F1，失败时回退到 `Ctrl+Shift+A`，未引入第三方热键库或全局键盘钩子。
 - 当前选区限定在鼠标所在显示器，已处理显示缩放比例；跨显示器单次选区尚未实现。

@@ -60,6 +60,11 @@
     </message>
     <message>
         <location line="+10"/>
+        <source>初始化音频捕获</source>
+        <translation>Initializing audio capture</translation>
+    </message>
+    <message>
+        <location line="+40"/>
         <source>创建媒体流</source>
         <translation>Creating media stream</translation>
     </message>

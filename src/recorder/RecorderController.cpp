@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QSettings>
 #include <QStandardPaths>
 
 #include <Windows.h>
@@ -81,6 +82,8 @@ void RecorderController::startRegion(
     settings.sourceRect = pixelRect;
     settings.outputPath = partialPath_;
     settings.frameRate = 30;
+    settings.audio = recordingAudioFromString(
+        QSettings().value(QStringLiteral("recording/audio")).toString());
 
     if (!service_.start(settings)) {
         QFile::remove(partialPath_);

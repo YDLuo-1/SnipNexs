@@ -55,6 +55,21 @@ int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     QScreen* screen = QGuiApplication::primaryScreen();
+    // Settings parsing runs everywhere, before any capture-permission skip.
+    bool settingsOk =
+        snipnexs::recordingAudioFromString(QStringLiteral("microphone"))
+            == snipnexs::RecordingAudio::Microphone
+        && snipnexs::recordingAudioFromString(QStringLiteral("none"))
+            == snipnexs::RecordingAudio::None
+        && snipnexs::recordingAudioFromString(QString())
+            == snipnexs::RecordingAudio::SystemLoopback
+        && snipnexs::recordingAudioFromString(QStringLiteral("junk"))
+            == snipnexs::RecordingAudio::SystemLoopback;
+    if (!settingsOk) {
+        QTextStream(stderr) << "recording audio mode parsing failed\n";
+        return 1;
+    }
+
     if (screen == nullptr) {
         QTextStream(stdout) << "native recorder: skipped (no interactive display)\n";
         return 77;

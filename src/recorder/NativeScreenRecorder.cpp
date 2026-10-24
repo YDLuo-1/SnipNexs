@@ -6,8 +6,11 @@
 #include <QFileInfo>
 
 #include <Windows.h>
+#include <audioclient.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
+#include <mmdeviceapi.h>
+#include <robuffer.h>
 #include <shcore.h>
 #include <windows.graphics.capture.interop.h>
 #include <windows.graphics.directx.direct3d11.interop.h>
@@ -26,10 +29,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <optional>
+#include <vector>
 
 namespace snipnexs {
 namespace {
@@ -326,6 +332,237 @@ private:
     bool closed_ = false;
 };
 
+// WASAPI shared-mode capture. The loopback endpoint delivers no packets
+// while nothing plays, so the polling thread synthesizes silence to keep the
+// sample timeline continuous; timestamps are derived from the delivered
+// frame count (not wall clock) so audio never drifts against the QPC-based
+// video timestamps.
+class AudioCaptureSource final
+{
+public:
+    struct PcmChunk
+    {
+        std::vector<int16_t> samples;
+        int64_t timestampHns = 0;
+    };
+
+    AudioCaptureSource(
+        RecordingAudio mode,
+        const std::atomic_bool& stopRequested)
+        : stopRequested_(stopRequested)
+    {
+        check_hresult(CoCreateInstance(
+            __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+            IID_PPV_ARGS(&enumerator_)));
+        ComPtr<IMMDevice> device;
+        check_hresult(enumerator_->GetDefaultAudioEndpoint(
+            mode == RecordingAudio::Microphone ? eCapture : eRender,
+            eConsole,
+            &device));
+        check_hresult(device->Activate(
+            __uuidof(IAudioClient), CLSCTX_ALL, nullptr,
+            reinterpret_cast<void**>(audioClient_.GetAddressOf())));
+
+        WAVEFORMATEX* mixFormat = nullptr;
+        check_hresult(audioClient_->GetMixFormat(&mixFormat));
+        const auto freeFormat = [mixFormat]() {
+            CoTaskMemFree(mixFormat);
+        };
+
+        const WAVEFORMATEX& format = *mixFormat;
+        sampleRate_ = static_cast<int>(format.nSamplesPerSec);
+        channels_ = static_cast<int>(format.nChannels);
+        bool isFloat = false;
+        bool isPcm16 = format.wFormatTag == WAVE_FORMAT_PCM
+            && format.wBitsPerSample == 16;
+        if (format.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+            && format.wBitsPerSample == 32) {
+            isFloat = true;
+        } else if (format.wFormatTag == WAVE_FORMAT_EXTENSIBLE
+            && format.cbSize >= sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) {
+            const auto* extensible = reinterpret_cast<const WAVEFORMATEXTENSIBLE*>(&format);
+            if (extensible->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
+                && format.wBitsPerSample == 32) {
+                isFloat = true;
+            } else if (extensible->SubFormat == KSDATAFORMAT_SUBTYPE_PCM
+                && format.wBitsPerSample == 16) {
+                isPcm16 = true;
+            }
+        }
+        const bool formatSupported =
+            (isFloat || isPcm16) && sampleRate_ > 0 && channels_ > 0 && channels_ <= 8;
+        if (!formatSupported) {
+            freeFormat();
+            check_hresult(E_INVALIDARG);
+        }
+        isFloat_ = isFloat;
+        const HRESULT initialized = audioClient_->Initialize(
+            AUDCLNT_SHAREMODE_SHARED,
+            mode == RecordingAudio::Microphone
+                ? 0
+                : AUDCLNT_STREAMFLAGS_LOOPBACK,
+            2'000'000, // 200 ms buffer
+            0,
+            mixFormat,
+            nullptr);
+        freeFormat();
+        check_hresult(initialized);
+
+        check_hresult(audioClient_->GetService(
+            IID_PPV_ARGS(&captureClient_)));
+        check_hresult(audioClient_->Start());
+
+        LARGE_INTEGER frequency{};
+        QueryPerformanceFrequency(&frequency);
+        qpcFrequency_ = frequency.QuadPart;
+        LARGE_INTEGER start{};
+        QueryPerformanceCounter(&start);
+        startQpc_ = start.QuadPart;
+        startHns_ = startQpc_ * 10'000'000 / qpcFrequency_;
+        chunkSamples_ = std::max(1, sampleRate_ * channels_ / 50); // ~20 ms
+
+        thread_ = std::thread([this, mode] { captureLoop(mode); });
+    }
+
+    ~AudioCaptureSource()
+    {
+        stopping_ = true;
+        if (thread_.joinable()) {
+            thread_.join();
+        }
+        if (audioClient_ != nullptr) {
+            audioClient_->Stop();
+        }
+    }
+
+    [[nodiscard]] int sampleRate() const { return sampleRate_; }
+    [[nodiscard]] int channels() const { return channels_; }
+
+    // Blocks briefly until at least one sample is available; returns an
+    // empty chunk when the source has gone quiet and nothing was captured.
+    [[nodiscard]] PcmChunk next()
+    {
+        std::unique_lock lock(mutex_);
+        sampleAvailable_.wait_for(lock, std::chrono::milliseconds(150), [this] {
+            return !pending_.empty();
+        });
+        if (pending_.empty()) {
+            return {};
+        }
+        const std::size_t count = std::min(pending_.size(), chunkSamples_);
+        PcmChunk chunk{
+            std::vector<int16_t>(pending_.begin(), pending_.begin() + count), 0};
+        pending_.erase(pending_.begin(), pending_.begin() + count);
+        deliveredFrames_ += static_cast<int64_t>(count) / channels_;
+        chunk.timestampHns =
+            startHns_ + deliveredFrames_ * 10'000'000 / sampleRate_;
+        return chunk;
+    }
+
+private:
+    void captureLoop(RecordingAudio mode)
+    {
+        const bool silenceFill = mode != RecordingAudio::Microphone;
+        while (!stopping_ && !stopRequested_.load(std::memory_order_relaxed)) {
+            drainPackets();
+            if (silenceFill) {
+                fillSilenceToClock();
+            }
+            Sleep(8);
+        }
+        drainPackets();
+        if (silenceFill) {
+            fillSilenceToClock();
+        }
+    }
+
+    void drainPackets()
+    {
+        for (;;) {
+            UINT32 packetFrames = 0;
+            if (captureClient_->GetNextPacketSize(&packetFrames) != S_OK
+                || packetFrames == 0) {
+                return;
+            }
+            BYTE* data = nullptr;
+            UINT32 frames = 0;
+            DWORD flags = 0;
+            if (captureClient_->GetBuffer(&data, &frames, &flags, nullptr, nullptr) != S_OK) {
+                return;
+            }
+            const bool silent = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0;
+            std::vector<int16_t> converted(
+                static_cast<std::size_t>(frames) * channels_, 0);
+            if (!silent && data != nullptr) {
+                if (isFloat_) {
+                    const auto* floats = reinterpret_cast<const float*>(data);
+                    for (std::size_t i = 0; i < converted.size(); ++i) {
+                        const float value = std::clamp(floats[i], -1.0f, 1.0f);
+                        converted[i] = static_cast<int16_t>(
+                            std::lround(value * 32767.0f));
+                    }
+                } else {
+                    std::memcpy(converted.data(), data,
+                        converted.size() * sizeof(int16_t));
+                }
+            }
+            captureClient_->ReleaseBuffer(frames);
+            append(converted);
+        }
+    }
+
+    // The loopback endpoint stops delivering packets during silence; pad the
+    // timeline so chunks keep flowing for the whole recording.
+    void fillSilenceToClock()
+    {
+        LARGE_INTEGER now{};
+        QueryPerformanceCounter(&now);
+        const int64_t elapsedHns =
+            (now.QuadPart - startQpc_) * 10'000'000 / qpcFrequency_;
+        const int64_t expected =
+            elapsedHns * sampleRate_ / 10'000'000 * channels_;
+        std::scoped_lock lock(mutex_);
+        const int64_t slack = sampleRate_ * channels_ / 10; // 100 ms
+        if (appendedSamples_ < expected - slack) {
+            const int64_t missing = expected - slack - appendedSamples_;
+            pending_.insert(
+                pending_.end(), static_cast<std::size_t>(missing), 0);
+            appendedSamples_ += missing;
+            sampleAvailable_.notify_one();
+        }
+    }
+
+    void append(const std::vector<int16_t>& samples)
+    {
+        if (samples.empty()) {
+            return;
+        }
+        std::scoped_lock lock(mutex_);
+        pending_.insert(pending_.end(), samples.begin(), samples.end());
+        appendedSamples_ += static_cast<int64_t>(samples.size());
+        sampleAvailable_.notify_one();
+    }
+
+    ComPtr<IMMDeviceEnumerator> enumerator_;
+    ComPtr<IAudioClient> audioClient_;
+    ComPtr<IAudioCaptureClient> captureClient_;
+    const std::atomic_bool& stopRequested_;
+    std::thread thread_;
+    std::atomic_bool stopping_ = false;
+    std::mutex mutex_;
+    std::condition_variable sampleAvailable_;
+    std::vector<int16_t> pending_;
+    int64_t appendedSamples_ = 0;
+    int64_t deliveredFrames_ = 0;
+    int64_t startQpc_ = 0;
+    int64_t qpcFrequency_ = 1;
+    int64_t startHns_ = 0;
+    std::size_t chunkSamples_ = 1;
+    int sampleRate_ = 0;
+    int channels_ = 0;
+    bool isFloat_ = false;
+};
+
 RecordingResult record(const RecordingSettings& settings, const std::atomic_bool& stopRequested,
     const std::function<void()>& ready, QString& stage)
 {
@@ -383,13 +620,34 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         stopRequested,
         settings.maximumDurationMs);
 
+    stage = QCoreApplication::translate("NativeScreenRecorder", "初始化音频捕获");
+    std::optional<AudioCaptureSource> audioSource;
+    AudioStreamDescriptor audioDescriptor{nullptr};
+    if (settings.audio != RecordingAudio::None) {
+        try {
+            audioSource.emplace(settings.audio, stopRequested);
+            audioDescriptor = AudioStreamDescriptor(
+                AudioEncodingProperties::CreatePcm(
+                    static_cast<uint32_t>(audioSource->sampleRate()),
+                    static_cast<uint32_t>(audioSource->channels()),
+                    16));
+        } catch (const hresult_error&) {
+            // A missing endpoint or unsupported mix format must not kill the
+            // whole recording; fall back to the previous video-only pipeline.
+            audioSource.reset();
+            audioDescriptor = nullptr;
+        }
+    }
+
     stage = QCoreApplication::translate("NativeScreenRecorder", "创建媒体流");
     const auto inputProperties = VideoEncodingProperties::CreateUncompressed(
         MediaEncodingSubtypes::Bgra8(),
         static_cast<uint32_t>(region.width()),
         static_cast<uint32_t>(region.height()));
     const VideoStreamDescriptor videoDescriptor(inputProperties);
-    const MediaStreamSource mediaSource(videoDescriptor);
+    const MediaStreamSource mediaSource = audioDescriptor
+        ? MediaStreamSource(videoDescriptor, audioDescriptor)
+        : MediaStreamSource(videoDescriptor);
     mediaSource.BufferTime(0ms);
 
     std::atomic_int submittedFrames = 0;
@@ -413,9 +671,43 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
             }
         });
     const event_token sampleToken = mediaSource.SampleRequested(
-        [&frameSource, &submittedFrames, &setCallbackError](
+        [&frameSource, &audioSource, &audioDescriptor, &submittedFrames,
+         &setCallbackError](
             auto const&, MediaStreamSourceSampleRequestedEventArgs const& args) {
             try {
+                if (audioDescriptor
+                    && args.Request().StreamDescriptor() == audioDescriptor) {
+                    auto chunk = audioSource->next();
+                    if (chunk.samples.empty()) {
+                        args.Request().Sample(nullptr);
+                        return;
+                    }
+                    const uint32_t byteCount = static_cast<uint32_t>(
+                        chunk.samples.size() * sizeof(int16_t));
+                    // MemoryBuffer + IMemoryBufferByteAccess avoids the
+                    // SDK-dependent IBufferByteAccess projection; same
+                    // pattern as the OCR bitmap copy.
+                    const auto memory =
+                        winrt::Windows::Foundation::MemoryBuffer(byteCount);
+                    const auto reference = memory.CreateReference();
+                    const auto byteAccess =
+                        reference.as<winrt::impl::IMemoryBufferByteAccess>();
+                    BYTE* bytes = nullptr;
+                    uint32_t capacity = 0;
+                    check_hresult(byteAccess->GetBuffer(&bytes, &capacity));
+                    std::memcpy(bytes, chunk.samples.data(),
+                        std::min<uint32_t>(byteCount, capacity));
+                    const auto streamBuffer =
+                        memory.as<winrt::Windows::Storage::Streams::IBuffer>();
+                    MediaStreamSample sample = MediaStreamSample::CreateFromBuffer(
+                        streamBuffer, TimeSpan{chunk.timestampHns});
+                    sample.Duration(TimeSpan{
+                        static_cast<int64_t>(chunk.samples.size())
+                        / audioSource->channels() * 10'000'000
+                        / audioSource->sampleRate()});
+                    args.Request().Sample(sample);
+                    return;
+                }
                 const auto frame = frameSource.next();
                 if (!frame) {
                     args.Request().Sample(nullptr);
@@ -445,6 +737,13 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     profile.Video().FrameRate().Denominator(1);
     profile.Video().PixelAspectRatio().Numerator(1);
     profile.Video().PixelAspectRatio().Denominator(1);
+    if (audioDescriptor) {
+        profile.Audio().Subtype(MediaEncodingSubtypes::Aac());
+        profile.Audio().Bitrate(static_cast<uint32_t>(
+            std::max(24'000, settings.audioBitrate)));
+        profile.Audio().SampleRate(static_cast<uint32_t>(audioSource->sampleRate()));
+        profile.Audio().ChannelCount(static_cast<uint32_t>(audioSource->channels()));
+    }
 
     stage = QCoreApplication::translate(
         "NativeScreenRecorder", "打开输出文件 %1")
@@ -484,6 +783,7 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     result.elapsedMs = elapsed.elapsed();
     result.capturedFrames = frameSource.capturedFrames();
     result.submittedFrames = submittedFrames.load(std::memory_order_relaxed);
+    result.audioCaptured = audioDescriptor != nullptr;
     result.outputBytes = QFileInfo(settings.outputPath).size();
     result.succeeded = callbackError.isEmpty() && result.outputBytes > 0 && result.submittedFrames > 0;
     if (!result.succeeded) {
