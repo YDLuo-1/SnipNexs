@@ -70,6 +70,24 @@ struct TranslationModelSpec {
 
 [[nodiscard]] bool isTranslationModelInstalled(const TranslationModelSpec& spec);
 
+// Installed state and on-disk size for every catalog entry; installedBytes is
+// 0 when the package is absent. packageBytes is the catalog's declared
+// download size.
+struct TranslationModelStatus {
+    QString id;
+    TranslationEngineId engine = TranslationEngineId::OpusMt;
+    bool installed = false;
+    qint64 installedBytes = 0;
+    qint64 packageBytes = 0;
+};
+
+[[nodiscard]] QList<TranslationModelStatus> translationModelStatuses();
+
+// Deletes an installed package directory. The id must exist in the catalog,
+// so only model directories this application owns can be removed. Returns
+// false and fills error otherwise.
+bool removeTranslationModel(const QString& packageId, QString* error);
+
 // Writes the package manifest atomically; callers must do this only after all
 // package files have been verified in place. The manifest marks the package
 // as complete for isTranslationModelInstalled().

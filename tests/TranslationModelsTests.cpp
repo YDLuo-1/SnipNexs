@@ -1,5 +1,8 @@
 #include "translate/TranslationModels.h"
 
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QTextStream>
 
 namespace {
@@ -102,6 +105,63 @@ int main()
               TranslationEngineId::LlamaHyMT2, QStringLiteral("en"),
               QStringLiteral("ja"))
         .isEmpty();
+
+    // Model management: statuses describe the catalog, and removal only
+    // accepts catalog ids. The install/remove round trip runs on a package
+    // that is NOT installed yet, so a developer's real models are never
+    // touched by the test.
+    {
+        const QList<snipnexs::TranslationModelSpec> catalog =
+            snipnexs::knownTranslationModels();
+        const QList<snipnexs::TranslationModelStatus> before =
+            snipnexs::translationModelStatuses();
+        ok &= before.size() == catalog.size();
+        for (const snipnexs::TranslationModelStatus& status : before) {
+            ok &= !status.id.isEmpty() && status.packageBytes > 0;
+            ok &= !status.installed || status.installedBytes >= 0;
+        }
+
+        QString error;
+        ok &= snipnexs::removeTranslationModel(
+                  QStringLiteral("not-a-catalog-id"), &error) == false
+            && !error.isEmpty();
+
+        qsizetype candidate = -1;
+        for (qsizetype index = 0; index < before.size(); ++index) {
+            if (!before.at(index).installed) {
+                candidate = index;
+                break;
+            }
+        }
+        if (candidate >= 0) {
+            const snipnexs::TranslationModelSpec spec = catalog.at(candidate);
+            const QString packageDirectory =
+                snipnexs::translationModelDirectory(spec.id);
+            QDir().mkpath(packageDirectory);
+            for (const snipnexs::TranslationModelFile& file : spec.files) {
+                QFile placeholder(QDir(packageDirectory).filePath(file.fileName));
+                ok &= placeholder.open(QIODevice::WriteOnly);
+                placeholder.write("x");
+                placeholder.close();
+            }
+            ok &= snipnexs::writeTranslationModelManifest(spec);
+            const QString keeper =
+                QDir(snipnexs::translationModelsRoot()).filePath(
+                    QStringLiteral("keep-me"));
+            QDir().mkpath(keeper);
+
+            const QList<snipnexs::TranslationModelStatus> withFake =
+                snipnexs::translationModelStatuses();
+            ok &= withFake.at(candidate).installed
+                && withFake.at(candidate).installedBytes > 0;
+
+            error.clear();
+            ok &= snipnexs::removeTranslationModel(spec.id, &error);
+            ok &= !QFileInfo::exists(packageDirectory);
+            ok &= QFileInfo::exists(keeper);
+            QDir(keeper).removeRecursively();
+        }
+    }
 
     QTextStream(stdout) << "translation-models-tests: "
                         << (ok ? "ok" : "failed") << '\n';

@@ -116,6 +116,11 @@ qt_add_executable(SnipNexs WIN32
     src/app/AboutDialog.h
     src/app/MainWindow.cpp
     src/app/MainWindow.h
+    src/app/SettingsDialog.cpp
+    src/app/SettingsDialog.h
+    src/app/UpdateChecker.cpp
+    src/app/UpdateChecker.h
+    src/app/UpdateVersion.h
     src/capture/CaptureController.cpp
     src/capture/CaptureController.h
     src/capture/CaptureGeometry.h

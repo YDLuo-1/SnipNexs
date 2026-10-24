@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -337,6 +338,66 @@ bool writeTranslationModelManifest(const TranslationModelSpec& spec)
     }
     file.write(QJsonDocument(manifest).toJson(QJsonDocument::Compact));
     return file.commit();
+}
+
+namespace {
+
+qint64 directorySizeBytes(const QString& path)
+{
+    qint64 total = 0;
+    QDirIterator iterator(path, QDir::Files, QDirIterator::Subdirectories);
+    while (iterator.hasNext()) {
+        total += QFileInfo(iterator.next()).size();
+    }
+    return total;
+}
+
+} // namespace
+
+QList<TranslationModelStatus> translationModelStatuses()
+{
+    QList<TranslationModelStatus> statuses;
+    for (const TranslationModelSpec& spec : knownTranslationModels()) {
+        TranslationModelStatus status;
+        status.id = spec.id;
+        status.engine = spec.engine;
+        status.installed = isTranslationModelInstalled(spec);
+        status.installedBytes = status.installed
+            ? directorySizeBytes(translationModelDirectory(spec.id))
+            : 0;
+        for (const TranslationModelFile& file : spec.files) {
+            status.packageBytes += file.sizeBytes;
+        }
+        statuses.append(status);
+    }
+    return statuses;
+}
+
+bool removeTranslationModel(const QString& packageId, QString* error)
+{
+    for (const TranslationModelSpec& spec : knownTranslationModels()) {
+        if (spec.id != packageId) {
+            continue;
+        }
+        const QString directory = translationModelDirectory(spec.id);
+        if (!QFileInfo::exists(directory)) {
+            return true;
+        }
+        if (!QDir(directory).removeRecursively()) {
+            if (error) {
+                *error = QCoreApplication::translate(
+                    "snipnexs::TranslationModels", "无法删除模型目录：%1")
+                    .arg(QDir::toNativeSeparators(directory));
+            }
+            return false;
+        }
+        return true;
+    }
+    if (error) {
+        *error = QCoreApplication::translate(
+            "snipnexs::TranslationModels", "未找到该语言包。");
+    }
+    return false;
 }
 
 } // namespace snipnexs

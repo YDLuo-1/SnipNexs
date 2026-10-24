@@ -1,5 +1,6 @@
 #include "app/AboutDialog.h"
 #include "app/AppIcon.h"
+#include "app/UpdateVersion.h"
 
 #include <QApplication>
 #include <QColor>
@@ -84,6 +85,22 @@ int main(int argc, char* argv[])
     ok &= allLicenseText.contains(QStringLiteral("Apache License"));
     ok &= allLicenseText.contains(QStringLiteral("llama.cpp"));
     ok &= allLicenseText.contains(QStringLiteral("The ggml authors"));
+
+    // Update comparisons: only strictly newer, well-formed tags count.
+    ok &= snipnexs::isNewerReleaseVersion(
+        QStringLiteral("0.8.1"), QStringLiteral("v0.9.0"));
+    ok &= snipnexs::isNewerReleaseVersion(
+        QStringLiteral("v0.8.1"), QStringLiteral("0.8.2"));
+    ok &= !snipnexs::isNewerReleaseVersion(
+        QStringLiteral("0.8.1"), QStringLiteral("v0.8.1"));
+    ok &= !snipnexs::isNewerReleaseVersion(
+        QStringLiteral("0.9.0"), QStringLiteral("v0.8.9"));
+    ok &= !snipnexs::isNewerReleaseVersion(
+        QStringLiteral("0.8.1"), QStringLiteral("v0.9.0-beta1"));
+    ok &= !snipnexs::isNewerReleaseVersion(
+        QStringLiteral("0.8.1"), QStringLiteral("main"));
+    ok &= snipnexs::isNewerReleaseVersion(
+        QStringLiteral("0.8"), QStringLiteral("v0.8.1"));
 
     QTextStream(stdout)
         << "about dialog: " << (ok ? "ok" : "failed")

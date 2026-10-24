@@ -23,6 +23,7 @@ Current version: `0.8.1`. It includes Chinese/English UI switching, tray-first s
 - Press `Enter` or double-click the selection to copy it, or use **Pin**, **Copy**, and **Save** next to the selection.
 - Pinned images stay on top: drag to move, use the mouse wheel for cumulative cursor-anchored resizing, double-click the left button to close, and right-click for Copy Image, Save Image As, toolbar visibility, or Close Pin. The compact pin toolbar is hidden by default and can be shown from that menu.
 - Open **About SnipNexs** from the main-window footer or tray menu to read the application, Qt, and recording-reference licenses and source locations offline.
+- Open **Settings…** from the main-window footer or tray menu to switch recording audio (system loopback / microphone / none), set the translation-model mirror URL, manage installed model packages (view and delete), and check for updates. The optional startup update check contacts GitHub only after you enable it.
 - Press `Esc` or right-click to cancel.
 
 ## Privacy
@@ -32,6 +33,7 @@ Current version: `0.8.1`. It includes Chinese/English UI switching, tray-first s
 - Local translation runs entirely on the machine as well: text, models, and results never leave the device, and language packages are downloaded from GitHub Releases with SHA-256 verification.
 - Recording is local. Frames stay on the GPU path and are written only to the path you choose; SnipNexs does not stream or upload the video.
 - Browser translation is opt-in: after confirmation, at most 4,000 recognized characters are placed in a `translate.google.com` URL. No image is transmitted.
+- The update check is opt-in as well: it reads the latest release tag from the GitHub API only when you press **Check now** or after you enable the startup check; nothing is uploaded.
 - Generated `SnipNexs-*` images and common capture directories are ignored by Git. Every stage is also audited for staged images, binaries, local paths, and likely secrets before push.
 
 ## Design goals

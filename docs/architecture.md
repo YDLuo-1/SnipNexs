@@ -29,7 +29,8 @@ app
 
 ## 当前实现（0.8.1）
 
-- `app/MainWindow` 负责主窗口、托盘、关于入口和状态展示，通过 `captureRequested` 信号请求截图；有托盘时启动不显示主界面，托盘不可用时才回退显示。
+- `app/MainWindow` 负责主窗口、托盘、关于与设置入口和状态展示，通过 `captureRequested` 信号请求截图；有托盘时启动不显示主界面，托盘不可用时才回退显示。
+- `app/SettingsDialog` 集中管理三块设置：录屏音频（`recording/audio`）、翻译模型镜像（`translation/modelBaseUrl`）与语言包管理（`TranslationModels` 的目录枚举/删除，只接受目录内的包 id）；`app/UpdateChecker` 用 GitHub latest API 做版本比较（`app/UpdateVersion.h` 的点分版本解析，预发布后缀一律视为无更新），仅显式按钮或用户开启 `update/checkAtStartup` 后才联网。
 - `app/AboutDialog` 独立显示版本、项目许可、Qt 许可与第三方声明；文本作为 Qt 资源内嵌，离线可读，不复制其他截图软件的界面或素材。主界面、关于页和许可页显式定义深色高对比度配色，链接不依赖系统默认的深蓝色。
 - `resources/SnipNexs.rc.in` 由 CMake 生成 `.rc`，把 `resources/app.ico`、VERSIONINFO 和 `io.github.ydluo.snipnexs` 清单标识嵌入 exe；`tools/icongen/gen_app_icon.ps1` 可重建图标。
 - 界面以中文源码文案为默认语言，英文由内嵌 Qt `.qm` 资源提供；`QSettings` 只保存 `zh_CN` 或 `en`，不增加自定义国际化框架。

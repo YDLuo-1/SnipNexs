@@ -2,6 +2,8 @@
 
 #include "AboutDialog.h"
 #include "AppIcon.h"
+#include "SettingsDialog.h"
+#include "UpdateChecker.h"
 
 #include <QAction>
 #include <QApplication>
@@ -15,10 +17,12 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
 #include <QSizePolicy>
 #include <QSystemTrayIcon>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace snipnexs {
@@ -33,6 +37,7 @@ MainWindow::MainWindow(QWidget* parent)
     setupUi();
     setupTray();
     retranslateUi();
+    maybeCheckForUpdate();
 }
 
 void MainWindow::showAndActivate()
@@ -52,8 +57,14 @@ void MainWindow::setCaptureActive(bool active)
         openAction_->setEnabled(!active);
         aboutAction_->setEnabled(!active);
     }
+    if (settingsAction_ != nullptr) {
+        settingsAction_->setEnabled(!active);
+    }
     if (aboutButton_ != nullptr) {
         aboutButton_->setEnabled(!active);
+    }
+    if (settingsButton_ != nullptr) {
+        settingsButton_->setEnabled(!active);
     }
     if (active) {
         hide();
@@ -120,7 +131,7 @@ void MainWindow::retranslateUi()
     subtitleLabel_->setText(tr("轻量、原生、可扩展的 Windows 截图工具"));
     statusLabel_->setText(
         tr("截图选区支持标注、贴图和本地文字识别。\n"
-           "区域录屏使用 Windows GPU 捕获并保存 H.264 MP4（当前不含音频）。"));
+           "区域录屏使用 Windows GPU 捕获并保存 H.264 MP4，可录制系统声音或麦克风。"));
     languageLabel_->setText(tr("语言"));
     languageCombo_->setItemText(0, tr("简体中文"));
     languageCombo_->setItemText(1, QStringLiteral("English"));
@@ -136,9 +147,11 @@ void MainWindow::retranslateUi()
             : QStringLiteral("%1\t%2").arg(captureText, captureShortcut_));
         recordAction_->setText(tr("区域录屏"));
         openAction_->setText(tr("打开 SnipNexs"));
+        settingsAction_->setText(tr("设置…"));
         aboutAction_->setText(tr("关于 SnipNexs"));
         quitAction_->setText(tr("退出"));
     }
+    settingsButton_->setText(tr("设置…"));
     aboutButton_->setText(tr("关于"));
 }
 
@@ -149,6 +162,37 @@ void MainWindow::showAbout()
     }
     AboutDialog dialog(this);
     dialog.exec();
+}
+
+void MainWindow::showSettings()
+{
+    if (captureActive_) {
+        return;
+    }
+    auto* dialog = new SettingsDialog(this);
+    dialog->exec();
+}
+
+void MainWindow::maybeCheckForUpdate()
+{
+    // Opt-in only: nothing touches the network until the user enables the
+    // setting or presses "check now" in the dialog.
+    if (!QSettings().value(QStringLiteral("update/checkAtStartup"), false).toBool()) {
+        return;
+    }
+    QTimer::singleShot(3'000, this, [this]() {
+        auto* checker = new UpdateChecker(this);
+        connect(checker, &UpdateChecker::finished, this,
+            [this, checker](bool newerFound, const QString& version, const QString&) {
+                checker->deleteLater();
+                if (newerFound && !version.isEmpty()) {
+                    showNotification(
+                        tr("发现新版本"),
+                        tr("SnipNexs %1 已发布，可在 设置 > 更新 中查看。").arg(version));
+                }
+            });
+        checker->check();
+    });
 }
 
 void MainWindow::setupUi()
@@ -217,6 +261,9 @@ void MainWindow::setupUi()
     hideButton_->setObjectName(QStringLiteral("secondaryButton"));
     footer->addWidget(hideButton_);
     footer->addStretch();
+    settingsButton_ = new QPushButton(central);
+    settingsButton_->setObjectName(QStringLiteral("settingsButton"));
+    footer->addWidget(settingsButton_);
     aboutButton_ = new QPushButton(central);
     aboutButton_->setObjectName(QStringLiteral("aboutButton"));
     footer->addWidget(aboutButton_);
@@ -227,6 +274,7 @@ void MainWindow::setupUi()
     connect(hideButton_, &QPushButton::clicked, this, &QWidget::hide);
     connect(recordButton_, &QPushButton::clicked, this, &MainWindow::recordRequested);
     connect(captureButton_, &QPushButton::clicked, this, &MainWindow::captureRequested);
+    connect(settingsButton_, &QPushButton::clicked, this, &MainWindow::showSettings);
     connect(aboutButton_, &QPushButton::clicked, this, &MainWindow::showAbout);
     connect(languageCombo_, &QComboBox::currentIndexChanged, this, [this](int index) {
         const QString languageCode = languageCombo_->itemData(index).toString();
@@ -251,8 +299,8 @@ void MainWindow::setupUi()
         QPushButton#recordButton { background: #1c2530; color: #e8edf2; border: 1px solid #2c3947; }
         QPushButton#recordButton:hover { background: #243040; border-color: #3c4c5c; }
         QPushButton#recordButton:pressed { background: #1a222c; }
-        QPushButton#secondaryButton, QPushButton#aboutButton { min-height: 32px; padding: 0 14px; background: transparent; color: #c2ccd6; border: 1px solid #3a4856; font-weight: 400; font-size: 13px; }
-        QPushButton#secondaryButton:hover, QPushButton#aboutButton:hover { background: #1a222c; color: #ffffff; }
+        QPushButton#secondaryButton, QPushButton#settingsButton, QPushButton#aboutButton { min-height: 32px; padding: 0 14px; background: transparent; color: #c2ccd6; border: 1px solid #3a4856; font-weight: 400; font-size: 13px; }
+        QPushButton#secondaryButton:hover, QPushButton#settingsButton:hover, QPushButton#aboutButton:hover { background: #1a222c; color: #ffffff; }
         QFrame#card { background: #181f27; border: 1px solid #263039; border-radius: 10px; }
         QFrame#card QLabel { font-size: 13px; color: #cbd4dc; }
     )"));
@@ -273,6 +321,7 @@ void MainWindow::setupTray()
     recordAction_ = menu->addAction({}, this, &MainWindow::recordRequested);
     menu->addSeparator();
     openAction_ = menu->addAction({}, this, &MainWindow::showAndActivate);
+    settingsAction_ = menu->addAction({}, this, &MainWindow::showSettings);
     aboutAction_ = menu->addAction({}, this, &MainWindow::showAbout);
     menu->addSeparator();
     quitAction_ = menu->addAction({}, qApp, &QApplication::quit);

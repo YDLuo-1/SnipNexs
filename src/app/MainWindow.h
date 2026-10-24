@@ -39,6 +39,8 @@ protected:
 private:
     void retranslateUi();
     void showAbout();
+    void showSettings();
+    void maybeCheckForUpdate();
     void setupUi();
     void setupTray();
 
@@ -50,10 +52,12 @@ private:
     QPushButton* hideButton_ = nullptr;
     QPushButton* captureButton_ = nullptr;
     QPushButton* recordButton_ = nullptr;
+    QPushButton* settingsButton_ = nullptr;
     QPushButton* aboutButton_ = nullptr;
     QAction* captureAction_ = nullptr;
     QAction* recordAction_ = nullptr;
     QAction* openAction_ = nullptr;
+    QAction* settingsAction_ = nullptr;
     QAction* aboutAction_ = nullptr;
     QAction* quitAction_ = nullptr;
     QString languageCode_ = QStringLiteral("zh_CN");

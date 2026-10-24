@@ -526,9 +526,9 @@ You can still click the Region Capture button.</translation>
     <message>
         <location line="+2"/>
         <source>截图选区支持标注、贴图和本地文字识别。
-区域录屏使用 Windows GPU 捕获并保存 H.264 MP4（当前不含音频）。</source>
+区域录屏使用 Windows GPU 捕获并保存 H.264 MP4，可录制系统声音或麦克风。</source>
         <translation>Capture regions support annotation, pinning, and local OCR.
-Region recording uses Windows GPU capture and saves H.264 MP4 video without audio.</translation>
+Region recording uses Windows GPU capture and saves H.264 MP4 with system or microphone audio.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -564,6 +564,11 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
     </message>
     <message>
         <location line="+1"/>
+        <source>设置…</source>
+        <translation>Settings…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>关于 SnipNexs</source>
         <translation>About SnipNexs</translation>
     </message>
@@ -576,6 +581,14 @@ Region recording uses Windows GPU capture and saves H.264 MP4 video without audi
         <location line="+2"/>
         <source>关于</source>
         <translation>About</translation>
+    </message>
+    <message>
+        <source>发现新版本</source>
+        <translation>New version available</translation>
+    </message>
+    <message>
+        <source>SnipNexs %1 已发布，可在 设置 &gt; 更新 中查看。</source>
+        <translation>SnipNexs %1 is available; see Settings &gt; Update.</translation>
     </message>
 </context>
 <context>
@@ -972,6 +985,180 @@ Download now?</translation>
         <location line="+6"/>
         <source>无法保存模型文件:%1</source>
         <translation>Cannot save the model file: %1</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::TranslationModels</name>
+    <message>
+        <location filename="../src/translate/TranslationModels.cpp" line="+340"/>
+        <source>无法删除模型目录：%1</source>
+        <translation>Cannot remove the model directory: %1</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>未找到该语言包。</source>
+        <translation>Language package not found.</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::UpdateChecker</name>
+    <message>
+        <location filename="../src/app/UpdateChecker.cpp" line="+40"/>
+        <source>发布信息中没有版本号。</source>
+        <translation>The release payload does not contain a version tag.</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::SettingsDialog</name>
+    <message>
+        <location filename="../src/app/SettingsDialog.cpp" line="+5"/>
+        <source>留空使用默认 GitHub Release（https 或 file 镜像，目录布局需一致）</source>
+        <translation>Leave empty to use the default GitHub release (https or file mirror with the same layout)</translation>
+    </message>
+    <message>
+        <location line="+25"/>
+        <source>录音音频</source>
+        <translation>Recording audio</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>模型镜像 URL</source>
+        <translation>Model mirror URL</translation>
+    </message>
+    <message>
+        <location line="+60"/>
+        <source>设置</source>
+        <translation>Settings</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>系统声音（默认）</source>
+        <translation>System audio (default)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>麦克风</source>
+        <translation>Microphone</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>无（纯视频）</source>
+        <translation>None (video only)</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>录屏</source>
+        <translation>Recording</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>本地翻译</source>
+        <translation>Local translation</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>更新</source>
+        <translation>Update</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>本地翻译模型</source>
+        <translation>Local translation models</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>启动时检查更新（仅在你开启后联网访问 GitHub）</source>
+        <translation>Check for updates at startup (contacts GitHub only after you enable this)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>立即检查</source>
+        <translation>Check now</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>删除所选模型…</source>
+        <translation>Delete selected model…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>语言包</source>
+        <translation>Package</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>状态</source>
+        <translation>Status</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>大小</source>
+        <translation>Size</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>高质量引擎</source>
+        <translation>high-quality engine</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>默认引擎</source>
+        <translation>default engine</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>已安装 · %1</source>
+        <translation>Installed · %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>未安装 · %1</source>
+        <translation>Not installed · %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>占用 %1</source>
+        <translation>Uses %1</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>下载约 %1</source>
+        <translation>~%1 download</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>删除本地翻译模型</source>
+        <translation>Delete local translation model</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>将删除语言包 %1 及其文件，再次翻译时会重新询问下载。是否继续？</source>
+        <translation>This deletes package %1 and its files; translating again will offer the download. Continue?</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>检查更新</source>
+        <translation>Check for updates</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>检查更新失败：%1</source>
+        <translation>Update check failed: %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>已是最新版本（当前 %1）。</source>
+        <translation>You are on the latest version (current %1).</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>发现新版本 %1。</source>
+        <translation>New version %1 is available.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>打开发布页</source>
+        <translation>Open release page</translation>
     </message>
 </context>
 </TS>
