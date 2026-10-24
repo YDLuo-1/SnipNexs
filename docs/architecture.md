@@ -49,6 +49,7 @@ app
 - `recorder/NativeScreenRecorder` 使用 Windows Graphics Capture 获取 GPU 表面，D3D11 裁剪后直接交给 Windows 媒体管线，不做 CPU 像素回读。音频由 WASAPI 共享模式采集：默认系统回路（静音期间由采集线程补零保持时间线连续），可选麦克风；float32 混合格式在采集线程转为 s16 后以双描述符 `MediaStreamSource`（视频 + PCM 音频）送入同一转码管线，音频时间戳按已交付帧数推导（QPC 基准），与视频时间轴无漂移；音频端点缺失或格式不支持时自动回退纯视频，不中止录制。
 - 帧池容量为 2，应用只保存最新帧；慢编码时覆盖旧帧，不让内存随录制时长增长。
 - `platform/windows/GlobalHotkey` 是唯一的 Win32 快捷键边界，使用 `RegisterHotKey`；默认注册 F1，失败时回退到 `Ctrl+Shift+A`，未引入第三方热键库或全局键盘钩子。
+- `platform/windows/NativeTrayIcon` 用原生 `Shell_NotifyIconW`（legacy 回调契约）实现托盘图标：探针实测 Windows 11 Insider 26300 会对**未签名进程**的托盘注册返回 `ERROR_ACCESS_DENIED`（Qt 6.11 的 `QSystemTrayIcon` 静默吞掉同一失败，导致"隐藏窗口 + 无图标"的僵尸进程）。注册失败现在有明确信号：`MainWindow::trayAvailable()` 为假时主窗口保持可见、关闭即退出，绝不退化为不可见进程；Explorer 重启（`TaskbarCreated`）会自动重新注册图标。托盘菜单用 `QMenu::exec` 配合 `SetForegroundWindow`/`WM_NULL` 惯用法保证点击别处可收起。
 - 当前选区限定在鼠标所在显示器，已处理显示缩放比例；跨显示器单次选区尚未实现。
 
 ## 扩展规则

@@ -21,7 +21,6 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QTranslator>
-#include <QSystemTrayIcon>
 
 namespace {
 
@@ -160,7 +159,7 @@ int runSelfTest(
             configureCaptureHotkey(captureHotkey, window, false);
         });
     configureCaptureHotkey(captureHotkey, window, false);
-    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+    if (window.trayAvailable()) {
         window.hide();
     } else {
         window.show();
@@ -181,7 +180,7 @@ int runSelfTest(
     window.showAndActivate();
     const bool captureBlocksMainWindow = !window.isVisible();
     window.setCaptureActive(false);
-    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+    if (window.trayAvailable()) {
         window.hide();
     } else {
         window.show();
@@ -338,9 +337,11 @@ int main(int argc, char* argv[])
             settings.setValue(QStringLiteral("ui/language"), language);
             settings.sync();
         });
-    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+    if (window.trayAvailable()) {
         window.hide();
     } else {
+        // No working tray icon: keep the window visible instead of leaving
+        // an unreachable background process.
         window.show();
     }
 

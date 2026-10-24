@@ -130,6 +130,8 @@ qt_add_executable(SnipNexs WIN32
     src/capture/CaptureHistoryStore.h
     src/capture/CaptureOverlay.cpp
     src/capture/CaptureOverlay.h
+    src/platform/windows/NativeTrayIcon.cpp
+    src/platform/windows/NativeTrayIcon.h
     src/capture/CaptureToolbar.cpp
     src/capture/CaptureToolbar.h
     src/editor/AnnotationDocument.cpp
@@ -368,6 +370,29 @@ if(BUILD_TESTING)
     set_tests_properties(CaptureOverlayTests PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    )
+
+    add_executable(NativeTrayIconTests
+        tests/NativeTrayIconTests.cpp
+        src/app/AppIcon.cpp
+        src/app/AppIcon.h
+        src/platform/windows/NativeTrayIcon.cpp
+        src/platform/windows/NativeTrayIcon.h
+    )
+    target_include_directories(NativeTrayIconTests PRIVATE src)
+    target_link_libraries(NativeTrayIconTests PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Test
+    )
+    # Registers a real shell tray icon briefly; headless sessions without a
+    # tray must skip rather than fail.
+    add_test(NAME NativeTrayIconTests COMMAND NativeTrayIconTests)
+    set_tests_properties(NativeTrayIconTests PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+        SKIP_RETURN_CODE 77
     )
 
     add_executable(CaptureExclusionTests

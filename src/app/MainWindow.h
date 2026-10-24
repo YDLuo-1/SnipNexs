@@ -7,10 +7,13 @@ class QCloseEvent;
 class QComboBox;
 class QEvent;
 class QLabel;
+class QMenu;
 class QPushButton;
 class QSystemTrayIcon;
 
 namespace snipnexs {
+
+class NativeTrayIcon;
 
 class MainWindow final : public QMainWindow
 {
@@ -23,6 +26,10 @@ public:
     void setLanguageCode(const QString& languageCode);
     void setCaptureStatus(const QString& text);
     void showNotification(const QString& title, const QString& message);
+    // True only when the native tray icon actually registered with the
+    // shell. Callers must not hide the window behind an icon that was
+    // rejected (unsigned binaries on hardened Windows builds).
+    [[nodiscard]] bool trayAvailable() const { return trayIcon_ != nullptr; }
 
 signals:
     void captureRequested();
@@ -44,7 +51,8 @@ private:
     void setupUi();
     void setupTray();
 
-    QSystemTrayIcon* trayIcon_ = nullptr;
+    QMenu* trayMenu_ = nullptr;
+    NativeTrayIcon* trayIcon_ = nullptr;
     QLabel* subtitleLabel_ = nullptr;
     QLabel* statusLabel_ = nullptr;
     QLabel* languageLabel_ = nullptr;

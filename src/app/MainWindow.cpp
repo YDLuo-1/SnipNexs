@@ -4,6 +4,7 @@
 #include "AppIcon.h"
 #include "SettingsDialog.h"
 #include "UpdateChecker.h"
+#include "platform/windows/NativeTrayIcon.h"
 
 #include <QAction>
 #include <QApplication>
@@ -96,7 +97,7 @@ void MainWindow::setLanguageCode(const QString& languageCode)
 void MainWindow::showNotification(const QString& title, const QString& message)
 {
     if (trayIcon_ != nullptr && trayIcon_->isVisible()) {
-        trayIcon_->showMessage(title, message, QSystemTrayIcon::Information, 2500);
+        trayIcon_->showMessage(title, message);
     }
 }
 
@@ -108,9 +109,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
         if (!trayHintShown_) {
             trayIcon_->showMessage(
                 tr("SnipNexs 仍在运行"),
-                tr("可从系统托盘重新打开或退出。"),
-                QSystemTrayIcon::Information,
-                2500);
+                tr("可从系统托盘重新打开或退出。"));
             trayHintShown_ = true;
         }
         return;
@@ -313,27 +312,31 @@ void MainWindow::setupTray()
         return;
     }
 
-    trayIcon_ = new QSystemTrayIcon(createAppIcon(), this);
+    trayMenu_ = new QMenu(this);
+    captureAction_ = trayMenu_->addAction({}, this, &MainWindow::captureRequested);
+    recordAction_ = trayMenu_->addAction({}, this, &MainWindow::recordRequested);
+    trayMenu_->addSeparator();
+    openAction_ = trayMenu_->addAction({}, this, &MainWindow::showAndActivate);
+    settingsAction_ = trayMenu_->addAction({}, this, &MainWindow::showSettings);
+    aboutAction_ = trayMenu_->addAction({}, this, &MainWindow::showAbout);
+    trayMenu_->addSeparator();
+    quitAction_ = trayMenu_->addAction({}, qApp, &QApplication::quit);
+
+    trayIcon_ = new NativeTrayIcon(createAppIcon(), this);
     trayIcon_->setToolTip(QStringLiteral("SnipNexs"));
-
-    auto* menu = new QMenu(this);
-    captureAction_ = menu->addAction({}, this, &MainWindow::captureRequested);
-    recordAction_ = menu->addAction({}, this, &MainWindow::recordRequested);
-    menu->addSeparator();
-    openAction_ = menu->addAction({}, this, &MainWindow::showAndActivate);
-    settingsAction_ = menu->addAction({}, this, &MainWindow::showSettings);
-    aboutAction_ = menu->addAction({}, this, &MainWindow::showAbout);
-    menu->addSeparator();
-    quitAction_ = menu->addAction({}, qApp, &QApplication::quit);
-    trayIcon_->setContextMenu(menu);
-
-    connect(trayIcon_, &QSystemTrayIcon::activated, this,
-        [this](QSystemTrayIcon::ActivationReason reason) {
-            if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
-                showAndActivate();
-            }
+    connect(trayIcon_, &NativeTrayIcon::activated, this, &MainWindow::showAndActivate);
+    connect(trayIcon_, &NativeTrayIcon::contextMenuRequested, this,
+        [this](const QPoint& position) {
+            trayIcon_->beginMenuInteraction();
+            trayMenu_->exec(position);
+            trayIcon_->endMenuInteraction();
         });
-    trayIcon_->show();
+    if (!trayIcon_->show()) {
+        delete trayIcon_;
+        trayIcon_ = nullptr;
+        QApplication::setQuitOnLastWindowClosed(true);
+        return;
+    }
 }
 
 } // namespace snipnexs
