@@ -1,4 +1,5 @@
 #include "app/AppIcon.h"
+#include "app/AppSettings.h"
 #include "app/AboutDialog.h"
 #include "app/MainWindow.h"
 #include "capture/CaptureController.h"
@@ -16,7 +17,7 @@
 #include <QLabel>
 #include <QLocalServer>
 #include <QLocalSocket>
-#include <QSettings>
+#include <QStandardPaths>
 #include <QPushButton>
 #include <QSslSocket>
 #include <QTextStream>
@@ -263,12 +264,14 @@ int main(int argc, char* argv[])
     QCoreApplication::setApplicationName(QStringLiteral("SnipNexs"));
     QCoreApplication::setApplicationVersion(QStringLiteral(SNIPNEXS_VERSION));
     QCoreApplication::setOrganizationName(QStringLiteral("SnipNexs"));
+    snipnexs::configureAppSettings(QCoreApplication::applicationDirPath(),
+        QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation))
+            .filePath(QStringLiteral("SnipNexs")));
     QApplication::setWindowIcon(snipnexs::createAppIcon());
     QApplication::setQuitOnLastWindowClosed(false);
 
-    QSettings settings;
     QString language = supportedLanguage(
-        settings.value(
+        snipnexs::AppSettings().value(
             QStringLiteral("ui/language"), QString::fromLatin1(kChineseLanguage)).toString());
     QTranslator englishTranslator;
     const bool englishTranslationAvailable = englishTranslator.load(
@@ -349,8 +352,15 @@ int main(int argc, char* argv[])
                 window.setCaptureStatus(QCoreApplication::translate(
                     "main", "无法加载英文翻译资源。"));
             }
+            snipnexs::AppSettings settings;
             settings.setValue(QStringLiteral("ui/language"), language);
             settings.sync();
+            if (settings.status() != QSettings::NoError) {
+                window.setCaptureStatus(QCoreApplication::translate(
+                    "main", "语言已切换，但无法保存到配置文件：%1")
+                    .arg(QDir::toNativeSeparators(settings.fileName())));
+                window.showAndActivate();
+            }
         });
     if (window.trayAvailable()) {
         window.hide();

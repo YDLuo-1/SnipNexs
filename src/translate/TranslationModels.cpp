@@ -1,4 +1,5 @@
 #include "TranslationModels.h"
+#include "app/AppSettings.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -10,7 +11,6 @@
 #include <QJsonObject>
 #include <QLockFile>
 #include <QSaveFile>
-#include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryFile>
 
@@ -148,7 +148,7 @@ QString effectiveModelBaseUrl(const TranslationModelSpec& spec)
     // Users behind restrictive networks can point this at a mirror or a
     // local server (http(s)/file URL) hosting the same asset layout;
     // SHA-256 verification applies regardless of the source.
-    const QString overrideUrl = QSettings().value(
+    const QString overrideUrl = AppSettings().value(
         QStringLiteral("translation/modelBaseUrl")).toString().trimmed();
     if (!overrideUrl.isEmpty()) {
         return overrideUrl;

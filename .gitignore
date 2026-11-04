@@ -13,6 +13,7 @@ SnipNexs-*.jpeg
 SnipNexs-*.bmp
 SnipNexs-*.mp4
 *.snipnexs-*.partial.mp4
+SnipNexs.ini
 __pycache__/
 *.py[cod]
 

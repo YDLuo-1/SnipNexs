@@ -194,7 +194,7 @@
 <context>
     <name>main</name>
     <message>
-        <location filename="../src/main.cpp" line="+83"/>
+        <location filename="../src/main.cpp" line="+84"/>
         <source>快捷键已回退</source>
         <translation>Shortcut fallback</translation>
     </message>
@@ -216,9 +216,14 @@
 You can still click the Region Capture button.</translation>
     </message>
     <message>
-        <location line="+260"/>
+        <location line="+262"/>
         <source>无法加载英文翻译资源。</source>
         <translation>Could not load the English translation resource.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>语言已切换，但无法保存到配置文件：%1</source>
+        <translation>Language changed, but could not save the configuration file: %1</translation>
     </message>
 </context>
 <context>
@@ -474,7 +479,7 @@ Region recording uses Windows capture and saves H.264 MP4 with system or microph
     </message>
     <message>
         <location line="+1"/>
-        <location filename="../src/main.cpp" line="-72"/>
+        <location filename="../src/main.cpp" line="-79"/>
         <source>区域截图</source>
         <translation>Region Capture</translation>
     </message>
@@ -906,7 +911,19 @@ Recording did not complete. Temporary file retained at: %1</translation>
         <translation>Model mirror URL</translation>
     </message>
     <message>
-        <location line="+75"/>
+        <location line="+72"/>
+        <source>无法保存设置</source>
+        <translation>Could not save settings</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>无法写入配置文件：%1
+请检查文件夹权限和可用磁盘空间后重试。</source>
+        <translation>Could not write the configuration file: %1
+Check folder permissions and available disk space, then try again.</translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.8.4
+    VERSION 0.8.5
     DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )
@@ -73,6 +73,7 @@ qt_add_executable(SnipNexs WIN32
     src/main.cpp
     src/app/AppIcon.cpp
     src/app/AppIcon.h
+    src/app/AppSettings.h
     src/app/ImageSaveDialog.h
     src/app/AboutDialog.cpp
     src/app/AboutDialog.h
@@ -608,6 +609,7 @@ if(BUILD_TESTING)
             ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
     endfunction()
 
+    snipnexs_regression_test(AppSettingsTests)
     snipnexs_regression_test(RecordingCoreTests
         src/recorder/ScreenRecorderService.cpp src/recorder/RecordingOutput.cpp)
     target_link_libraries(RecordingCoreTests PRIVATE windowsapp)

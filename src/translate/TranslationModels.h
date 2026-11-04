@@ -44,7 +44,7 @@ struct TranslationModelSpec {
     const QString& targetLanguage,
     TranslationModelSpec& spec);
 
-// The release URL a package's assets resolve against. A QSettings override
+// The release URL a package's assets resolve against. An INI setting override
 // (translation/modelBaseUrl) takes precedence for all packages; SHA-256
 // verification applies regardless of the source.
 [[nodiscard]] QString effectiveModelBaseUrl(const TranslationModelSpec& spec);

@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 
+#include "AppSettings.h"
 #include "UpdateChecker.h"
 #include "UpdateVersion.h"
 #include "translate/TranslationModels.h"
@@ -17,7 +18,6 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QSettings>
 #include <QTableWidget>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -99,9 +99,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     layout->addWidget(buttons);
 
     // Fill current values.
-    mirrorEdit_->setText(QSettings().value(
+    mirrorEdit_->setText(AppSettings().value(
         QStringLiteral("translation/modelBaseUrl")).toString());
-    updateCheck_->setChecked(QSettings().value(
+    updateCheck_->setChecked(AppSettings().value(
         QStringLiteral("update/checkAtStartup"), false).toBool());
     checkNowButton_->setEnabled(true);
 
@@ -127,7 +127,7 @@ void SettingsDialog::changeEvent(QEvent* event)
 
 void SettingsDialog::accept()
 {
-    QSettings settings;
+    AppSettings settings;
     settings.setValue(QStringLiteral("recording/audio"),
         audioCombo_->currentIndex() == 1   ? QStringLiteral("microphone")
         : audioCombo_->currentIndex() == 2 ? QStringLiteral("none")
@@ -136,6 +136,13 @@ void SettingsDialog::accept()
         mirrorEdit_->text().trimmed());
     settings.setValue(QStringLiteral("update/checkAtStartup"),
         updateCheck_->isChecked());
+    settings.sync();
+    if (settings.status() != QSettings::NoError) {
+        QMessageBox::warning(this, tr("无法保存设置"),
+            tr("无法写入配置文件：%1\n请检查文件夹权限和可用磁盘空间后重试。")
+                .arg(QDir::toNativeSeparators(settings.fileName())));
+        return;
+    }
     QDialog::accept();
 }
 
@@ -147,7 +154,7 @@ void SettingsDialog::retranslateUi()
     audioCombo_->addItem(tr("麦克风"));
     audioCombo_->addItem(tr("无（纯视频）"));
     // Keep the persisted selection across retranslation.
-    const QString audio = QSettings().value(
+    const QString audio = AppSettings().value(
         QStringLiteral("recording/audio")).toString();
     audioCombo_->setCurrentIndex(
         audio == QStringLiteral("microphone") ? 1

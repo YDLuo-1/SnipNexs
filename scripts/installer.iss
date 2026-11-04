@@ -1,16 +1,16 @@
 ; SnipNexs installer script (Inno Setup 6).
 ; Prerequisite: run scripts/package-release.ps1 first; this script packages
-; the staged layout in dist/SnipNexs-0.8.4-win64 (bin/, licenses/, plugins/,
+; the staged layout in dist/SnipNexs-0.8.5-win64 (bin/, licenses/, plugins/,
 ; LICENSE, THIRD_PARTY_NOTICES.md).
 ;
 ; Build: iscc scripts\installer.iss
-; Output: dist/SnipNexs-0.8.4-setup.exe
+; Output: dist/SnipNexs-0.8.5-setup.exe
 
-#define AppVersion "0.8.4"
+#define AppVersion "0.8.5"
 #define AppName "SnipNexs"
 #define AppPublisher "SnipNexs contributors"
 #define AppExe "bin\SnipNexs.exe"
-#define StageDir "..\dist\SnipNexs-0.8.4-win64"
+#define StageDir "..\dist\SnipNexs-0.8.5-win64"
 
 [Setup]
 AppId={{8E5F1D62-4C3A-4B8E-9A21-6F0D2C5B9A01}

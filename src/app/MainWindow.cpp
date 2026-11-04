@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "AppSettings.h"
 
 #include "AboutDialog.h"
 #include "AppIcon.h"
@@ -18,7 +19,6 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QPushButton>
-#include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
 #include <QSizePolicy>
@@ -176,7 +176,7 @@ void MainWindow::maybeCheckForUpdate()
 {
     // Opt-in only: nothing touches the network until the user enables the
     // setting or presses "check now" in the dialog.
-    if (!QSettings().value(QStringLiteral("update/checkAtStartup"), false).toBool()) {
+    if (!AppSettings().value(QStringLiteral("update/checkAtStartup"), false).toBool()) {
         return;
     }
     QTimer::singleShot(3'000, this, [this]() {

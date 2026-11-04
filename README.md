@@ -4,7 +4,7 @@
 
 SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.8.4`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, local offline translation, explicit browser translation, native region recording, copy/save actions, and standalone deployment.
+Current version: `0.8.5`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, local offline translation, explicit browser translation, native region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
@@ -24,6 +24,7 @@ Current version: `0.8.4`. It includes Chinese/English UI switching, tray-first s
 - Pinned images stay on top: drag to move, use the mouse wheel for cumulative cursor-anchored resizing, double-click the left button to close, and right-click for Copy Image, Save Image As, toolbar visibility, or Close Pin. The compact pin toolbar is hidden by default and can be shown from that menu.
 - Open **About SnipNexs** from the main-window footer or tray menu to read the application, Qt, and recording-reference licenses and source locations offline.
 - Open **Settings…** from the main-window footer or tray menu to switch recording audio (system loopback / microphone / none), set the translation-model mirror URL, manage installed model packages (view and delete), and check for updates. The optional startup update check contacts GitHub only after you enable it.
+- Settings are stored in `SnipNexs.ini` beside `SnipNexs.exe`. If that directory cannot be written and has no existing INI, settings use the current user's local data folder (`AppData\Local\SnipNexs\SnipNexs.ini`, or `AppData\LocalLow\SnipNexs\SnipNexs.ini` as selected by the platform). An existing portable INI stays authoritative; save failures are reported. No application settings are read from or written to the Registry, and old Registry settings are not imported.
 - Press `Esc` or right-click to cancel.
 
 The current development tree adds normal minimization when no tray is available, invalidates old translations when the text or target language changes, and saves history in the background with a flush on normal exit. Exiting during recording also finalizes the MP4; encoding or save failures retain nonempty `.partial.mp4` files beside the chosen destination for recovery or diagnosis, though incomplete files may not be playable. Version 0.8.4 also adds bounded model downloads, CPU backend dispatch for high-quality translation, and a compatible recording path for desktops where Windows Graphics Capture is unavailable.
@@ -86,7 +87,7 @@ If the repository has been moved or renamed, reconfigure with `cmake --fresh --p
 For a formal release, run this only from a clean commit carrying the matching version tag:
 
 ```powershell
-.\scripts\package-release.ps1 -Version 0.8.4
+.\scripts\package-release.ps1 -Version 0.8.5
 ```
 
 The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and prints its SHA-256. GitHub also displays the digest for every uploaded asset. Add `-IncludeQtSource` only when publishing the first SnipNexs release for a new Qt version; later application releases link to that publisher-controlled source copy. See the [release checklist](docs/release-checklist.md).
@@ -100,7 +101,7 @@ See [Third-party notices](THIRD_PARTY_NOTICES.md) for exact deployed components 
 ### Local repair candidate
 
 ```powershell
-.\scripts\package-release.ps1 -Version 0.8.4 -LocalCandidate -ModelSource .\build\models\src
+.\scripts\package-release.ps1 -Version 0.8.5 -LocalCandidate -ModelSource .\build\models\src
 ```
 
 `-LocalCandidate` permits packaging a development checkout; tagged releases still require a clean worktree and the exact tag. Optional `-ModelSource` bundles the Hy-MT2 model after catalog hash verification. A clean staging directory and verified ZIP precede retirement of old deployments. History and models migrate locally; other new/modified files remain under `user-data/<old-deployment>`. Rollback ZIPs are retained, and existing output versions are never overwritten. The installer includes application/license files only; models download on demand.
