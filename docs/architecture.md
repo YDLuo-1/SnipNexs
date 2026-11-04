@@ -12,7 +12,7 @@ app
  ├─ editor
  ├─ pin
  ├─ ocr ────── Windows.Media.Ocr
- ├─ translate ─ CTranslate2 + SentencePiece / llama.cpp / browser
+ ├─ translate ─ llama.cpp / browser
  └─ recorder ─ Windows.Graphics.Capture + D3D11 + Windows.Media
 ```
 
@@ -21,13 +21,15 @@ app
 - `editor`：选区、绘制命令、撤销重做与导出。
 - `pin`：贴图窗口及其交互，不复制编辑器内部状态。
 - `ocr`：OCR 请求、后台调度和系统 OCR 适配。
-- `translate`：双引擎本地翻译（CTranslate2/OPUS-MT 与 llama.cpp/Hy-MT2）以及显式浏览器翻译；内置的模型安装器只用 Qt Network 访问 GitHub Release 或用户配置的镜像，逐文件 SHA-256 校验，不保存凭据。
+- `translate`：Hy-MT2 本地翻译（llama.cpp）以及显式浏览器翻译；内置的模型安装器只用 Qt Network 访问 GitHub Release 或用户配置的镜像，逐文件 SHA-256 校验，不保存凭据。
 - `recorder`：帧采集、队列、编码与封装。
 - `platform/windows`：Win32、D3D11、Windows Graphics Capture 等平台代码。
 
 目录在功能落地时才创建；不会为路线图中的假想实现预建空类。
 
-## 当前实现（0.8.1）
+## 当前实现（开发树，版本号 0.8.3）
+
+以下包含 v0.8.1 标签之后的改动；已发布包的验收边界仍以对应版本的验证记录为准。
 
 - `app/MainWindow` 负责主窗口、托盘、关于与设置入口和状态展示，通过 `captureRequested` 信号请求截图；有托盘时启动不显示主界面，托盘不可用时才回退显示。
 - `app/SettingsDialog` 集中管理三块设置：录屏音频（`recording/audio`）、翻译模型镜像（`translation/modelBaseUrl`）与语言包管理（`TranslationModels` 的目录枚举/删除，只接受目录内的包 id）；`app/UpdateChecker` 用 GitHub latest API 做版本比较（`app/UpdateVersion.h` 的点分版本解析，预发布后缀一律视为无更新），仅显式按钮或用户开启 `update/checkAtStartup` 后才联网。
@@ -41,15 +43,15 @@ app
 - `pin/PinWindow` 是持有原始 `QImage` 和一份隐式共享 `QPixmap` 的置顶窗口，支持移动、以鼠标内容为锚点的累积有界缩放、双击左键关闭和右键菜单；复制/保存信号交回 `CaptureController`，默认隐藏的轻量工具条只提供复制、保存和关闭。绘制源矩形使用完整物理 `QPixmap::rect()`，避免高 DPI 下只显示左上区域；阴影由窗口直接绘制，不在每次缩放时创建图形场景或模糊效果。
 - `ocr/OcrService` 复用一个工作线程，避免 OCR 阻塞 UI；同一时刻只接受一个识别任务。
 - `ocr/WindowsOcr` 把 `QImage` 行数据直接复制到 `SoftwareBitmap`，不经过 PNG/BMP 编解码，也不捆绑 OCR 模型；识别结果同时给出拼接文本与逐行列表（CJK 行内词间不补空格），行列表与文本恒一致。
-- `ocr/OcrResultWindow` 在识别出两行及以上时提供"对照"视图：左右两个同步滚动的只读窗格逐行对照原文与译文；逐行翻译走 `TranslationService::translateLines`（引擎各自实现 `translateLines`，空行原样透传保证 1:1 对齐）。
+- `ocr/OcrResultWindow` 在识别出两行及以上时提供"对照"视图：左右两个同步滚动的只读窗格逐行对照原文与译文；逐行翻译走 `TranslationService::translateLines`（由 Hy-MT2 实现 `translateLines`，空行原样透传保证 1:1 对齐）。
 - `translate/BrowserTranslation` 只构造文本翻译 URL；结果窗口在打开浏览器前明确提示传输边界。
-- `translate/TranslationService` 提供本地（离线）翻译：接口镜像 `OcrService`（单工作线程、同时一个任务），引擎封装在 `translate/LocalTranslation`（CTranslate2 v4.8.1 CPU + SentencePiece v0.2.0，头文件不外泄），OPUS-MT zh⇄en 模型按语言对按需下载（`TranslationModelInstaller` 逐文件下载 + SHA-256 校验 + 原子 manifest），模型目录规则与历史一致（程序目录可写则 `models/translation`，否则本地应用数据）。CTranslate2 的 GEMM 后端为自带 Ruy；在此 MSVC 工具链上自动 int8 + 多线程会挂死，已固定 FLOAT32 + 单 worker（见 [选型决策](local-translation-decision.md)）。高质量引擎由 `translate/LlamaTranslation` 封装 llama.cpp 固定提交 `4da6337`，运行 Hy-MT2-1.8B GGUF；每次翻译前清空 KV cache，避免多段文本耗尽 `n_ctx`。Llama 按 600 字符分段，推理线程取逻辑处理器的一半、上限 8；OPUS 仍按 300 字符分段并使用单 worker。目标语言由显式参数或 OCR `languageTag` 推导，未知源语言对 Opus 固定模型会被拒绝，对 prompt 驱动的 Llama 则回退到中文。
-- `recorder/RecorderController` 管理路径、临时文件、悬浮停止条和录制生命周期；悬浮条默认放在目标屏幕可用区域右下角，并可拖动空白区域移动。完成的 MP4 通过同目录原子替换落到用户目标路径。
+- `translate/TranslationService` 提供 Hy-MT2 本地离线翻译：单工作线程、同时一个任务，`translate/LlamaTranslation` 封装 llama.cpp 固定提交 `4da6337`。模型按需下载或随离线包预装，逐文件 SHA-256 校验与原子 manifest；程序目录可写则使用 `models/translation`，否则使用本地应用数据。会话懒加载并复用，每段清空 KV cache；先按句子/600 字符分段，再将 prompt 限制到 1024 token，预留 1024 输出 token，prefill 每批最多 512 token。线程数取逻辑处理器的一半、上限 8。目标语言由用户选择或当前编辑文本推断。取消与退出保留原子标志和逐 token 中止；窗口只取消自己的任务。不保存引擎选择设置，模型目录只登记 Hy-MT2。
+- `recorder/RecorderController` 管理路径、临时文件、悬浮停止条和录制生命周期。正常停止和退出程序都通过 `RecordingOutput` 原子保存已完成的 MP4；退出时直接读取已结束线程的结果，不依赖已停止的 UI 事件循环。保存失败或编码中断时保留非空临时文件，空文件才删除。
 - `recorder/ScreenRecorderService` 只维护一个后台录制线程；停止请求是原子标志，不阻塞 UI。
-- `recorder/NativeScreenRecorder` 使用 Windows Graphics Capture 获取 GPU 表面，D3D11 裁剪后直接交给 Windows 媒体管线，不做 CPU 像素回读。音频由 WASAPI 共享模式采集：默认系统回路（静音期间由采集线程补零保持时间线连续），可选麦克风；float32 混合格式在采集线程转为 s16 后以双描述符 `MediaStreamSource`（视频 + PCM 音频）送入同一转码管线，音频时间戳按已交付帧数推导（QPC 基准），与视频时间轴无漂移；音频端点缺失或格式不支持时自动回退纯视频，不中止录制。
+- `recorder/NativeScreenRecorder` 优先使用 Windows Graphics Capture 获取 GPU 表面，D3D11 裁剪后直接交给媒体管线；WGC 不可用或访问被拒绝时，GDI 仅捕获所选区域并上传表面，使用软件 H.264 编码。硬件编码准备失败也会重试软件编码。音频由 WASAPI 共享模式采集：默认系统回路（静音期间补零），可选麦克风；float32 转为 s16 后由 `DataWriter` 创建有效的 `IBuffer`。音视频时间戳减去共同的 QPC 起点，音频块以块内首帧计时，短暂无数据不会被当作流结束。待编码音频上限为 2 秒，超过上限明确报错并停止，不静默丢弃音频。音频端点缺失或格式不支持时回退纯视频，并在完成状态中提示。当前机器通过 60 秒系统声音录制及音视频完整解码，仍未覆盖数小时录制和跨设备同步。
 - 帧池容量为 2，应用只保存最新帧；慢编码时覆盖旧帧，不让内存随录制时长增长。
 - `platform/windows/GlobalHotkey` 是唯一的 Win32 快捷键边界，使用 `RegisterHotKey`；默认注册 F1，失败时回退到 `Ctrl+Shift+A`，未引入第三方热键库或全局键盘钩子。
-- `platform/windows/NativeTrayIcon` 用原生 `Shell_NotifyIconW`（legacy 回调契约）实现托盘图标：探针实测 Windows 11 Insider 26300 会对**未签名进程**的托盘注册返回 `ERROR_ACCESS_DENIED`（Qt 6.11 的 `QSystemTrayIcon` 静默吞掉同一失败，导致"隐藏窗口 + 无图标"的僵尸进程）。注册失败现在有明确信号：`MainWindow::trayAvailable()` 为假时主窗口保持可见、关闭即退出，绝不退化为不可见进程；Explorer 重启（`TaskbarCreated`）会自动重新注册图标。托盘菜单用 `QMenu::exec` 配合 `SetForegroundWindow`/`WM_NULL` 惯用法保证点击别处可收起。
+- `platform/windows/NativeTrayIcon` 用原生 `Shell_NotifyIconW`（legacy 回调契约）实现托盘图标：当前 Windows 11 build 26300 会话中，探针的托盘注册返回 `ERROR_ACCESS_DENIED`，尚未确定系统拒绝的根因（Qt 6.11 的 `QSystemTrayIcon` 静默吞掉同一失败，导致"隐藏窗口 + 无图标"的僵尸进程）。注册失败现在有明确信号：`MainWindow::trayAvailable()` 为假时主窗口保持可见、关闭即退出，绝不退化为不可见进程；Explorer 重启（`TaskbarCreated`）会自动重新注册图标。托盘菜单用 `QMenu::exec` 配合 `SetForegroundWindow`/`WM_NULL` 惯用法保证点击别处可收起。
 - 当前选区限定在鼠标所在显示器，已处理显示缩放比例；跨显示器单次选区尚未实现。
 
 ## 扩展规则
@@ -62,9 +64,15 @@ app
 
 ## 性能与验证
 
-- 截图到首帧显示目标：常用桌面环境 P95 小于 100 ms。
+- 截图到首帧显示目标仍为 P95 小于 100 ms，目前尚未达标：保留用于窗口隐藏的 120 ms 等待。状态栏耗时现从用户触发开始，包含等待和窗口目标枚举，不再只计像素抓取时间；调整等待前需桌面回归。
+- 历史 PNG 写入由 `CaptureHistoryWriter` 在后台顺序执行，待写队列按同一套 20 张 / 约 64 MiB 保留策略截取最新历史；退出时写完保留项。写入失败显示状态和通知。启动读取历史仍为同步路径。
+- 模型安装使用包级 `QLockFile`，下载和删除互斥；每个 `QSaveFile` 只清理自身临时文件。SHA-256 随 256 KiB 数据块增量计算，拒绝超过清单大小的响应，30 秒无传输超时，并在开始时检查磁盘容量。安装状态还核对实际文件大小。测试显式注入临时模型根目录。
+- OCR 对照模式使用编辑后的行文本；修改文字或切换引擎会清除旧译文，用户点击翻译重新计算。当前任务运行时禁止修改输入和引擎。
+- 无托盘时“最小化”保留任务栏入口，截图结束恢复主窗口。offscreen 自检不注册热键或原生托盘图标，截图历史使用隔离目录。
 - 编辑交互目标：60 Hz 显示器下不出现可感知掉帧。
 - 录屏队列已有固定上限；结束结果记录捕获帧、向媒体管线提交的帧、总耗时和文件大小。
 - 每个阶段至少包含可自动执行的构建/自检；性能结论只能来自对应完整链路的测量。
-- 翻译引擎（ctranslate2.dll、llama.dll 及其 ggml 系列）通过 MSVC delay-load 在首次使用时才加载：截图主流程的启动路径不为可选功能付出内存映射与加载时间。
-- 部署自检分两层：`--self-test` 验证界面/翻译资源与截图阻止主窗；`--self-test-runtime` 不创建 GUI，直接验证 Qt TLS 后端、`ctranslate2.dll` 与 `llama.dll` 能从部署目录及其 `plugins/` 加载。发布包还必须携带 OpenMP 运行库 `vcomp140.dll`（CTranslate2 与 ggml 以 `/openmp` 构建）。
+- 默认 CTest 全部配置 `QT_QPA_PLATFORM=offscreen`；原生托盘、窗口捕获排除和真实录屏三项明确跳过，音频缓冲、录屏文件生命周期、模型安装互斥和 OCR 窗口状态由独立无界面回归覆盖。只有明确安排桌面验收时才配置 `SNIPNEXS_DESKTOP_TESTS=ON`。
+- 高质量翻译禁用构建机原生指令集绑定，使用上游 ggml 的 x64 基线至 AVX-512 多变体运行时选择，并只从应用目录加载后端。当前 CPU 上已分别执行自动选择与 x64 基线后端的真实推理；尚未用物理旧 CPU、干净 Windows 10/11 或混合 DPI 环境验收。
+- 翻译引擎（llama.dll 及其 ggml 系列）通过 MSVC delay-load 在首次使用时才加载：截图主流程的启动路径不为可选功能付出内存映射与加载时间。
+- 部署自检分两层：`--self-test` 验证界面/翻译资源与截图阻止主窗；`--self-test-runtime` 不创建 GUI，直接验证 Qt TLS 后端、`llama.dll` 能从部署目录及其 `plugins/` 加载。发布包还必须携带 OpenMP 运行库 `vcomp140.dll`（ggml 以 `/openmp` 构建）。

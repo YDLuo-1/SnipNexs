@@ -42,7 +42,9 @@ struct RecordingResult
     bool succeeded = false;
     bool unavailable = false;
     bool audioCaptured = false;
+    bool compatibilityCapture = false;
     QString error;
+    QString warning;
     qint64 elapsedMs = 0;
     qint64 outputBytes = 0;
     int capturedFrames = 0;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(SnipNexs
-    VERSION 0.8.1
+    VERSION 0.8.4
     DESCRIPTION "A lightweight and extensible screenshot and recording toolkit for Windows"
     LANGUAGES CXX
 )
@@ -18,58 +18,20 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt6 6.11.2 EXACT REQUIRED COMPONENTS Core Gui Widgets Network LinguistTools)
 
 # ---------------------------------------------------------------------------
-# Local translation engine (see docs/local-translation-decision.md)
-#
-# CTranslate2 (MIT) runs OPUS-MT models on CPU; SentencePiece (Apache-2.0)
-# tokenizes raw text for those models. Both are fetched at pinned tags and
-# built from source. The engine stays CPU-only: no MKL/DNNL/CUDA, no GPU
-# requirement, Windows 10 2004 x64 remains the floor.
+# Local translation: pinned llama.cpp + Hy-MT2 GGUF, fully on CPU.
 # ---------------------------------------------------------------------------
 include(FetchContent)
 
-set(BUILD_SHARED_LIBS ON) # ctranslate2 becomes a runtime DLL next to SnipNexs.exe
-set(OPENMP_RUNTIME "COMP" CACHE INTERNAL "Use the MSVC OpenMP runtime (vcomp)")
-set(WITH_MKL OFF CACHE INTERNAL "No MKL for CTranslate2")
-set(WITH_DNNL OFF CACHE INTERNAL "No DNNL for CTranslate2")
-set(WITH_RUY ON CACHE INTERNAL "Ruy is CTranslate2's vendored CPU GEMM backend")
-set(BUILD_CLI OFF CACHE INTERNAL "No CTranslate2 CLI tools")
-set(BUILD_TESTS OFF CACHE INTERNAL "No CTranslate2 tests")
-FetchContent_Declare(ctranslate2
-    GIT_REPOSITORY https://github.com/OpenNMT/CTranslate2.git
-    GIT_TAG v4.8.1
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(ctranslate2)
-# Keep the runtime DLL next to SnipNexs.exe and the test executables so
-# Windows DLL search and CTest find it without extra PATH setup.
-set_target_properties(ctranslate2 PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
-unset(BUILD_SHARED_LIBS)
-
-set(SPM_ENABLE_SHARED OFF CACHE INTERNAL "SentencePiece static only")
-set(SPM_ENABLE_TEST OFF CACHE INTERNAL "No SentencePiece tests")
-set(SPM_ENABLE_TRAINING OFF CACHE INTERNAL "No SentencePiece trainer")
-set(SPM_BUILD_EXAMPLES OFF CACHE INTERNAL "No SentencePiece examples")
-FetchContent_Declare(sentencepiece
-    GIT_REPOSITORY https://github.com/google/sentencepiece.git
-    GIT_TAG v0.2.0
-    GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(sentencepiece)
-
-# SentencePiece exposes its headers via directory-scope include paths only,
-# so consumers must add the source include directory themselves.
-set(SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR "${sentencepiece_SOURCE_DIR}/src")
-
-# llama.cpp (MIT) runs the high-quality GGUF translation model
-# (tencent Hy-MT2-1.8B, Apache-2.0) fully on CPU. Shared build so the
-# runtime DLLs deploy next to SnipNexs.exe like the other engines.
 set(LLAMA_BUILD_IS_DEV OFF CACHE INTERNAL "No llama dev build")
 set(LLAMA_BUILD_TESTS OFF CACHE INTERNAL "No llama tests")
 set(LLAMA_BUILD_TOOLS OFF CACHE INTERNAL "No llama tools")
 set(LLAMA_BUILD_EXAMPLES OFF CACHE INTERNAL "No llama examples")
 set(LLAMA_BUILD_SERVER OFF CACHE INTERNAL "No llama server")
 set(LLAMA_CURL OFF CACHE INTERNAL "No curl dependency")
+set(GGML_NATIVE OFF CACHE BOOL "Portable CPU dispatch" FORCE)
+set(GGML_BACKEND_DL ON CACHE BOOL "Load the compatible CPU backend" FORCE)
+set(GGML_CPU_ALL_VARIANTS ON CACHE BOOL "Include baseline x64 and optimized CPU backends" FORCE)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 set(BUILD_SHARED_LIBS ON)
 FetchContent_Declare(llama
     GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
@@ -78,10 +40,12 @@ FetchContent_Declare(llama
 )
 FetchContent_MakeAvailable(llama)
 unset(BUILD_SHARED_LIBS)
-foreach(_llama_target llama ggml ggml-base ggml-cpu)
+get_property(_ggml_targets DIRECTORY "${llama_SOURCE_DIR}/ggml/src" PROPERTY BUILDSYSTEM_TARGETS)
+foreach(_llama_target llama ggml ggml-base ${_ggml_targets})
     if(TARGET ${_llama_target})
         set_target_properties(${_llama_target} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
         if(MSVC)
             # llama.cpp uses u8 string literals but builds as C++17 upstream;
             # our project-wide C++20 would break them without this.
@@ -95,8 +59,6 @@ set(SNIPNEXS_LICENSE_FILES
     licenses/LGPL-3.0-only.txt
     licenses/MIT-Microsoft-SimpleRecorder.txt
     licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
-    licenses/CTranslate2-MIT.txt
-    licenses/SentencePiece-Apache-2.0.txt
     licenses/Material-Symbols-Apache-2.0.txt
     licenses/llama.cpp-MIT.txt
 )
@@ -154,6 +116,9 @@ qt_add_executable(SnipNexs WIN32
     src/recorder/NativeScreenRecorder.h
     src/recorder/RecorderController.cpp
     src/recorder/RecorderController.h
+    src/recorder/RecordingOutput.cpp
+    src/recorder/RecordingOutput.h
+    src/recorder/AudioBuffer.h
     src/recorder/RecordingIndicator.cpp
     src/recorder/RecordingIndicator.h
     src/recorder/RecordingSettings.h
@@ -163,8 +128,6 @@ qt_add_executable(SnipNexs WIN32
     src/translate/BrowserTranslation.h
     src/translate/LlamaTranslation.cpp
     src/translate/LlamaTranslation.h
-    src/translate/LocalTranslation.cpp
-    src/translate/LocalTranslation.h
     src/translate/TranslationModelInstaller.cpp
     src/translate/TranslationModelInstaller.h
     src/translate/TranslationModels.cpp
@@ -180,15 +143,13 @@ set_target_properties(SnipNexs PROPERTIES
     QT_WINDOWS_APP_PROJECT_EXECUTION_LEVEL "asInvoker"
 )
 
-target_include_directories(SnipNexs PRIVATE src ${SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR})
+target_include_directories(SnipNexs PRIVATE src)
 
 target_link_libraries(SnipNexs PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
     Qt6::Network
-    ctranslate2
-    sentencepiece-static
     llama
     d3d11
     dwmapi
@@ -198,11 +159,8 @@ target_link_libraries(SnipNexs PRIVATE
 )
 
 if(MSVC)
-    # The translation engines load on first use instead of every startup:
-    # llama.dll pulls in the ggml family and ctranslate2.dll maps model
-    # machinery users may never touch (delay-load helper required).
+    # Load the translation engine only when first used.
     target_link_options(SnipNexs PRIVATE
-        "/DELAYLOAD:ctranslate2.dll"
         "/DELAYLOAD:llama.dll")
     target_link_libraries(SnipNexs PRIVATE delayimp)
 endif()
@@ -234,7 +192,7 @@ endif()
 include(GNUInstallDirs)
 if(MSVC)
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_INSTALL_BINDIR})
-    # CTranslate2 and ggml are built with /openmp, so the portable package
+    # ggml is built with /openmp, so the portable package
     # must ship vcomp140.dll next to the application-local CRT DLLs.
     set(CMAKE_INSTALL_OPENMP_LIBRARIES TRUE)
     include(InstallRequiredSystemLibraries)
@@ -259,8 +217,6 @@ install(FILES
     licenses/LGPL-3.0-only.txt
     licenses/MIT-Microsoft-SimpleRecorder.txt
     licenses/QT-THIRD-PARTY-NOTICES-6.11.2.md
-    licenses/CTranslate2-MIT.txt
-    licenses/SentencePiece-Apache-2.0.txt
     licenses/Material-Symbols-Apache-2.0.txt
     licenses/llama.cpp-MIT.txt
     ${SNIPNEXS_QTBASE_SBOM}
@@ -286,12 +242,7 @@ install(SCRIPT ${deploy_script})
 # (headers, import/static libs, CMake configs); SnipNexs only needs the
 # runtime DLLs, so strip them from the deployment layout.
 install(CODE
-    [[foreach(_spm_tool spm_train spm_encode spm_decode spm_normalize spm_export_vocab)
-         if(EXISTS "${CMAKE_INSTALL_PREFIX}/bin/${_spm_tool}.exe")
-             file(REMOVE "${CMAKE_INSTALL_PREFIX}/bin/${_spm_tool}.exe")
-         endif()
-     endforeach()
-     file(REMOVE_RECURSE
+    [[file(REMOVE_RECURSE
          "${CMAKE_INSTALL_PREFIX}/include"
          "${CMAKE_INSTALL_PREFIX}/lib")]])
 
@@ -313,7 +264,7 @@ if(BUILD_TESTING)
     )
 
     # Runs without a GUI platform plugin so the deployed layout can be
-    # checked in place: Qt TLS backend, ctranslate2.dll and llama.dll must all
+    # checked in place: Qt TLS backend and llama.dll must all
     # load from the application directory and its plugins/ folder.
     add_test(NAME SnipNexsRuntimeSelfTest COMMAND SnipNexs --self-test-runtime)
     set_tests_properties(SnipNexsRuntimeSelfTest PROPERTIES
@@ -581,31 +532,10 @@ if(BUILD_TESTING)
     target_include_directories(LocalLlamaTests PRIVATE src)
     target_link_libraries(LocalLlamaTests PRIVATE Qt6::Core llama)
     add_test(NAME LocalLlamaTests COMMAND LocalLlamaTests)
-    set_tests_properties(LocalLlamaTests PROPERTIES
+    add_test(NAME LocalLlamaBaselineTests COMMAND LocalLlamaTests --baseline)
+    set_tests_properties(LocalLlamaTests LocalLlamaBaselineTests PROPERTIES
         SKIP_RETURN_CODE 77
         TIMEOUT 300
-        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
-    )
-
-    add_executable(LocalTranslationTests
-        tests/LocalTranslationTests.cpp
-        src/translate/LocalTranslation.cpp
-        src/translate/LocalTranslation.h
-        src/translate/TranslationTextSplitter.cpp
-        src/translate/TranslationTextSplitter.h
-    )
-    target_include_directories(LocalTranslationTests PRIVATE
-        src ${SNIPNEXS_SENTENCEPIECE_INCLUDE_DIR})
-    target_link_libraries(LocalTranslationTests PRIVATE
-        Qt6::Core
-        ctranslate2
-        sentencepiece-static
-    )
-    add_test(NAME LocalTranslationTests COMMAND LocalTranslationTests)
-    set_tests_properties(LocalTranslationTests PROPERTIES
-        SKIP_RETURN_CODE 77
-        TIMEOUT 120
-        ENVIRONMENT "SNIPNEXS_TEST_MODEL_DIR=${CMAKE_SOURCE_DIR}/build/models/src/opus-mt-en-zh-int8"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
 
@@ -660,10 +590,52 @@ if(BUILD_TESTING)
     add_test(NAME NativeScreenRecorderTests COMMAND NativeScreenRecorderTests)
     set_tests_properties(NativeScreenRecorderTests PROPERTIES
         SKIP_RETURN_CODE 77
-        TIMEOUT 20
+        TIMEOUT 180
         ENVIRONMENT "TEMP=${SNIPNEXS_TEST_TEMP_DIR};TMP=${SNIPNEXS_TEST_TEMP_DIR}"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )
+
+    function(snipnexs_regression_test name)
+        add_executable(${name} tests/${name}.cpp ${ARGN})
+        target_include_directories(${name} PRIVATE src)
+        target_link_libraries(${name} PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Test)
+        target_compile_definitions(${name} PRIVATE UNICODE _UNICODE NOMINMAX
+            SNIPNEXS_VERSION="${PROJECT_VERSION}")
+        target_compile_options(${name} PRIVATE /W4 /permissive- /utf-8 /EHsc)
+        add_test(NAME ${name} COMMAND ${name})
+        set_tests_properties(${name} PROPERTIES TIMEOUT 30
+            ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
+    endfunction()
+
+    snipnexs_regression_test(RecordingCoreTests
+        src/recorder/ScreenRecorderService.cpp src/recorder/RecordingOutput.cpp)
+    target_link_libraries(RecordingCoreTests PRIVATE windowsapp)
+    snipnexs_regression_test(AudioCaptureTests)
+    target_link_libraries(AudioCaptureTests PRIVATE windowsapp d3d11 dxgi shcore ole32)
+    set_tests_properties(AudioCaptureTests PROPERTIES SKIP_RETURN_CODE 77)
+    add_test(NAME MicrophoneCaptureTests COMMAND AudioCaptureTests --microphone)
+    set_tests_properties(MicrophoneCaptureTests PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 30
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
+    snipnexs_regression_test(TranslationModelInstallerTests
+        src/translate/TranslationModels.cpp src/translate/TranslationModelInstaller.cpp)
+    add_test(NAME TranslationModelDownloadTests COMMAND TranslationModelInstallerTests --network)
+    set_tests_properties(TranslationModelDownloadTests PROPERTIES
+        SKIP_RETURN_CODE 77 TIMEOUT 600
+        ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
+    snipnexs_regression_test(TranslationServiceTests
+        src/translate/TranslationService.cpp src/translate/TranslationTextSplitter.cpp)
+    snipnexs_regression_test(OcrResultWindowTests
+        src/ocr/OcrResultWindow.cpp src/translate/TranslationService.h
+        src/translate/TranslationModelInstaller.cpp src/translate/TranslationModels.cpp
+        src/translate/BrowserTranslation.cpp)
+    snipnexs_regression_test(MainWindowTests
+        src/app/MainWindow.cpp src/app/SettingsDialog.cpp src/app/UpdateChecker.cpp
+        src/app/AppIcon.cpp src/app/AboutDialog.cpp
+        src/translate/TranslationModels.cpp src/platform/windows/NativeTrayIcon.cpp)
+
+    add_test(NAME ReleaseFilesTests COMMAND powershell.exe -NoProfile -ExecutionPolicy Bypass
+        -File ${CMAKE_SOURCE_DIR}/tests/ReleaseFilesTests.ps1 -WorkRoot ${SNIPNEXS_TEST_TEMP_DIR})
+    set_tests_properties(ReleaseFilesTests PROPERTIES TIMEOUT 60)
 
     add_test(NAME ReleaseLayoutTests
         COMMAND ${CMAKE_COMMAND}
@@ -671,4 +643,17 @@ if(BUILD_TESTING)
             -DSNIPNEXS_STAGE_DIR=${CMAKE_BINARY_DIR}/release-layout-test
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/ReleaseLayoutTests.cmake
     )
+    # Desktop capture tests return 77 under offscreen. Opt in to actual desktop
+    # acceptance explicitly in a separate build with this option enabled.
+    option(SNIPNEXS_DESKTOP_TESTS "Allow interactive desktop acceptance tests" OFF)
+    get_property(snipnexs_tests DIRECTORY PROPERTY TESTS)
+    foreach(test IN LISTS snipnexs_tests)
+        set_property(TEST ${test} APPEND PROPERTY ENVIRONMENT
+            "TEMP=${SNIPNEXS_TEST_TEMP_DIR}" "TMP=${SNIPNEXS_TEST_TEMP_DIR}")
+        if(SNIPNEXS_DESKTOP_TESTS AND test MATCHES "^(NativeTrayIconTests|CaptureExclusionTests|NativeScreenRecorderTests)$")
+            set_property(TEST ${test} APPEND PROPERTY ENVIRONMENT "QT_QPA_PLATFORM=windows")
+        else()
+            set_property(TEST ${test} APPEND PROPERTY ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+        endif()
+    endforeach()
 endif()

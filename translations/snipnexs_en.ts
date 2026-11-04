@@ -4,7 +4,12 @@
 <context>
     <name>NativeScreenRecorder</name>
     <message>
-        <location filename="../src/recorder/NativeScreenRecorder.cpp" line="+176"/>
+        <location filename="../src/recorder/NativeScreenRecorder.cpp" line="+775"/>
+        <source>音频设备不可用，本次仅保存视频：%1</source>
+        <translation>Audio device unavailable; this recording contains video only: %1</translation>
+    </message>
+    <message>
+        <location line="-591"/>
         <source>系统中没有可用的 H.264 编码器。</source>
         <translation>No H.264 encoder is available on this system.</translation>
     </message>
@@ -19,7 +24,7 @@
         <translation>The system could not prepare the MP4 encoder.</translation>
     </message>
     <message>
-        <location line="+155"/>
+        <location line="+507"/>
         <source>录屏输出路径或选区无效。</source>
         <translation>The recording output path or selected region is invalid.</translation>
     </message>
@@ -29,12 +34,7 @@
         <translation>Checking Windows Graphics Capture</translation>
     </message>
     <message>
-        <location line="+4"/>
-        <source>当前 Windows 或显卡驱动不支持 Windows Graphics Capture。</source>
-        <translation>This version of Windows or the graphics driver does not support Windows Graphics Capture.</translation>
-    </message>
-    <message>
-        <location line="+9"/>
+        <location line="+7"/>
         <source>找不到录屏显示器：%1</source>
         <translation>Recording display not found: %1</translation>
     </message>
@@ -49,7 +49,7 @@
         <translation>Creating display capture target</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+21"/>
         <source>录屏选区超出显示器范围或尺寸过小。</source>
         <translation>The recording region is outside the display or too small.</translation>
     </message>
@@ -59,17 +59,17 @@
         <translation>Starting GPU frame pool</translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+16"/>
         <source>初始化音频捕获</source>
         <translation>Initializing audio capture</translation>
     </message>
     <message>
-        <location line="+40"/>
+        <location line="+21"/>
         <source>创建媒体流</source>
         <translation>Creating media stream</translation>
     </message>
     <message>
-        <location line="+63"/>
+        <location line="+94"/>
         <source>打开输出文件 %1</source>
         <translation>Opening output file %1</translation>
     </message>
@@ -79,12 +79,12 @@
         <translation>Preparing H.264 encoder</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+25"/>
         <source>写入 MP4</source>
         <translation>Writing MP4</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+13"/>
         <source>录屏未产生有效视频帧。</source>
         <translation>The recording produced no valid video frames.</translation>
     </message>
@@ -117,13 +117,38 @@
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../src/translate/LocalTranslation.cpp" line="+59"/>
-        <source>模型文件缺失：%1</source>
-        <translation>Missing model file: %1</translation>
+        <location filename="../src/translate/LlamaTranslation.cpp" line="+216"/>
+        <source>翻译已取消或模型推理失败。</source>
+        <translation>Translation canceled or model inference failed.</translation>
     </message>
     <message>
-        <location filename="../src/translate/LlamaTranslation.cpp" line="+80"/>
-        <location filename="../src/translate/LocalTranslation.cpp" line="+19"/>
+        <location line="+8"/>
+        <location line="+77"/>
+        <source>翻译已取消。</source>
+        <translation>Translation canceled.</translation>
+    </message>
+    <message>
+        <location line="-46"/>
+        <source>译文超过输出长度限制，请缩短输入后重试。</source>
+        <translation>The translation exceeded the output limit. Shorten the input and try again.</translation>
+    </message>
+    <message>
+        <location line="+64"/>
+        <source>输入超过模型上下文限制。</source>
+        <translation>The input exceeds the model context limit.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>模型未返回译文，请调整输入后重试。</source>
+        <translation>The model returned no translation. Adjust the input and try again.</translation>
+    </message>
+    <message>
+        <location line="-250"/>
+        <source>未找到兼容的 CPU 翻译后端，请重新解压完整安装包。</source>
+        <translation>No compatible CPU translation backend was found. Please extract the complete application package again.</translation>
+    </message>
+    <message>
+        <location line="+17"/>
         <source>加载翻译模型失败：%1</source>
         <translation>Failed to load the translation model: %1</translation>
     </message>
@@ -133,47 +158,30 @@
         <translation>Failed to create the translation context.</translation>
     </message>
     <message>
-        <location line="+87"/>
-        <location line="+27"/>
+        <location line="+136"/>
         <source>翻译失败：模型推理出错。</source>
         <translation>Translation failed: model inference error.</translation>
     </message>
     <message>
-        <location filename="../src/translate/LocalTranslation.cpp" line="+15"/>
-        <source>无法读取分词模型：%1</source>
-        <translation>Cannot read the tokenizer model: %1</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>解析分词模型失败：%1</source>
-        <translation>Failed to parse the tokenizer model: %1</translation>
-    </message>
-    <message>
-        <location filename="../src/translate/LlamaTranslation.cpp" line="-40"/>
-        <location filename="../src/translate/LocalTranslation.cpp" line="+48"/>
+        <location line="+64"/>
         <source>分词失败：无法对输入文本编码。</source>
         <translation>Tokenization failed: the input text could not be encoded.</translation>
-    </message>
-    <message>
-        <location filename="../src/translate/LocalTranslation.cpp" line="+34"/>
-        <source>翻译失败：%1</source>
-        <translation>Translation failed: %1</translation>
     </message>
 </context>
 <context>
     <name>WindowsOcr</name>
     <message>
-        <location filename="../src/ocr/WindowsOcr.cpp" line="+109"/>
+        <location filename="../src/ocr/WindowsOcr.cpp" line="+133"/>
         <source>OCR 输入图像为空。</source>
         <translation>The OCR input image is empty.</translation>
     </message>
     <message>
         <location line="+10"/>
-        <source>未安装与当前用户语言匹配的 Windows OCR 语言包。</source>
-        <translation>No Windows OCR language pack matching the current user language is installed.</translation>
+        <source>未安装与当前用户语言匹配的 Windows OCR 语言包。请打开 系统设置 &gt; 时间和语言 &gt; 语言和区域，在对应语言的功能选项中勾选“文本识别”并安装，然后重试。</source>
+        <translation>No Windows OCR language pack matches your user languages. Open Settings &gt; Time &amp; language &gt; Language &amp; region, install Text recognition in the language options, and try again.</translation>
     </message>
     <message>
-        <location line="+18"/>
+        <location line="+42"/>
         <source>Windows OCR 调用失败：%1</source>
         <translation>Windows OCR failed: %1</translation>
     </message>
@@ -186,7 +194,7 @@
 <context>
     <name>main</name>
     <message>
-        <location filename="../src/main.cpp" line="+75"/>
+        <location filename="../src/main.cpp" line="+83"/>
         <source>快捷键已回退</source>
         <translation>Shortcut fallback</translation>
     </message>
@@ -208,23 +216,15 @@
 You can still click the Region Capture button.</translation>
     </message>
     <message>
-        <location line="+202"/>
+        <location line="+260"/>
         <source>无法加载英文翻译资源。</source>
         <translation>Could not load the English translation resource.</translation>
     </message>
 </context>
 <context>
-    <name>snipnexs::TranslationService</name>
-    <message>
-        <location filename="../src/translate/TranslationService.cpp" line="+67"/>
-        <source>当前语言组合暂无本地翻译模型。</source>
-        <translation>No local translation model is available for this language pair.</translation>
-    </message>
-</context>
-<context>
     <name>snipnexs::AboutDialog</name>
     <message>
-        <location filename="../src/app/AboutDialog.cpp" line="+239"/>
+        <location filename="../src/app/AboutDialog.cpp" line="+240"/>
         <location line="+26"/>
         <source>关于 Qt</source>
         <translation>About Qt</translation>
@@ -263,7 +263,7 @@ You can still click the Region Capture button.</translation>
 <context>
     <name>snipnexs::CaptureController</name>
     <message>
-        <location filename="../src/capture/CaptureController.cpp" line="+57"/>
+        <location filename="../src/capture/CaptureController.cpp" line="+67"/>
         <source>OCR 完成：%1，%2 ms，识别 %3 个字符。</source>
         <translation>OCR completed: %1, %2 ms, %3 characters recognized.</translation>
     </message>
@@ -273,12 +273,12 @@ You can still click the Region Capture button.</translation>
         <translation>OCR Failed</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+37"/>
         <source>未找到可用显示器。</source>
         <translation>No available display was found.</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+6"/>
         <source>屏幕捕获失败。请检查远程桌面或系统权限。</source>
         <translation>Screen capture failed. Check Remote Desktop and system permissions.</translation>
     </message>
@@ -389,109 +389,36 @@ You can still click the Region Capture button.</translation>
         <source>截图失败</source>
         <translation>Screenshot Failed</translation>
     </message>
+    <message>
+        <location line="-293"/>
+        <source>截图已完成，但无法写入历史记录。请检查磁盘空间和目录权限。</source>
+        <translation>Capture completed, but history could not be saved. Check disk space and folder permissions.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>历史记录保存失败</source>
+        <translation>Could not save capture history</translation>
+    </message>
 </context>
 <context>
     <name>snipnexs::CaptureOverlay</name>
     <message>
-        <location filename="../src/capture/CaptureOverlay.cpp" line="+73"/>
+        <location filename="../src/capture/CaptureOverlay.cpp" line="+63"/>
         <source>SnipNexs Capture</source>
         <translation>SnipNexs Capture</translation>
     </message>
     <message>
-        <location line="+53"/>
-        <source>画笔</source>
-        <translation>Pen</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>矩形</source>
-        <translation>Rectangle</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>箭头</source>
-        <translation>Arrow</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>文字</source>
-        <translation>Text</translation>
-    </message>
-    <message>
-        <location filename="../src/capture/CaptureToolbar.cpp" line="83"/>
-        <source>马赛克</source>
-        <translation>Mosaic</translation>
-    </message>
-    <message>
-        <location filename="../src/capture/CaptureToolbar.cpp" line="85"/>
-        <source>模糊</source>
-        <translation>Blur</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>取色</source>
-        <translation>Color picker</translation>
-    </message>
-    <message>
-        <source>对照</source>
-        <translation>Side by side</translation>
-    </message>
-    <message>
-        <source>确认复制</source>
-        <translation type="vanished">Confirm and copy</translation>
-    </message>
-    <message>
-        <location line="+68"/>
+        <location line="+43"/>
         <source>输入文字，回车完成</source>
         <translation>Type text and press Enter</translation>
     </message>
     <message>
-        <location line="-66"/>
-        <source>撤销</source>
-        <translation>Undo</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>重做</source>
-        <translation>Redo</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>识字</source>
-        <translation>OCR</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>贴图</source>
-        <translation>Pin</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>录屏</source>
-        <translation>Record</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>复制</source>
-        <translation>Copy</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>保存</source>
-        <translation>Save</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>取消</source>
-        <translation>Cancel</translation>
-    </message>
-    <message>
-        <location line="-57"/>
+        <location line="-34"/>
         <source>拖动自定义区域 · 单击自动选择窗口 · Esc 或右键取消</source>
         <translation>Drag a custom region · Click to select a window · Esc or right-click to cancel</translation>
     </message>
     <message>
-        <location line="+531"/>
+        <location line="+449"/>
         <source>当前屏幕 · 按 , 查看截图记录</source>
         <translation>Current screen · Press , to view capture history</translation>
     </message>
@@ -501,7 +428,7 @@ You can still click the Region Capture button.</translation>
         <translation>Capture history %1/%2 · Press , / . to switch</translation>
     </message>
     <message>
-        <location line="+378"/>
+        <location line="+412"/>
         <source>按 C 复制 · Shift 切换 RGB/HEX</source>
         <translation>Press C to copy · Shift toggles RGB/HEX</translation>
     </message>
@@ -509,7 +436,7 @@ You can still click the Region Capture button.</translation>
 <context>
     <name>snipnexs::MainWindow</name>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="+99"/>
+        <location filename="../src/app/MainWindow.cpp" line="+111"/>
         <source>SnipNexs 仍在运行</source>
         <translation>SnipNexs Is Still Running</translation>
     </message>
@@ -519,16 +446,16 @@ You can still click the Region Capture button.</translation>
         <translation>Reopen or quit SnipNexs from the system tray.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+18"/>
         <source>轻量、原生、可扩展的 Windows 截图工具</source>
         <translation>A lightweight, native, and extensible Windows capture tool</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>截图选区支持标注、贴图和本地文字识别。
-区域录屏使用 Windows GPU 捕获并保存 H.264 MP4，可录制系统声音或麦克风。</source>
+区域录屏使用 Windows 捕获并保存 H.264 MP4，可录制系统声音或麦克风。</source>
         <translation>Capture regions support annotation, pinning, and local OCR.
-Region recording uses Windows GPU capture and saves H.264 MP4 with system or microphone audio.</translation>
+Region recording uses Windows capture and saves H.264 MP4 with system or microphone audio.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -546,13 +473,13 @@ Region recording uses Windows GPU capture and saves H.264 MP4 with system or mic
         <translation>Hide to Tray</translation>
     </message>
     <message>
-        <location filename="../src/main.cpp" line="-64"/>
-        <location filename="../src/app/MainWindow.cpp" line="+1"/>
+        <location line="+1"/>
+        <location filename="../src/main.cpp" line="-72"/>
         <source>区域截图</source>
         <translation>Region Capture</translation>
     </message>
     <message>
-        <location filename="../src/app/MainWindow.cpp" line="+4"/>
+        <location line="+4"/>
         <location line="+5"/>
         <source>区域录屏</source>
         <translation>Region Recording</translation>
@@ -564,11 +491,12 @@ Region recording uses Windows GPU capture and saves H.264 MP4 with system or mic
     </message>
     <message>
         <location line="+1"/>
+        <location line="+4"/>
         <source>设置…</source>
         <translation>Settings…</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-3"/>
         <source>关于 SnipNexs</source>
         <translation>About SnipNexs</translation>
     </message>
@@ -578,38 +506,70 @@ Region recording uses Windows GPU capture and saves H.264 MP4 with system or mic
         <translation>Quit</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+3"/>
         <source>关于</source>
         <translation>About</translation>
     </message>
     <message>
+        <location line="+35"/>
         <source>发现新版本</source>
         <translation>New version available</translation>
     </message>
     <message>
+        <location line="+1"/>
         <source>SnipNexs %1 已发布，可在 设置 &gt; 更新 中查看。</source>
         <translation>SnipNexs %1 is available; see Settings &gt; Update.</translation>
+    </message>
+    <message>
+        <location line="-53"/>
+        <source>最小化</source>
+        <translation>Minimize</translation>
     </message>
 </context>
 <context>
     <name>snipnexs::OcrResultWindow</name>
     <message>
-        <location filename="../src/ocr/OcrResultWindow.cpp" line="+118"/>
+        <location filename="../src/ocr/OcrResultWindow.cpp" line="+264"/>
+        <source>本地 Windows OCR · 识别器 %1 · %2 ms</source>
+        <translation>Local Windows OCR · Recognizer %1 · %2 ms</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>自动方向</source>
+        <translation>Automatic direction</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>译为中文</source>
+        <translation>To Chinese</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>译为英文</source>
+        <translation>To English</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>翻译目标语言</source>
+        <translation>Translation target language</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>取消翻译</source>
+        <translation>Cancel translation</translation>
+    </message>
+    <message>
+        <location line="-85"/>
         <source>本地翻译失败</source>
         <translation>Local translation failed</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+70"/>
         <source>SnipNexs OCR</source>
         <translation>SnipNexs OCR</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>本地 Windows OCR · %1 · %2 ms</source>
-        <translation>Local Windows OCR · %1 · %2 ms</translation>
-    </message>
-    <message>
-        <location line="+1"/>
+        <location line="+3"/>
         <source>自动语言</source>
         <translation>Automatic Language</translation>
     </message>
@@ -619,21 +579,7 @@ Region recording uses Windows GPU capture and saves H.264 MP4 with system or mic
         <translation>No text was recognized.</translation>
     </message>
     <message>
-        <source>确认复制</source>
-        <translation type="vanished">Confirm and copy</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>默认引擎(快)</source>
-        <translation>Default engine (fast)</translation>
-    </message>
-    <message>
-        <location line="+1"/>
-        <source>高质量引擎(更准，较慢)</source>
-        <translation>High-quality engine (better, slower)</translation>
-    </message>
-    <message>
-        <location line="+13"/>
+        <location line="+11"/>
         <source>复制文字</source>
         <translation>Copy Text</translation>
     </message>
@@ -641,6 +587,11 @@ Region recording uses Windows GPU capture and saves H.264 MP4 with system or mic
         <location line="+1"/>
         <source>复制译文</source>
         <translation>Copy translation</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>对照</source>
+        <translation>Side by side</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -697,7 +648,7 @@ The screenshot will not be sent. Continue?</translation>
         <translation>Check your default browser settings.</translation>
     </message>
     <message>
-        <location line="+39"/>
+        <location line="+101"/>
         <source>正在下载其他模型</source>
         <translation>Another download in progress</translation>
     </message>
@@ -707,7 +658,7 @@ The screenshot will not be sent. Continue?</translation>
         <translation>Another model package is downloading. Wait for it to finish and try again.</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+22"/>
         <source>约 %1 MB</source>
         <translation>About %1 MB</translation>
     </message>
@@ -717,14 +668,14 @@ The screenshot will not be sent. Continue?</translation>
         <translation>over 100 MB</translation>
     </message>
     <message>
-        <location line="+4"/>
-        <location line="+17"/>
-        <location line="+35"/>
+        <location line="-6"/>
+        <location line="+10"/>
+        <location line="+45"/>
         <source>下载本地翻译模型</source>
         <translation>Download translation model</translation>
     </message>
     <message>
-        <location line="-51"/>
+        <location line="-44"/>
         <source>本地翻译需要先下载语言包（%1），下载后可永久离线使用。
 模型：%2
 是否现在下载？</source>
@@ -733,12 +684,12 @@ Model: %2
 Download now?</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="-11"/>
         <source>未找到该语言包。</source>
         <translation>The language package was not found.</translation>
     </message>
     <message>
-        <location line="+48"/>
+        <location line="+76"/>
         <source>正在下载模型…%1%</source>
         <translation>Downloading model… %1%</translation>
     </message>
@@ -756,7 +707,7 @@ Download now?</translation>
 <context>
     <name>snipnexs::OpenSourceLicensesDialog</name>
     <message>
-        <location filename="../src/app/AboutDialog.cpp" line="-148"/>
+        <location filename="../src/app/AboutDialog.cpp" line="-145"/>
         <source>开源许可</source>
         <translation>Open-source Licenses</translation>
     </message>
@@ -782,11 +733,11 @@ Download now?</translation>
     </message>
     <message>
         <location line="+9"/>
-        <source>本地翻译使用 CTranslate2（MIT）、SentencePiece（Apache-2.0）与 llama.cpp（MIT）。语言包由 Helsinki-NLP 的 OPUS-MT 模型和腾讯 Hy-MT2 模型转换而来，首次使用时按需下载，模型许可与文件校验值见第三方声明与各语言包内的 manifest.json。</source>
-        <translation>Local translation uses CTranslate2 (MIT), SentencePiece (Apache-2.0), and llama.cpp (MIT). Language packages are converted from the Helsinki-NLP OPUS-MT and Tencent Hy-MT2 models and downloaded on first use; model licenses and file digests are listed in the third-party notices and in each package&apos;s manifest.json.</translation>
+        <source>本地翻译使用 llama.cpp（MIT）和腾讯 Hy-MT2 模型（Apache-2.0）。模型缺失时按需下载，下载后可离线使用。模型许可与文件校验值见第三方声明与模型目录内的 manifest.json。</source>
+        <translation>Local translation uses llama.cpp (MIT) and the Tencent Hy-MT2 model (Apache-2.0). Missing models are downloaded on demand and then work offline. Model licenses and file digests are listed in the third-party notices and in the model directory manifest.json.</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+5"/>
         <source>翻译引擎</source>
         <translation>Translation engine</translation>
     </message>
@@ -794,10 +745,6 @@ Download now?</translation>
         <location line="+5"/>
         <source>工具栏图标的字形几何来自 Material Symbols Rounded（Apache-2.0）；路径数据已转换为构建期坐标表，未分发上游源文件本身。</source>
         <translation>Toolbar glyph geometry comes from Material Symbols Rounded (Apache-2.0); the path data was converted into build-time segment tables. No upstream source files are distributed.</translation>
-    </message>
-    <message>
-        <source>工具栏图标的字形几何来自 Lucide Icons（ISC）；路径数据已转换为构建期坐标表，未分发 Lucide 源文件本身。</source>
-        <translation type="vanished">Toolbar glyph geometry comes from Lucide Icons (ISC); the path data was converted into build-time segment tables. No Lucide source files are distributed.</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -844,24 +791,24 @@ Download now?</translation>
 <context>
     <name>snipnexs::RecorderController</name>
     <message>
-        <location filename="../src/recorder/RecorderController.cpp" line="+25"/>
+        <location filename="../src/recorder/RecorderController.cpp" line="+28"/>
         <source>正在录制区域视频。点击悬浮条停止并完成 MP4。</source>
         <translation>Recording the selected region. Click the floating bar to stop and finalize the MP4.</translation>
     </message>
     <message>
-        <location line="+20"/>
-        <location line="+42"/>
+        <location line="+21"/>
+        <location line="+46"/>
         <source>正在录屏</source>
         <translation>Recording in Progress</translation>
     </message>
     <message>
-        <location line="-42"/>
-        <location line="+42"/>
+        <location line="-46"/>
+        <location line="+46"/>
         <source>请先停止当前录制。</source>
         <translation>Stop the current recording first.</translation>
     </message>
     <message>
-        <location line="-33"/>
+        <location line="-37"/>
         <source>保存区域录屏</source>
         <translation>Save Region Recording</translation>
     </message>
@@ -876,27 +823,17 @@ Download now?</translation>
         <translation>Could not create the recording file: %1</translation>
     </message>
     <message>
-        <location line="+27"/>
-        <source>正在启动 Windows GPU 录屏与 H.264 编码器…</source>
-        <translation>Starting Windows GPU capture and the H.264 encoder…</translation>
+        <location line="+32"/>
+        <source>正在启动 Windows 录屏与 H.264 编码器…</source>
+        <translation>Starting Windows capture and the H.264 encoder…</translation>
     </message>
     <message>
-        <location line="+21"/>
-        <source>录屏失败</source>
-        <translation>Recording Failed</translation>
-    </message>
-    <message>
-        <location line="+11"/>
+        <location filename="../src/recorder/RecordingOutput.cpp" line="+32"/>
         <source>MP4 已生成，但无法原子移动到目标路径（错误 %1）。临时文件保留在：%2</source>
         <translation>The MP4 was created but could not be moved atomically to the target path (error %1). The temporary file remains at: %2</translation>
     </message>
     <message>
-        <location line="+5"/>
-        <source>录屏文件未移动</source>
-        <translation>Recording File Not Moved</translation>
-    </message>
-    <message>
-        <location line="+7"/>
+        <location filename="../src/recorder/RecorderController.cpp" line="+28"/>
         <source>录屏完成：处理 %1 帧，%2 秒，%3 MiB。%4</source>
         <translation>Recording complete: %1 frames processed, %2 seconds, %3 MiB. %4</translation>
     </message>
@@ -904,6 +841,18 @@ Download now?</translation>
         <location line="+5"/>
         <source>录屏已保存</source>
         <translation>Recording Saved</translation>
+    </message>
+    <message>
+        <location filename="../src/recorder/RecordingOutput.cpp" line="-8"/>
+        <source>
+录屏未完成，临时文件保留在：%1</source>
+        <translation>
+Recording did not complete. Temporary file retained at: %1</translation>
+    </message>
+    <message>
+        <location filename="../src/recorder/RecorderController.cpp" line="-12"/>
+        <source>录屏保存异常</source>
+        <translation>Recording save error</translation>
     </message>
 </context>
 <context>
@@ -940,98 +889,29 @@ Download now?</translation>
     </message>
 </context>
 <context>
-    <name>snipnexs::TranslationModelInstaller</name>
-    <message>
-        <location filename="../src/translate/TranslationModelInstaller.cpp" line="+48"/>
-        <source>无法创建模型目录:%1</source>
-        <translation>Cannot create the model directory: %1</translation>
-    </message>
-    <message>
-        <location line="+36"/>
-        <source>无法写入模型清单文件。</source>
-        <translation>Cannot write the model manifest.</translation>
-    </message>
-    <message>
-        <location line="+9"/>
-        <source>模型下载地址无效:%1</source>
-        <translation>Invalid model download URL: %1</translation>
-    </message>
-    <message>
-        <location line="+17"/>
-        <source>无法写入文件:%1</source>
-        <translation>Cannot write the file: %1</translation>
-    </message>
-    <message>
-        <location line="+39"/>
-        <source>下载失败(%1):%2</source>
-        <translation>Download failed (%1): %2</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>写入文件失败:%1</source>
-        <translation>Failed to write: %1</translation>
-    </message>
-    <message>
-        <location line="+13"/>
-        <source>无法校验下载文件:%1</source>
-        <translation>Cannot verify the downloaded file: %1</translation>
-    </message>
-    <message>
-        <location line="+10"/>
-        <source>模型文件校验失败:%1</source>
-        <translation>Model file verification failed: %1</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>无法保存模型文件:%1</source>
-        <translation>Cannot save the model file: %1</translation>
-    </message>
-</context>
-<context>
-    <name>snipnexs::TranslationModels</name>
-    <message>
-        <location filename="../src/translate/TranslationModels.cpp" line="+340"/>
-        <source>无法删除模型目录：%1</source>
-        <translation>Cannot remove the model directory: %1</translation>
-    </message>
-    <message>
-        <location line="+13"/>
-        <source>未找到该语言包。</source>
-        <translation>Language package not found.</translation>
-    </message>
-</context>
-<context>
-    <name>snipnexs::UpdateChecker</name>
-    <message>
-        <location filename="../src/app/UpdateChecker.cpp" line="+40"/>
-        <source>发布信息中没有版本号。</source>
-        <translation>The release payload does not contain a version tag.</translation>
-    </message>
-</context>
-<context>
     <name>snipnexs::SettingsDialog</name>
     <message>
-        <location filename="../src/app/SettingsDialog.cpp" line="+5"/>
+        <location filename="../src/app/SettingsDialog.cpp" line="+49"/>
         <source>留空使用默认 GitHub Release（https 或 file 镜像，目录布局需一致）</source>
         <translation>Leave empty to use the default GitHub release (https or file mirror with the same layout)</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+16"/>
         <source>录音音频</source>
         <translation>Recording audio</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>模型镜像 URL</source>
         <translation>Model mirror URL</translation>
     </message>
     <message>
-        <location line="+60"/>
+        <location line="+75"/>
         <source>设置</source>
         <translation>Settings</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>系统声音（默认）</source>
         <translation>System audio (default)</translation>
     </message>
@@ -1046,7 +926,7 @@ Download now?</translation>
         <translation>None (video only)</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+9"/>
         <source>录屏</source>
         <translation>Recording</translation>
     </message>
@@ -1081,29 +961,24 @@ Download now?</translation>
         <translation>Delete selected model…</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>语言包</source>
         <translation>Package</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>状态</source>
         <translation>Status</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+0"/>
         <source>大小</source>
         <translation>Size</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+14"/>
         <source>高质量引擎</source>
         <translation>high-quality engine</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>默认引擎</source>
-        <translation>default engine</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -1116,7 +991,7 @@ Download now?</translation>
         <translation>Not installed · %1</translation>
     </message>
     <message>
-        <location line="+2"/>
+        <location line="+4"/>
         <source>占用 %1</source>
         <translation>Uses %1</translation>
     </message>
@@ -1126,27 +1001,30 @@ Download now?</translation>
         <translation>~%1 download</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+18"/>
+        <location line="+7"/>
         <source>删除本地翻译模型</source>
         <translation>Delete local translation model</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-6"/>
         <source>将删除语言包 %1 及其文件，再次翻译时会重新询问下载。是否继续？</source>
         <translation>This deletes package %1 and its files; translating again will offer the download. Continue?</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+30"/>
+        <location line="+5"/>
+        <location line="+5"/>
         <source>检查更新</source>
         <translation>Check for updates</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-10"/>
         <source>检查更新失败：%1</source>
         <translation>Update check failed: %1</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>已是最新版本（当前 %1）。</source>
         <translation>You are on the latest version (current %1).</translation>
     </message>
@@ -1159,6 +1037,104 @@ Download now?</translation>
         <location line="+1"/>
         <source>打开发布页</source>
         <translation>Open release page</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::TranslationModelInstaller</name>
+    <message>
+        <location filename="../src/translate/TranslationModelInstaller.cpp" line="+78"/>
+        <source>无法创建模型目录:%1</source>
+        <translation>Cannot create the model directory: %1</translation>
+    </message>
+    <message>
+        <location line="+57"/>
+        <source>无法写入模型清单文件。</source>
+        <translation>Cannot write the model manifest.</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>模型下载地址无效:%1</source>
+        <translation>Invalid model download URL: %1</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>无法写入文件:%1</source>
+        <translation>Cannot write the file: %1</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>下载失败(%1):%2</source>
+        <translation>Download failed (%1): %2</translation>
+    </message>
+    <message>
+        <location line="-48"/>
+        <source>写入文件失败:%1</source>
+        <translation>Failed to write: %1</translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>模型文件校验失败:%1</source>
+        <translation>Model file verification failed: %1</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>无法保存模型文件:%1</source>
+        <translation>Cannot save the model file: %1</translation>
+    </message>
+    <message>
+        <location line="-113"/>
+        <location line="+7"/>
+        <source>模型清单无效。</source>
+        <translation>Invalid model manifest.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>该语言包正在另一个窗口中安装，请等待完成。</source>
+        <translation>This language package is being installed in another window. Please wait.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>模型目录所在磁盘空间不足。</source>
+        <translation>Not enough free space on the model drive.</translation>
+    </message>
+    <message>
+        <location line="+23"/>
+        <source>模型文件超过清单大小:%1</source>
+        <translation>Model file exceeds its declared size: %1</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::TranslationModels</name>
+    <message>
+        <location filename="../src/translate/TranslationModels.cpp" line="+292"/>
+        <source>无法删除模型目录：%1</source>
+        <translation>Cannot remove the model directory: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>未找到该语言包。</source>
+        <translation>Language package not found.</translation>
+    </message>
+    <message>
+        <location line="-16"/>
+        <source>该语言包正在安装，请稍后再删除。</source>
+        <translation>This language package is being installed. Try deleting it after installation finishes.</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::TranslationService</name>
+    <message>
+        <location filename="../src/translate/TranslationService.cpp" line="+80"/>
+        <source>当前语言组合暂无本地翻译模型。</source>
+        <translation>No local translation model is available for this language pair.</translation>
+    </message>
+</context>
+<context>
+    <name>snipnexs::UpdateChecker</name>
+    <message>
+        <location filename="../src/app/UpdateChecker.cpp" line="+41"/>
+        <source>发布信息中没有版本号。</source>
+        <translation>The release payload does not contain a version tag.</translation>
     </message>
 </context>
 </TS>

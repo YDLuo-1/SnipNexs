@@ -294,6 +294,55 @@ QList<QImage> CaptureHistoryStore::load()
     return images;
 }
 
+CaptureHistoryWriter::CaptureHistoryWriter(QString directory, std::function<void()> onError)
+    : store_(std::move(directory)), onError_(std::move(onError)), worker_([this] { run(); })
+{
+}
+
+CaptureHistoryWriter::~CaptureHistoryWriter()
+{
+    {
+        std::scoped_lock lock(mutex_);
+        closing_ = true;
+    }
+    changed_.notify_one();
+    worker_.join();
+}
+
+void CaptureHistoryWriter::append(QImage image)
+{
+    if (image.isNull()) { return; }
+    {
+        std::scoped_lock lock(mutex_);
+        pendingBytes_ += image.sizeInBytes();
+        pending_.push_back(std::move(image));
+        while (pending_.size() > 1
+            && (pending_.size() > kMaximumEntries || pendingBytes_ > kMaximumBytes)) {
+            pendingBytes_ -= pending_.front().sizeInBytes();
+            pending_.pop_front();
+        }
+    }
+    changed_.notify_one();
+}
+
+void CaptureHistoryWriter::run()
+{
+    for (;;) {
+        QImage image;
+        {
+            std::unique_lock lock(mutex_);
+            changed_.wait(lock, [this] { return closing_ || !pending_.empty(); });
+            if (pending_.empty()) { return; }
+            pendingBytes_ -= pending_.front().sizeInBytes();
+            image = std::move(pending_.front());
+            pending_.pop_front();
+        }
+        if (!store_.append(image) && onError_) {
+            onError_();
+        }
+    }
+}
+
 bool CaptureHistoryStore::append(const QImage& image)
 {
     if (image.isNull()) {

@@ -1,9 +1,11 @@
 #include "NativeScreenRecorder.h"
+#include "AudioBuffer.h"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QDir>
 #include <QFileInfo>
+#include <QScopeGuard>
 
 #include <Windows.h>
 #include <audioclient.h>
@@ -203,6 +205,90 @@ struct CapturedSurface
     TimeSpan timestamp{};
 };
 
+// Compatibility path for desktops where WGC is unavailable. Capture only the
+// selected rectangle; Windows capture exclusion still applies to BitBlt.
+class DesktopFrameCapture final
+{
+    struct Resources {
+        HDC screen = GetDC(nullptr);
+        HDC memory = screen ? CreateCompatibleDC(screen) : nullptr;
+        HBITMAP bitmap = nullptr;
+        HGDIOBJ previous = nullptr;
+        ~Resources() {
+            if (previous) { SelectObject(memory, previous); }
+            if (bitmap) { DeleteObject(bitmap); }
+            if (memory) { DeleteDC(memory); }
+            if (screen) { ReleaseDC(nullptr, screen); }
+        }
+    } resources_;
+public:
+    DesktopFrameCapture(HMONITOR monitor, QRect region, int frameRate)
+        : region_(std::move(region)), interval_(1'000'000 / std::clamp(frameRate, 1, 60))
+    {
+        MONITORINFO info{sizeof(info)};
+        check_bool(GetMonitorInfoW(monitor, &info));
+        region_.translate(info.rcMonitor.left, info.rcMonitor.top);
+        check_bool(resources_.screen && resources_.memory);
+        BITMAPINFO bitmap{};
+        bitmap.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bitmap.bmiHeader.biWidth = region_.width();
+        bitmap.bmiHeader.biHeight = -region_.height();
+        bitmap.bmiHeader.biPlanes = 1;
+        bitmap.bmiHeader.biBitCount = 32;
+        bitmap.bmiHeader.biCompression = BI_RGB;
+        resources_.bitmap = CreateDIBSection(resources_.screen, &bitmap, DIB_RGB_COLORS, &pixels_, nullptr, 0);
+        check_bool(resources_.bitmap && pixels_);
+        resources_.previous = SelectObject(resources_.memory, resources_.bitmap);
+        check_bool(resources_.previous && resources_.previous != HGDI_ERROR);
+        LARGE_INTEGER frequency{};
+        QueryPerformanceFrequency(&frequency);
+        frequency_ = frequency.QuadPart;
+    }
+
+    CapturedSurface next(ID3D11Device* device)
+    {
+        std::this_thread::sleep_until(nextFrame_);
+        nextFrame_ = std::chrono::steady_clock::now() + interval_;
+        check_bool(BitBlt(resources_.memory, 0, 0, region_.width(), region_.height(),
+            resources_.screen, region_.x(), region_.y(), SRCCOPY | CAPTUREBLT));
+        CURSORINFO cursor{sizeof(cursor)};
+        if (GetCursorInfo(&cursor) && cursor.flags == CURSOR_SHOWING) {
+            ICONINFO icon{};
+            if (GetIconInfo(cursor.hCursor, &icon)) {
+                DrawIconEx(resources_.memory,
+                    cursor.ptScreenPos.x - region_.x() - static_cast<int>(icon.xHotspot),
+                    cursor.ptScreenPos.y - region_.y() - static_cast<int>(icon.yHotspot),
+                    cursor.hCursor, 0, 0, 0, nullptr, DI_NORMAL);
+                if (icon.hbmColor) { DeleteObject(icon.hbmColor); }
+                if (icon.hbmMask) { DeleteObject(icon.hbmMask); }
+            }
+        }
+        GdiFlush();
+        LARGE_INTEGER now{};
+        QueryPerformanceCounter(&now);
+        D3D11_TEXTURE2D_DESC description{};
+        description.Width = static_cast<UINT>(region_.width());
+        description.Height = static_cast<UINT>(region_.height());
+        description.MipLevels = description.ArraySize = description.SampleDesc.Count = 1;
+        description.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        description.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+        D3D11_SUBRESOURCE_DATA data{pixels_, static_cast<UINT>(region_.width() * 4), 0};
+        ComPtr<ID3D11Texture2D> texture;
+        check_hresult(device->CreateTexture2D(&description, &data, &texture));
+        ComPtr<IDXGISurface> surface;
+        check_hresult(texture.As(&surface));
+        com_ptr<::IInspectable> inspectable;
+        check_hresult(CreateDirect3D11SurfaceFromDXGISurface(surface.Get(), inspectable.put()));
+        return {inspectable.as<IDirect3DSurface>(), TimeSpan{audioClockHns(now.QuadPart, frequency_)}};
+    }
+private:
+    QRect region_;
+    void* pixels_ = nullptr;
+    int64_t frequency_ = 1;
+    std::chrono::microseconds interval_;
+    std::chrono::steady_clock::time_point nextFrame_{};
+};
+
 class CaptureFrameSource final
 {
 public:
@@ -213,7 +299,9 @@ public:
         const GraphicsCaptureItem& item,
         QRect region,
         const std::atomic_bool& stopRequested,
-        int maximumDurationMs)
+        int maximumDurationMs,
+        HMONITOR monitor,
+        int frameRate)
         : d3dDevice_(d3dDevice)
         , context_(context)
         , region_(std::move(region))
@@ -222,6 +310,10 @@ public:
         , item_(item)
     {
         timer_.start();
+        if (!item_) {
+            desktop_ = std::make_unique<DesktopFrameCapture>(monitor, region_, frameRate);
+            return;
+        }
         framePool_ = Direct3D11CaptureFramePool::CreateFreeThreaded(
             winrtDevice,
             DirectXPixelFormat::B8G8R8A8UIntNormalized,
@@ -266,12 +358,20 @@ public:
         if (item_ != nullptr) {
             item_.Closed(closedToken_);
         }
-        session_.Close();
-        framePool_.Close();
+        if (session_) { session_.Close(); }
+        if (framePool_) { framePool_.Close(); }
     }
 
     std::optional<CapturedSurface> next()
     {
+        if (desktop_) {
+            std::scoped_lock lock(mutex_);
+            if (shouldStopLocked()) { return std::nullopt; }
+            auto frame = desktop_->next(d3dDevice_.Get());
+            if (shouldStopLocked()) { return std::nullopt; }
+            ++capturedFrames_;
+            return frame;
+        }
         Direct3D11CaptureFrame frame{nullptr};
         {
             std::unique_lock lock(mutex_);
@@ -306,6 +406,12 @@ public:
         frameAvailable_.notify_all();
     }
 
+    bool stopped() const
+    {
+        std::scoped_lock lock(mutex_);
+        return shouldStopLocked();
+    }
+
 private:
     bool shouldStopLocked() const
     {
@@ -317,6 +423,7 @@ private:
     ComPtr<ID3D11Device> d3dDevice_;
     ComPtr<ID3D11DeviceContext> context_;
     QRect region_;
+    std::unique_ptr<DesktopFrameCapture> desktop_;
     const std::atomic_bool& stopRequested_;
     int maximumDurationMs_ = 0;
     QElapsedTimer timer_;
@@ -335,8 +442,7 @@ private:
 // WASAPI shared-mode capture. The loopback endpoint delivers no packets
 // while nothing plays, so the polling thread synthesizes silence to keep the
 // sample timeline continuous; timestamps are derived from the delivered
-// frame count (not wall clock) so audio never drifts against the QPC-based
-// video timestamps.
+// frame count on the QPC timeline; hardware synchronization needs real-device tests.
 class AudioCaptureSource final
 {
 public:
@@ -348,8 +454,10 @@ public:
 
     AudioCaptureSource(
         RecordingAudio mode,
-        const std::atomic_bool& stopRequested)
+        const std::atomic_bool& stopRequested,
+        std::function<bool()> captureStopped)
         : stopRequested_(stopRequested)
+        , captureStopped_(std::move(captureStopped))
     {
         check_hresult(CoCreateInstance(
             __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
@@ -390,7 +498,8 @@ public:
             }
         }
         const bool formatSupported =
-            (isFloat || isPcm16) && sampleRate_ > 0 && channels_ > 0 && channels_ <= 8;
+            (isFloat || isPcm16) && sampleRate_ > 0 && sampleRate_ <= 384'000
+            && channels_ > 0 && channels_ <= 8;
         if (!formatSupported) {
             freeFormat();
             check_hresult(E_INVALIDARG);
@@ -418,8 +527,9 @@ public:
         LARGE_INTEGER start{};
         QueryPerformanceCounter(&start);
         startQpc_ = start.QuadPart;
-        startHns_ = startQpc_ * 10'000'000 / qpcFrequency_;
-        chunkSamples_ = std::max(1, sampleRate_ * channels_ / 50); // ~20 ms
+        startHns_ = audioClockHns(startQpc_, qpcFrequency_);
+        chunkSamples_ = std::max(1, sampleRate_ / 50) * channels_; // ~20 ms, whole frames
+        pending_.setCapacity(static_cast<std::size_t>(sampleRate_) * channels_ * 2);
 
         thread_ = std::thread([this, mode] { captureLoop(mode); });
     }
@@ -438,58 +548,66 @@ public:
     [[nodiscard]] int sampleRate() const { return sampleRate_; }
     [[nodiscard]] int channels() const { return channels_; }
 
-    // Blocks briefly until at least one sample is available; returns an
-    // empty chunk when the source has gone quiet and nothing was captured.
+    // A temporary gap is not end-of-stream; wait until capture actually stops.
     [[nodiscard]] PcmChunk next()
     {
         std::unique_lock lock(mutex_);
-        sampleAvailable_.wait_for(lock, std::chrono::milliseconds(150), [this] {
-            return !pending_.empty();
+        sampleAvailable_.wait(lock, [this] {
+            return !pending_.empty() || finished_ || !error_.empty();
         });
+        if (!error_.empty()) {
+            throw hresult_error(E_FAIL, error_);
+        }
         if (pending_.empty()) {
             return {};
         }
-        const std::size_t count = std::min(pending_.size(), chunkSamples_);
-        PcmChunk chunk{
-            std::vector<int16_t>(pending_.begin(), pending_.begin() + count), 0};
-        pending_.erase(pending_.begin(), pending_.begin() + count);
-        deliveredFrames_ += static_cast<int64_t>(count) / channels_;
+        PcmChunk chunk{pending_.take(chunkSamples_), 0};
         chunk.timestampHns =
-            startHns_ + deliveredFrames_ * 10'000'000 / sampleRate_;
+            startHns_ + audioClockHns(deliveredFrames_, sampleRate_);
+        deliveredFrames_ += static_cast<int64_t>(chunk.samples.size()) / channels_;
         return chunk;
     }
 
 private:
     void captureLoop(RecordingAudio mode)
     {
-        const bool silenceFill = mode != RecordingAudio::Microphone;
-        while (!stopping_ && !stopRequested_.load(std::memory_order_relaxed)) {
-            drainPackets();
-            if (silenceFill) {
-                fillSilenceToClock();
+        try {
+            ApartmentGuard apartment;
+            const bool silenceFill = mode != RecordingAudio::Microphone;
+            while (!stopping_ && !stopRequested_.load(std::memory_order_relaxed)
+                && !captureStopped_()) {
+                drainPackets();
+                if (silenceFill) {
+                    fillSilenceToClock();
+                }
+                Sleep(8);
             }
-            Sleep(8);
+        } catch (const hresult_error& error) {
+            std::scoped_lock lock(mutex_);
+            error_ = error.message();
+        } catch (const std::exception&) {
+            std::scoped_lock lock(mutex_);
+            error_ = L"Audio capture buffer allocation failed.";
         }
-        drainPackets();
-        if (silenceFill) {
-            fillSilenceToClock();
+        {
+            std::scoped_lock lock(mutex_);
+            finished_ = true;
         }
+        sampleAvailable_.notify_all();
     }
 
     void drainPackets()
     {
         for (;;) {
             UINT32 packetFrames = 0;
-            if (captureClient_->GetNextPacketSize(&packetFrames) != S_OK
-                || packetFrames == 0) {
+            check_hresult(captureClient_->GetNextPacketSize(&packetFrames));
+            if (packetFrames == 0) {
                 return;
             }
             BYTE* data = nullptr;
             UINT32 frames = 0;
             DWORD flags = 0;
-            if (captureClient_->GetBuffer(&data, &frames, &flags, nullptr, nullptr) != S_OK) {
-                return;
-            }
+            check_hresult(captureClient_->GetBuffer(&data, &frames, &flags, nullptr, nullptr));
             const bool silent = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0;
             std::vector<int16_t> converted(
                 static_cast<std::size_t>(frames) * channels_, 0);
@@ -517,16 +635,16 @@ private:
     {
         LARGE_INTEGER now{};
         QueryPerformanceCounter(&now);
-        const int64_t elapsedHns =
-            (now.QuadPart - startQpc_) * 10'000'000 / qpcFrequency_;
+        const int64_t elapsedHns = audioClockHns(now.QuadPart - startQpc_, qpcFrequency_);
         const int64_t expected =
             elapsedHns * sampleRate_ / 10'000'000 * channels_;
         std::scoped_lock lock(mutex_);
-        const int64_t slack = sampleRate_ * channels_ / 10; // 100 ms
+        const int64_t slack = sampleRate_ / 10 * channels_; // 100 ms, whole frames
         if (appendedSamples_ < expected - slack) {
             const int64_t missing = expected - slack - appendedSamples_;
-            pending_.insert(
-                pending_.end(), static_cast<std::size_t>(missing), 0);
+            if (!pending_.appendSilence(static_cast<std::size_t>(missing))) {
+                throw hresult_error(E_FAIL, L"Audio encoder is over two seconds behind; recording stopped.");
+            }
             appendedSamples_ += missing;
             sampleAvailable_.notify_one();
         }
@@ -538,7 +656,9 @@ private:
             return;
         }
         std::scoped_lock lock(mutex_);
-        pending_.insert(pending_.end(), samples.begin(), samples.end());
+        if (!pending_.append(samples)) {
+            throw hresult_error(E_FAIL, L"Audio encoder is over two seconds behind; recording stopped.");
+        }
         appendedSamples_ += static_cast<int64_t>(samples.size());
         sampleAvailable_.notify_one();
     }
@@ -547,11 +667,14 @@ private:
     ComPtr<IAudioClient> audioClient_;
     ComPtr<IAudioCaptureClient> captureClient_;
     const std::atomic_bool& stopRequested_;
+    std::function<bool()> captureStopped_;
     std::thread thread_;
     std::atomic_bool stopping_ = false;
     std::mutex mutex_;
     std::condition_variable sampleAvailable_;
-    std::vector<int16_t> pending_;
+    AudioBuffer pending_;
+    bool finished_ = false;
+    hstring error_;
     int64_t appendedSamples_ = 0;
     int64_t deliveredFrames_ = 0;
     int64_t startQpc_ = 0;
@@ -577,12 +700,6 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     }
     stage = QCoreApplication::translate(
         "NativeScreenRecorder", "检查 Windows Graphics Capture");
-    if (!GraphicsCaptureSession::IsSupported()) {
-        result.unavailable = true;
-        result.error = QCoreApplication::translate(
-            "NativeScreenRecorder", "当前 Windows 或显卡驱动不支持 Windows Graphics Capture。");
-        return result;
-    }
 
     const HMONITOR monitor = settings.monitorHandle != 0
         ? reinterpret_cast<HMONITOR>(settings.monitorHandle)
@@ -598,8 +715,21 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     ComPtr<ID3D11DeviceContext> context;
     const IDirect3DDevice winrtDevice = createDirect3DDevice(d3dDevice, context);
     stage = QCoreApplication::translate("NativeScreenRecorder", "创建显示器捕获目标");
-    const GraphicsCaptureItem item = createCaptureItem(monitor);
-    const SizeInt32 itemSize = item.Size();
+    GraphicsCaptureItem item{nullptr};
+    if (GraphicsCaptureSession::IsSupported()) {
+        try {
+            item = createCaptureItem(monitor);
+        } catch (const hresult_error& error) {
+            if (error.code() != hresult(E_ACCESSDENIED)
+                && error.code() != hresult(DXGI_ERROR_UNSUPPORTED)) { throw; }
+        }
+    }
+    MONITORINFO monitorInfo{sizeof(monitorInfo)};
+    check_bool(GetMonitorInfoW(monitor, &monitorInfo));
+    const SizeInt32 itemSize = item ? item.Size() : SizeInt32{
+        monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+        monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top};
+    result.compatibilityCapture = !item;
 
     QRect region = settings.sourceRect.intersected(QRect(0, 0, itemSize.Width, itemSize.Height));
     region.setWidth(region.width() & ~1);
@@ -611,6 +741,10 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     }
 
     stage = QCoreApplication::translate("NativeScreenRecorder", "启动 GPU 帧池");
+    LARGE_INTEGER clockFrequency{}, clockStart{};
+    QueryPerformanceFrequency(&clockFrequency);
+    QueryPerformanceCounter(&clockStart);
+    const int64_t timelineStartHns = audioClockHns(clockStart.QuadPart, clockFrequency.QuadPart);
     CaptureFrameSource frameSource(
         winrtDevice,
         d3dDevice.Get(),
@@ -618,24 +752,28 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         item,
         region,
         stopRequested,
-        settings.maximumDurationMs);
+        settings.maximumDurationMs,
+        monitor,
+        settings.frameRate);
 
     stage = QCoreApplication::translate("NativeScreenRecorder", "初始化音频捕获");
     std::optional<AudioCaptureSource> audioSource;
     AudioStreamDescriptor audioDescriptor{nullptr};
     if (settings.audio != RecordingAudio::None) {
         try {
-            audioSource.emplace(settings.audio, stopRequested);
+            audioSource.emplace(settings.audio, stopRequested, [&frameSource] { return frameSource.stopped(); });
             audioDescriptor = AudioStreamDescriptor(
                 AudioEncodingProperties::CreatePcm(
                     static_cast<uint32_t>(audioSource->sampleRate()),
                     static_cast<uint32_t>(audioSource->channels()),
                     16));
-        } catch (const hresult_error&) {
+        } catch (const hresult_error& error) {
             // A missing endpoint or unsupported mix format must not kill the
             // whole recording; fall back to the previous video-only pipeline.
             audioSource.reset();
             audioDescriptor = nullptr;
+            result.warning = QCoreApplication::translate("NativeScreenRecorder",
+                "音频设备不可用，本次仅保存视频：%1").arg(QString::fromWCharArray(error.message().c_str()));
         }
     }
 
@@ -644,6 +782,10 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         MediaEncodingSubtypes::Bgra8(),
         static_cast<uint32_t>(region.width()),
         static_cast<uint32_t>(region.height()));
+    inputProperties.FrameRate().Numerator(static_cast<uint32_t>(std::clamp(settings.frameRate, 1, 60)));
+    inputProperties.FrameRate().Denominator(1);
+    inputProperties.PixelAspectRatio().Numerator(1);
+    inputProperties.PixelAspectRatio().Denominator(1);
     const VideoStreamDescriptor videoDescriptor(inputProperties);
     const MediaStreamSource mediaSource = audioDescriptor
         ? MediaStreamSource(videoDescriptor, audioDescriptor)
@@ -660,19 +802,12 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
         }
     };
     const event_token startingToken = mediaSource.Starting(
-        [&frameSource, &setCallbackError](auto const&, MediaStreamSourceStartingEventArgs const& args) {
-            try {
-                if (auto frame = frameSource.next()) {
-                    args.Request().SetActualStartPosition(frame->timestamp);
-                }
-            } catch (const hresult_error& error) {
-                setCallbackError(error);
-                frameSource.requestStop();
-            }
+        [](auto const&, MediaStreamSourceStartingEventArgs const& args) {
+            args.Request().SetActualStartPosition(TimeSpan::zero());
         });
     const event_token sampleToken = mediaSource.SampleRequested(
         [&frameSource, &audioSource, &audioDescriptor, &submittedFrames,
-         &setCallbackError](
+         &setCallbackError, timelineStartHns](
             auto const&, MediaStreamSourceSampleRequestedEventArgs const& args) {
             try {
                 if (audioDescriptor
@@ -682,25 +817,9 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
                         args.Request().Sample(nullptr);
                         return;
                     }
-                    const uint32_t byteCount = static_cast<uint32_t>(
-                        chunk.samples.size() * sizeof(int16_t));
-                    // MemoryBuffer + IMemoryBufferByteAccess avoids the
-                    // SDK-dependent IBufferByteAccess projection; same
-                    // pattern as the OCR bitmap copy.
-                    const auto memory =
-                        winrt::Windows::Foundation::MemoryBuffer(byteCount);
-                    const auto reference = memory.CreateReference();
-                    const auto byteAccess =
-                        reference.as<winrt::impl::IMemoryBufferByteAccess>();
-                    BYTE* bytes = nullptr;
-                    uint32_t capacity = 0;
-                    check_hresult(byteAccess->GetBuffer(&bytes, &capacity));
-                    std::memcpy(bytes, chunk.samples.data(),
-                        std::min<uint32_t>(byteCount, capacity));
-                    const auto streamBuffer =
-                        memory.as<winrt::Windows::Storage::Streams::IBuffer>();
+                    const auto streamBuffer = pcmBuffer(chunk.samples);
                     MediaStreamSample sample = MediaStreamSample::CreateFromBuffer(
-                        streamBuffer, TimeSpan{chunk.timestampHns});
+                        streamBuffer, TimeSpan{std::max<int64_t>(0, chunk.timestampHns - timelineStartHns)});
                     sample.Duration(TimeSpan{
                         static_cast<int64_t>(chunk.samples.size())
                         / audioSource->channels() * 10'000'000
@@ -714,7 +833,7 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
                     return;
                 }
                 args.Request().Sample(MediaStreamSample::CreateFromDirect3D11Surface(
-                    frame->surface, frame->timestamp));
+                    frame->surface, TimeSpan{std::max<int64_t>(0, frame->timestamp.count() - timelineStartHns)}));
                 ++submittedFrames;
             } catch (const hresult_error& error) {
                 setCallbackError(error);
@@ -723,11 +842,17 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
             }
         });
 
+    const auto detachHandlers = qScopeGuard([&] {
+        frameSource.requestStop();
+        mediaSource.Starting(startingToken);
+        mediaSource.SampleRequested(sampleToken);
+    });
+
     const int frameRate = std::clamp(settings.frameRate, 1, 60);
     const int bitrate = settings.bitrate > 0
         ? settings.bitrate
         : automaticBitrate(region, frameRate);
-    MediaEncodingProfile profile;
+    auto profile = MediaEncodingProfile::CreateMp4(VideoEncodingQuality::HD720p);
     profile.Container().Subtype(MediaEncodingSubtypes::Mpeg4());
     profile.Video().Subtype(MediaEncodingSubtypes::H264());
     profile.Video().Width(static_cast<uint32_t>(region.width()));
@@ -738,11 +863,12 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     profile.Video().PixelAspectRatio().Numerator(1);
     profile.Video().PixelAspectRatio().Denominator(1);
     if (audioDescriptor) {
-        profile.Audio().Subtype(MediaEncodingSubtypes::Aac());
-        profile.Audio().Bitrate(static_cast<uint32_t>(
-            std::max(24'000, settings.audioBitrate)));
-        profile.Audio().SampleRate(static_cast<uint32_t>(audioSource->sampleRate()));
-        profile.Audio().ChannelCount(static_cast<uint32_t>(audioSource->channels()));
+        profile.Audio(AudioEncodingProperties::CreateAac(
+            static_cast<uint32_t>(audioSource->sampleRate()),
+            static_cast<uint32_t>(audioSource->channels()),
+            static_cast<uint32_t>(std::max(24'000, settings.audioBitrate))));
+    } else {
+        profile.Audio(nullptr);
     }
 
     stage = QCoreApplication::translate(
@@ -759,14 +885,23 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
 
     stage = QCoreApplication::translate("NativeScreenRecorder", "准备 H.264 编码器");
     MediaTranscoder transcoder;
-    transcoder.HardwareAccelerationEnabled(true);
-    const PrepareTranscodeResult preparation = transcoder
-        .PrepareMediaStreamSourceTranscodeAsync(mediaSource, stream, profile)
-        .get();
+    transcoder.HardwareAccelerationEnabled(!result.compatibilityCapture);
+    PrepareTranscodeResult preparation{nullptr};
+    try {
+        preparation = transcoder.PrepareMediaStreamSourceTranscodeAsync(mediaSource, stream, profile).get();
+    } catch (const hresult_error&) {
+        if (result.compatibilityCapture) { throw; }
+        // Some drivers expose a hardware encoder but reject the BGRA input.
+        // Retry only preparation, before any output is committed.
+        transcoder.HardwareAccelerationEnabled(false);
+        preparation = transcoder.PrepareMediaStreamSourceTranscodeAsync(mediaSource, stream, profile).get();
+    }
+    if (!preparation.CanTranscode() && transcoder.HardwareAccelerationEnabled()) {
+        transcoder.HardwareAccelerationEnabled(false);
+        preparation = transcoder.PrepareMediaStreamSourceTranscodeAsync(mediaSource, stream, profile).get();
+    }
     if (!preparation.CanTranscode()) {
         result.error = transcodeFailure(preparation.FailureReason());
-        mediaSource.Starting(startingToken);
-        mediaSource.SampleRequested(sampleToken);
         return result;
     }
 
@@ -777,8 +912,6 @@ RecordingResult record(const RecordingSettings& settings, const std::atomic_bool
     preparation.TranscodeAsync().get();
     stream.FlushAsync().get();
     stream.Close();
-    mediaSource.Starting(startingToken);
-    mediaSource.SampleRequested(sampleToken);
 
     result.elapsedMs = elapsed.elapsed();
     result.capturedFrames = frameSource.capturedFrames();

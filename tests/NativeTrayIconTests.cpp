@@ -9,6 +9,10 @@
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+    if (QGuiApplication::platformName() == QStringLiteral("offscreen")) {
+        QTextStream(stdout) << "native tray icon: skipped (desktop test)\n";
+        return 77;
+    }
 
     snipnexs::NativeTrayIcon tray(snipnexs::createAppIcon());
     tray.setToolTip(QStringLiteral("SnipNexs tray test"));

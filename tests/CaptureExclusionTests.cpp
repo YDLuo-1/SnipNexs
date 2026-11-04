@@ -46,6 +46,10 @@ void setSolidColor(QWidget& widget, const QColor& color)
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+    if (QGuiApplication::platformName() == QStringLiteral("offscreen")) {
+        QTextStream(stdout) << "capture exclusion: skipped (desktop test)\n";
+        return 77;
+    }
     QScreen* screen = QGuiApplication::primaryScreen();
     if (screen == nullptr) {
         QTextStream(stdout) << "capture exclusion: no screen\n";

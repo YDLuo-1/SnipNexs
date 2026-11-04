@@ -3,6 +3,7 @@
 #include <QString>
 #include <QStringList>
 #include <QWidget>
+#include <QPointer>
 
 class QCheckBox;
 class QComboBox;
@@ -29,6 +30,7 @@ public:
         qint64 elapsedMs,
         TranslationService* translationService = nullptr,
         QWidget* parent = nullptr);
+    ~OcrResultWindow() override;
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -44,6 +46,8 @@ private:
     void showAlignedTranslation(const QStringList& lines, qint64 elapsedMs);
     void requestModelDownload(const QString& packageId, const QString& licenseNote);
     void updateTranslationStatus();
+    void invalidateTranslation();
+    void cancelTranslation();
 
     enum class TranslationState {
         Hidden,
@@ -56,17 +60,18 @@ private:
     QStringList ocrLines_;
     QStringList translatedLines_;
     qint64 elapsedMs_ = 0;
-    TranslationService* translationService_ = nullptr;
+    QPointer<TranslationService> translationService_;
     TranslationModelInstaller* modelInstaller_ = nullptr;
     QString pendingModelPackage_;
     TranslationState translationState_ = TranslationState::Hidden;
     bool awaitingTranslation_ = false;
     bool awaitingLines_ = false;
     bool alignedMode_ = false;
+    bool serviceBusy_ = false;
     int downloadPercent_ = -1;
     qint64 translationElapsedMs_ = 0;
 
-    QComboBox* engineCombo_ = nullptr;
+    QComboBox* targetCombo_ = nullptr;
     QLabel* summaryLabel_ = nullptr;
     QPlainTextEdit* editor_ = nullptr;
     QLabel* translationStatusLabel_ = nullptr;
@@ -78,6 +83,7 @@ private:
     QPushButton* copyButton_ = nullptr;
     QPushButton* copyTranslationButton_ = nullptr;
     QPushButton* localTranslateButton_ = nullptr;
+    QPushButton* cancelTranslationButton_ = nullptr;
     QPushButton* chineseButton_ = nullptr;
     QPushButton* englishButton_ = nullptr;
     QPushButton* closeButton_ = nullptr;

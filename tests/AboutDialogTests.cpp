@@ -81,7 +81,9 @@ int main(int argc, char* argv[])
     ok &= allLicenseText.contains(QStringLiteral("releases/download/v0.7.0/"));
     ok &= !allLicenseText.contains(QStringLiteral("releases/download/v0.8.0/"));
     ok &= allLicenseText.contains(QStringLiteral("Microsoft SimpleRecorder"));
-    ok &= allLicenseText.contains(QStringLiteral("SYSTRAN"));
+    ok &= !allLicenseText.contains(QStringLiteral("CTranslate2"));
+    ok &= !allLicenseText.contains(QStringLiteral("SentencePiece"));
+    ok &= allLicenseText.contains(QStringLiteral("Hy-MT2"));
     ok &= allLicenseText.contains(QStringLiteral("Apache License"));
     ok &= allLicenseText.contains(QStringLiteral("llama.cpp"));
     ok &= allLicenseText.contains(QStringLiteral("The ggml authors"));

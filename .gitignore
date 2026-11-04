@@ -29,3 +29,9 @@ CMakeUserPresets.json
 *.dll
 *.lib
 *.exp
+
+# Data preserved while retiring a used portable deployment.
+/user-data/
+
+# Local verification logs, screenshots, hashes and machine-specific evidence.
+/artifacts/

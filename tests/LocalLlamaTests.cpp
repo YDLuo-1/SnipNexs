@@ -2,11 +2,17 @@
 #include "translate/TranslationTextSplitter.h"
 
 #include <QChar>
+#include <QCoreApplication>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QStringList>
 #include <QTextStream>
 #include <QtGlobal>
+#include <ggml-backend.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 namespace {
 
@@ -23,8 +29,9 @@ bool containsCjk(const QString& text)
 
 } // namespace
 
-int main()
+int main(int argc, char* argv[])
 {
+    QCoreApplication app(argc, argv);
     const QString modelPath = qEnvironmentVariable("SNIPNEXS_TEST_LLAMA_MODEL");
     if (modelPath.isEmpty() || !QFile::exists(modelPath)) {
         QTextStream(stdout) << "local-llama-tests: skipped (no model)\n";
@@ -32,6 +39,15 @@ int main()
     }
 
     bool ok = true;
+    const bool baseline = app.arguments().contains(QStringLiteral("--baseline"));
+    if (baseline) {
+        const QByteArray backend = QDir(app.applicationDirPath())
+            .filePath(QStringLiteral("ggml-cpu-x64.dll")).toUtf8();
+        if (!ggml_backend_load(backend.constData())) {
+            QTextStream(stderr) << "baseline CPU backend failed to load\n";
+            return 1;
+        }
+    }
     QString error;
     QElapsedTimer timer;
     timer.start();
@@ -62,6 +78,13 @@ int main()
         QTextStream(stderr) << "expected CJK output, got: "
                             << translated << '\n';
         ok = false;
+    }
+
+    if (baseline) {
+        local_llama::closeSession(session);
+        QTextStream(stdout) << "baseline translation: " << translated
+            << " (load_ms=" << loadMs << ", translate_ms=" << translateMs << ")\n";
+        return ok ? 0 : 1;
     }
 
     // Repeated batches must not accumulate tokens in the shared context.
@@ -110,6 +133,31 @@ int main()
                             << " (" << error << ")\n";
         ok = false;
     }
+
+    // Previously 563 prompt tokens were sent to n_batch=512 and aborted the process.
+    const QString overflowSource = QStringLiteral("甲乙丙丁戊己庚辛壬癸").repeated(60);
+    const auto overflowResult = local_llama::translateSegments(*session,
+        {overflowSource}, QStringLiteral("en"), &error);
+    ok &= !overflowResult.isEmpty() || error.contains(QStringLiteral("输出长度限制"));
+    QTextStream(stdout) << "batch-overflow regression: " << (error.isEmpty() ? "completed" : error) << '\n';
+    // An input larger than the full context must be split before prefill and cancel promptly.
+    QTextStream(stdout) << "starting cancellation probe\n" << Qt::flush;
+    std::atomic_bool canceled{false};
+    std::jthread cancelThread([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        canceled.store(true);
+    });
+    timer.restart();
+    const auto canceledResult = local_llama::translateSegments(*session,
+        {overflowSource.repeated(8)}, QStringLiteral("en"), &error, &canceled);
+    const auto cancelMs = timer.elapsed();
+    ok &= canceledResult.isEmpty() && !error.isEmpty() && cancelMs < 5000;
+    QTextStream(stdout) << "canceled call returned in " << cancelMs << " ms\n" << Qt::flush;
+    cancelThread.join();
+    const auto afterCancel = local_llama::translateSegments(*session,
+        {QStringLiteral("Order number 12345.")}, QStringLiteral("zh"), &error);
+    ok &= error.isEmpty() && afterCancel.contains(QStringLiteral("12345"));
+    QTextStream(stdout) << "cancel-ms: " << cancelMs << " after-cancel: " << afterCancel << '\n';
 
     local_llama::closeSession(session);
 

@@ -19,7 +19,7 @@ public:
 
     [[nodiscard]] bool start(const RecordingSettings& settings);
     void stop();
-    void wait();
+    RecordingResult wait();
     [[nodiscard]] bool isRunning() const;
 
 signals:
@@ -30,6 +30,7 @@ private:
     std::atomic_bool running_ = false;
     std::atomic_bool stopRequested_ = false;
     std::jthread worker_;
+    RecordingResult result_; // Read only after joining the worker.
 };
 
 } // namespace snipnexs

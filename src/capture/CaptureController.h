@@ -5,6 +5,7 @@
 #include <QList>
 #include <QPoint>
 #include <QPointer>
+#include <QElapsedTimer>
 
 #include "capture/CaptureHistoryStore.h"
 #include "ocr/OcrService.h"
@@ -23,7 +24,8 @@ class CaptureController final : public QObject
     Q_OBJECT
 
 public:
-    explicit CaptureController(MainWindow& mainWindow, QObject* parent = nullptr);
+    explicit CaptureController(MainWindow& mainWindow, QObject* parent = nullptr,
+        QString historyDirectory = {});
 
 public slots:
     void startCapture();
@@ -49,9 +51,11 @@ private:
     MainWindow& mainWindow_;
     OcrService ocrService_;
     CaptureHistoryStore historyStore_;
+    CaptureHistoryWriter historyWriter_;
     TranslationService translationService_;
     QPointer<CaptureOverlay> overlay_;
     bool capturePending_ = false;
+    QElapsedTimer captureTimer_;
     bool mainWindowWasVisible_ = false;
     bool mainWindowCaptureExcluded_ = false;
     QList<QImage> captureHistory_;

@@ -4,7 +4,7 @@
 
 SnipNexs is a lightweight screenshot and recording toolkit for Windows 10/11, built with C++20 and Qt 6 Widgets.
 
-Current version: `0.8.1`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, local offline translation, explicit browser translation, native GPU-backed region recording, copy/save actions, and standalone deployment.
+Current version: `0.8.4`. It includes Chinese/English UI switching, tray-first startup, single-instance activation, hierarchical window targeting, region capture and session history, text and shape annotation, a local color picker, draggable and resizable image pinning, local Windows OCR, local offline translation, explicit browser translation, native region recording, copy/save actions, and standalone deployment.
 
 ## Usage
 
@@ -16,7 +16,7 @@ Current version: `0.8.1`. It includes Chinese/English UI switching, tray-first s
 - The selection frame shows its physical pixel dimensions. Use **Pen**, **Rectangle**, **Arrow**, or **Text** to annotate; paint with **Mosaic** or **Blur** to redact sensitive areas before sharing. Press `Enter` to commit inline text and `Esc` to cancel it. `Ctrl+Z` and `Ctrl+Y` undo and redo.
 - Use **Color picker** to inspect a 9 × 9 magnified pixel grid. Press `C` to copy the value, `Shift` to toggle RGB/HEX, or click to copy and close the picker.
 - Use **OCR** to recognize the selected image locally with an installed Windows OCR language pack.
-- The result window offers **Local translation**: a built-in engine translates fully offline on the machine. The default engine (OPUS-MT, ~80 MB package, sub-second) produces quick, draft-grade output; a switchable **high-quality engine** (Tencent Hy-MT2-1.8B, ~1.1 GB, near-LLM quality but seconds per segment) trades download size and speed for accuracy. All packages are SHA-256 verified and work offline after download; see the [selection decision](docs/local-translation-decision.md). When the recognized text has two or more lines, a **Side by side** toggle lines the original and the translation up row by row in synced panes.
+- **Local translation** uses Tencent Hy-MT2-1.8B through llama.cpp on CPU. It is the only local engine; there is no engine selector. The ~1.1 GB model is SHA-256 verified and runs offline after download; offline bundles include it. Speed depends on hardware and input length, and translations still need review. Multi-line text supports a synced **Side by side** view. See the [selection decision](docs/local-translation-decision.md).
 - The result window can copy text or open a Chinese/English browser translation. Translation sends text only after a confirmation dialog; it never sends the image.
 - Click **Region Recording**, draw a region, then click **Record** in the selection toolbar. Choose an MP4 path and use the floating indicator to stop. The indicator starts at the bottom-right of the selected display and can be dragged from an empty area.
 - Recording captures the pointer and writes H.264/MP4 (AAC audio) through Windows media APIs. By default it records system audio (loopback); switch to microphone or no audio in the settings dialog (`recording/audio`).
@@ -25,6 +25,8 @@ Current version: `0.8.1`. It includes Chinese/English UI switching, tray-first s
 - Open **About SnipNexs** from the main-window footer or tray menu to read the application, Qt, and recording-reference licenses and source locations offline.
 - Open **Settings…** from the main-window footer or tray menu to switch recording audio (system loopback / microphone / none), set the translation-model mirror URL, manage installed model packages (view and delete), and check for updates. The optional startup update check contacts GitHub only after you enable it.
 - Press `Esc` or right-click to cancel.
+
+The current development tree adds normal minimization when no tray is available, invalidates old translations when the text or target language changes, and saves history in the background with a flush on normal exit. Exiting during recording also finalizes the MP4; encoding or save failures retain nonempty `.partial.mp4` files beside the chosen destination for recovery or diagnosis, though incomplete files may not be playable. Version 0.8.4 also adds bounded model downloads, CPU backend dispatch for high-quality translation, and a compatible recording path for desktops where Windows Graphics Capture is unavailable.
 
 ## Privacy
 
@@ -51,9 +53,9 @@ Generative AI tools assisted with parts of the requirements analysis, design, do
 
 ## Recording implementation notes
 
-- Capture: `Windows.Graphics.Capture`, supported by the project minimum of Windows 10 2004.
-- Crop: D3D11 `CopySubresourceRegion`; screen pixels are not read back to CPU memory.
-- Encode/container: `MediaStreamSource` and `MediaTranscoder`, H.264 in MP4. Hardware acceleration is requested, but the final encoder choice still depends on the installed driver and Windows codecs.
+- Capture: prefer `Windows.Graphics.Capture`; if unavailable or denied, use GDI to capture only the selected region.
+- Crop: the WGC path uses D3D11 `CopySubresourceRegion` without CPU readback. The compatibility path uses one region-sized DIB and uploads each frame to D3D11.
+- Encode/container: `MediaStreamSource` and `MediaTranscoder`, H.264 in MP4. The WGC path requests hardware encoding and retries software preparation if unsupported. Compatibility capture uses software encoding. Audio and video share a relative QPC timeline.
 - Backpressure: the capture pool has two buffers and SnipNexs retains only the newest frame; the transcoder requests frames as it can consume them.
 - The floating stop indicator requests `WDA_EXCLUDEFROMCAPTURE`. Windows treats this as a best-effort display-affinity feature, not a security boundary.
 
@@ -84,7 +86,7 @@ If the repository has been moved or renamed, reconfigure with `cmake --fresh --p
 For a formal release, run this only from a clean commit carrying the matching version tag:
 
 ```powershell
-.\scripts\package-release.ps1 -Version 0.8.1
+.\scripts\package-release.ps1 -Version 0.8.4
 ```
 
 The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copies notices and the Qt SBOM, checks the deployed executable, creates the ZIP, and prints its SHA-256. GitHub also displays the digest for every uploaded asset. Add `-IncludeQtSource` only when publishing the first SnipNexs release for a new Qt version; later application releases link to that publisher-controlled source copy. See the [release checklist](docs/release-checklist.md).
@@ -94,3 +96,15 @@ The script rebuilds, runs CTest, deploys Qt and the app-local MSVC runtime, copi
 SnipNexs is licensed under the [GNU GPL v3.0 or later](LICENSE). Qt 6.11.2 is dynamically linked under LGPL-3.0-only. Release packages retain the license, SBOM, corresponding-source location, and instructions for replacing the Qt DLLs.
 
 See [Third-party notices](THIRD_PARTY_NOTICES.md) for exact deployed components and license sources.
+
+### Local repair candidate
+
+```powershell
+.\scripts\package-release.ps1 -Version 0.8.4 -LocalCandidate -ModelSource .\build\models\src
+```
+
+`-LocalCandidate` permits packaging a development checkout; tagged releases still require a clean worktree and the exact tag. Optional `-ModelSource` bundles the Hy-MT2 model after catalog hash verification. A clean staging directory and verified ZIP precede retirement of old deployments. History and models migrate locally; other new/modified files remain under `user-data/<old-deployment>`. Rollback ZIPs are retained, and existing output versions are never overwritten. The installer includes application/license files only; models download on demand.
+
+OCR translation defaults to the script in the edited text, with explicit Chinese/English target selection. Cancel or close the result window to stop its translation. The engine enforces token limits; incomplete generation reports an error instead of a truncated success.
+
+All local translations use Hy-MT2; no engine preference is stored. During packaging, retired fast-engine models stay under `user-data/<old-deployment>` and are excluded from the new bundle.

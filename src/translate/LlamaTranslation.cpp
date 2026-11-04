@@ -2,6 +2,7 @@
 #include "TranslationTextSplitter.h"
 
 #include <QFileInfo>
+#include <QCoreApplication>
 #include <QObject>
 #include <QString>
 
@@ -68,12 +69,26 @@ struct Session
     const llama_vocab* vocab = nullptr;
 };
 
-Session* openSession(const QString& modelFilePath, QString* error)
+Session* openSession(const QString& modelFilePath, QString* error, const std::atomic_bool* canceled)
 {
+    // Restrict plugin discovery to the shipped DLL directory, not the caller's CWD.
+    if (!ggml_backend_reg_count()) {
+        const QByteArray backendDirectory = QCoreApplication::applicationDirPath().toUtf8();
+        ggml_backend_load_all_from_path(backendDirectory.constData());
+    }
+    if (!ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU)) {
+        if (error) { *error = QObject::tr("未找到兼容的 CPU 翻译后端，请重新解压完整安装包。"); }
+        return nullptr;
+    }
     llama_backend_init();
 
     llama_model_params modelParams = llama_model_default_params();
     modelParams.n_gpu_layers = 0; // CPU-only by design
+    modelParams.progress_callback = [](float, void* data) {
+        const auto* flag = static_cast<const std::atomic_bool*>(data);
+        return !flag || !flag->load();
+    };
+    modelParams.progress_callback_user_data = const_cast<std::atomic_bool*>(canceled);
     auto session = std::make_unique<Session>();
     session->model = llama_model_load_from_file(
         utf8Path(modelFilePath).c_str(), modelParams);
@@ -128,18 +143,10 @@ void closeSession(Session* session)
 
 namespace {
 
-QString generateOnce(
-    Session& session,
-    const QString& userMessage,
-    QString* error)
-{
-    // Each segment is translated independently. Without this, repeated or
-    // long translations accumulate tokens until n_ctx is exhausted.
-    if (llama_memory_t memory = llama_get_memory(session.context)) {
-        llama_memory_clear(memory, true);
-    }
-    llama_sampler_reset(session.sampler);
+constexpr int32_t kMaxNewTokens = 1024;
 
+std::vector<llama_token> promptTokens(Session& session, const QString& userMessage)
+{
     // Rendered manually after llama.cpp's automatic chat-template detection
     // misfired for this model: the official Hy-MT2 dense format is
     // <｜hy_begin▁of▁sentence｜><｜hy_User｜>{content}<｜hy_Assistant｜>
@@ -173,44 +180,67 @@ QString generateOnce(
             false,
             true);
     }
-    if (tokenCount <= 0) {
-        if (error) {
-            *error = QObject::tr("分词失败：无法对输入文本编码。");
-        }
-        return QString();
-    }
+    if (tokenCount <= 0) { return {}; }
+    tokens.resize(static_cast<std::size_t>(tokenCount));
+    return tokens;
+}
 
+QString generateOnce(
+    Session& session, std::vector<llama_token>& tokens,
+    QString* error, const std::atomic_bool* canceled)
+{
+    if (llama_memory_t memory = llama_get_memory(session.context)) {
+        llama_memory_clear(memory, true);
+    }
+    llama_sampler_reset(session.sampler);
+    // The callback is valid only for this call; sessions may outlive a request.
+    struct AbortGuard {
+        llama_context* context;
+        ~AbortGuard() { llama_set_abort_callback(context, nullptr, nullptr); }
+    } guard{session.context};
+    llama_set_abort_callback(session.context, [](void* data) {
+        const auto* flag = static_cast<const std::atomic_bool*>(data);
+        return flag && flag->load();
+    }, const_cast<std::atomic_bool*>(canceled));
+    const int32_t tokenCount = static_cast<int32_t>(tokens.size());
     std::string output;
     auto decode = [&](llama_token* batchTokens, int32_t count) -> bool {
+        if (canceled && canceled->load()) { return false; }
         llama_batch batch = llama_batch_get_one(batchTokens, count);
         return llama_decode(session.context, batch) == 0;
     };
 
-    if (!decode(tokens.data(), tokenCount)) {
-        if (error) {
-            *error = QObject::tr("翻译失败：模型推理出错。");
+    const int32_t batchSize = static_cast<int32_t>(llama_n_batch(session.context));
+    for (int32_t offset = 0; offset < tokenCount; offset += batchSize) {
+        if (!decode(tokens.data() + offset, std::min(batchSize, tokenCount - offset))) {
+            if (error) { *error = QObject::tr("翻译已取消或模型推理失败。"); }
+            return {};
         }
-        return QString();
     }
 
-    constexpr int32_t kMaxNewTokens = 1024;
+    bool finished = false;
     for (int32_t generated = 0; generated < kMaxNewTokens; ++generated) {
+        if (canceled && canceled->load()) {
+            if (error) { *error = QObject::tr("翻译已取消。"); }
+            return {};
+        }
         llama_token next = llama_sampler_sample(session.sampler, session.context, -1);
         llama_sampler_accept(session.sampler, next);
         if (llama_vocab_is_eog(session.vocab, next)) {
+            finished = true;
             break;
         }
 
-        char pieceBuffer[64];
-        const int32_t pieceLength = llama_token_to_piece(
-            session.vocab,
-            next,
-            pieceBuffer,
-            sizeof(pieceBuffer),
-            0,
-            false);
+        std::vector<char> piece(64);
+        int32_t pieceLength = llama_token_to_piece(
+            session.vocab, next, piece.data(), static_cast<int32_t>(piece.size()), 0, false);
+        if (pieceLength < 0) {
+            piece.resize(static_cast<std::size_t>(-pieceLength));
+            pieceLength = llama_token_to_piece(
+                session.vocab, next, piece.data(), static_cast<int32_t>(piece.size()), 0, false);
+        }
         if (pieceLength > 0) {
-            output.append(pieceBuffer, static_cast<std::size_t>(pieceLength));
+            output.append(piece.data(), static_cast<std::size_t>(pieceLength));
         }
 
         if (!decode(&next, 1)) {
@@ -221,6 +251,10 @@ QString generateOnce(
         }
     }
 
+    if (!finished) {
+        if (error) { *error = QObject::tr("译文超过输出长度限制，请缩短输入后重试。"); }
+        return {};
+    }
     return QString::fromUtf8(
         output.c_str(), static_cast<qsizetype>(output.size())).trimmed();
 }
@@ -241,14 +275,14 @@ bool sourceLooksChinese(const QString& text)
     return false;
 }
 
-QString cleanTranslation(QString translated, const QString& fallback)
+QString cleanTranslation(QString translated)
 {
     // The model echoes the backtick delimiters used in the prompt.
     if (translated.size() >= 2
         && translated.startsWith(u'`') && translated.endsWith(u'`')) {
         translated = translated.mid(1, translated.size() - 2).trimmed();
     }
-    return translated.isEmpty() ? fallback.trimmed() : translated;
+    return translated;
 }
 
 } // namespace
@@ -257,21 +291,44 @@ QString translateSegments(
     Session& session,
     const QStringList& segments,
     const QString& targetLanguage,
-    QString* error)
+    QString* error, const std::atomic_bool* canceled)
 {
+    if (error) { error->clear(); }
     QString output;
-    for (const QString& segment : segments) {
+    QStringList pending = segments;
+    for (qsizetype index = 0; index < pending.size(); ++index) {
+        if (canceled && canceled->load()) {
+            if (error) { *error = QObject::tr("翻译已取消。"); }
+            return {};
+        }
+        const QString segment = pending.at(index);
         if (segment.trimmed().isEmpty()) {
             output += segment;
             continue;
         }
+        auto tokens = promptTokens(session, promptFor(segment, sourceLooksChinese(segment), targetLanguage));
+        const auto promptBudget = llama_n_ctx(session.context) - kMaxNewTokens;
+        if (tokens.empty()) {
+            if (error) { *error = QObject::tr("分词失败：无法对输入文本编码。"); }
+            return {};
+        }
+        if (tokens.size() > promptBudget) {
+            qsizetype split = segment.size() / 2;
+            if (split > 0 && segment.at(split).isLowSurrogate()) { --split; }
+            if (split <= 0) {
+                if (error) { *error = QObject::tr("输入超过模型上下文限制。"); }
+                return {};
+            }
+            pending[index] = segment.left(split);
+            pending.insert(index + 1, segment.mid(split));
+            --index;
+            continue;
+        }
         QString segmentError;
-        const QString translated = cleanTranslation(
-            generateOnce(
-                session,
-                promptFor(segment, sourceLooksChinese(segment), targetLanguage),
-                &segmentError),
-            segment);
+        const QString translated = cleanTranslation(generateOnce(session, tokens, &segmentError, canceled));
+        if (segmentError.isEmpty() && translated.isEmpty()) {
+            segmentError = QObject::tr("模型未返回译文，请调整输入后重试。");
+        }
         if (!segmentError.isEmpty()) {
             if (error) {
                 *error = segmentError;
@@ -288,8 +345,9 @@ QStringList translateLines(
     Session& session,
     const QStringList& lines,
     const QString& targetLanguage,
-    QString* error)
+    QString* error, const std::atomic_bool* canceled)
 {
+    if (error) { error->clear(); }
     // Long OCR lines are split to the same segment budget as whole-text
     // translation; the sub-results are re-joined into the line's entry.
     constexpr int kSegmentCharacters = 600;
@@ -305,7 +363,7 @@ QStringList translateLines(
             session,
             snipnexs::splitTranslationSegments(line, kSegmentCharacters),
             targetLanguage,
-            &lineError);
+            &lineError, canceled);
         if (!lineError.isEmpty()) {
             if (error) {
                 *error = lineError;

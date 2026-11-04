@@ -25,11 +25,11 @@ set(required_files
     bin/vcruntime140.dll
     bin/vcruntime140_1.dll
     bin/vcomp140.dll
-    bin/ctranslate2.dll
     bin/llama.dll
     bin/ggml.dll
     bin/ggml-base.dll
-    bin/ggml-cpu.dll
+    bin/ggml-cpu-x64.dll
+    bin/ggml-cpu-haswell.dll
     bin/qt.conf
     plugins/platforms/qwindows.dll
     plugins/styles/qmodernwindowsstyle.dll
@@ -45,6 +45,13 @@ set(required_files
 foreach(relative_path IN LISTS required_files)
     if(NOT EXISTS "${SNIPNEXS_STAGE_DIR}/${relative_path}")
         message(FATAL_ERROR "Missing release file: ${relative_path}")
+    endif()
+endforeach()
+
+foreach(retired_path bin/ctranslate2.dll bin/sentencepiece.dll bin/spm_encode.exe
+        licenses/CTranslate2-MIT.txt licenses/SentencePiece-Apache-2.0.txt)
+    if(EXISTS "${SNIPNEXS_STAGE_DIR}/${retired_path}")
+        message(FATAL_ERROR "Retired translation dependency in release: ${retired_path}")
     endif()
 endforeach()
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QStringList>
+#include <atomic>
 
 class QString;
 
@@ -11,7 +12,8 @@ struct Session;
 // Opens a llama.cpp CPU session for the GGUF translation model at
 // modelFilePath. Returns null and fills error on failure. The caller owns
 // the session and must release it with closeSession().
-[[nodiscard]] Session* openSession(const QString& modelFilePath, QString* error);
+[[nodiscard]] Session* openSession(const QString& modelFilePath, QString* error,
+    const std::atomic_bool* canceled = nullptr);
 void closeSession(Session* session);
 
 // Translates already-split segments for the requested target language
@@ -21,7 +23,7 @@ void closeSession(Session* session);
     Session& session,
     const QStringList& segments,
     const QString& targetLanguage,
-    QString* error);
+    QString* error, const std::atomic_bool* canceled = nullptr);
 
 // Translates each line independently; the result list always has the same
 // size as the input so callers can align lines one to one. Whitespace-only
@@ -31,6 +33,6 @@ void closeSession(Session* session);
     Session& session,
     const QStringList& lines,
     const QString& targetLanguage,
-    QString* error);
+    QString* error, const std::atomic_bool* canceled = nullptr);
 
 } // namespace local_llama

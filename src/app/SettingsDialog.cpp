@@ -176,9 +176,7 @@ void SettingsDialog::refreshModels()
 
         auto* idItem = new QTableWidgetItem(status.id);
         idItem->setData(Qt::UserRole, status.id);
-        QString engineName = status.engine == TranslationEngineId::LlamaHyMT2
-            ? tr("高质量引擎")
-            : tr("默认引擎");
+        const QString engineName = tr("高质量引擎");
         auto* statusItem = new QTableWidgetItem(
             status.installed ? tr("已安装 · %1").arg(engineName)
                              : tr("未安装 · %1").arg(engineName));

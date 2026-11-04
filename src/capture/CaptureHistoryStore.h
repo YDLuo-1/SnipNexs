@@ -3,6 +3,11 @@
 #include <QImage>
 #include <QList>
 #include <QString>
+#include <condition_variable>
+#include <deque>
+#include <functional>
+#include <mutex>
+#include <thread>
 
 namespace snipnexs {
 
@@ -21,6 +26,27 @@ public:
 
 private:
     QString directory_;
+};
+
+// The pending history follows the same retention limit as the in-memory history.
+// Shutdown drains the retained entries before the store is destroyed.
+class CaptureHistoryWriter final
+{
+public:
+    explicit CaptureHistoryWriter(QString directory, std::function<void()> onError);
+    ~CaptureHistoryWriter();
+    void append(QImage image);
+
+private:
+    void run();
+    CaptureHistoryStore store_;
+    std::function<void()> onError_;
+    std::mutex mutex_;
+    std::condition_variable changed_;
+    std::deque<QImage> pending_;
+    qsizetype pendingBytes_ = 0;
+    bool closing_ = false;
+    std::jthread worker_;
 };
 
 } // namespace snipnexs

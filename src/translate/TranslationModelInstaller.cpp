@@ -1,31 +1,21 @@
 #include "TranslationModelInstaller.h"
 
-#include <QCryptographicHash>
 #include <QDir>
-#include <QFile>
 #include <QFileInfo>
+#include <QLockFile>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QSaveFile>
+#include <QStorageInfo>
 #include <QUrl>
-
 #include <utility>
 
 namespace snipnexs {
 
-namespace {
-
-QString partSuffix(const QString& fileName)
-{
-    return fileName + QStringLiteral(".part");
-}
-
-} // namespace
-
 TranslationModelInstaller::TranslationModelInstaller(
-    TranslationModelSpec spec, QObject* parent)
-    : QObject(parent)
-    , spec_(std::move(spec))
+    TranslationModelSpec spec, QObject* parent, QString modelsRoot)
+    : QObject(parent), spec_(std::move(spec)), modelsRoot_(std::move(modelsRoot))
 {
     networkManager_ = new QNetworkAccessManager(this);
     networkManager_->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
@@ -33,193 +23,164 @@ TranslationModelInstaller::TranslationModelInstaller(
 
 TranslationModelInstaller::~TranslationModelInstaller()
 {
-    canceled_ = true;
+    resetDownload();
+}
+
+void TranslationModelInstaller::resetDownload()
+{
     if (activeReply_) {
+        // abort() can emit finished synchronously, including during destruction.
+        disconnect(activeReply_, nullptr, this, nullptr);
         activeReply_->abort();
+        activeReply_->deleteLater();
+        activeReply_ = nullptr;
     }
-    delete activeFile_;
-    cleanupPartialFiles();
+    activeFile_.reset(); // QSaveFile removes only its own uncommitted temporary file.
+}
+
+void TranslationModelInstaller::finish(bool success, const QString& error)
+{
+    if (finished_) {
+        return;
+    }
+    finished_ = true;
+    resetDownload();
+    packageLock_.reset();
+    emit finished(success, error);
 }
 
 void TranslationModelInstaller::start()
 {
-    if (activeReply_ != nullptr) {
+    if (packageLock_ || activeReply_) {
         return;
     }
-
-    canceled_ = false;
     finished_ = false;
     nextFileIndex_ = 0;
     receivedBytes_ = 0;
     totalBytes_ = 0;
-    activeFileName_.clear();
-
-    const QDir packageDir = translationModelDirectory(spec_.id);
-    if (!QDir().mkpath(packageDir.absolutePath())) {
-        emit finished(false, tr("无法创建模型目录:%1").arg(packageDir.absolutePath()));
+    if (spec_.id.isEmpty() || spec_.id.contains(QLatin1Char('/'))
+        || spec_.id.contains(QLatin1Char('\\')) || spec_.id.contains(QLatin1Char(':'))
+        || spec_.id.contains(QStringLiteral("..")) || spec_.files.isEmpty()) {
+        finish(false, tr("模型清单无效。"));
         return;
     }
-
-    cleanupPartialFiles();
-    for (const TranslationModelFile& file : spec_.files) {
-        totalBytes_ += file.sizeBytes > 0 ? file.sizeBytes : 0;
+    for (const auto& file : spec_.files) {
+        if (file.sizeBytes <= 0 || file.sha256.size() != 64 || file.fileName.isEmpty()
+            || QFileInfo(file.fileName).fileName() != file.fileName
+            || file.fileName.contains(QLatin1Char(':')) || file.fileName.contains(QStringLiteral(".."))) {
+            finish(false, tr("模型清单无效。"));
+            return;
+        }
+        totalBytes_ += file.sizeBytes;
     }
-
+    const QDir packageDir(translationModelDirectory(spec_.id, modelsRoot_));
+    if (!QDir().mkpath(packageDir.absolutePath())) {
+        finish(false, tr("无法创建模型目录:%1").arg(packageDir.absolutePath()));
+        return;
+    }
+    packageLock_ = std::make_unique<QLockFile>(translationModelLockPath(spec_.id, modelsRoot_));
+    packageLock_->setStaleLockTime(0); // Downloads can outlive the default 30-second lock age.
+    if (!packageLock_->tryLock(0)) {
+        finish(false, tr("该语言包正在另一个窗口中安装，请等待完成。"));
+        return;
+    }
+    const QStorageInfo storage(packageDir.absolutePath());
+    if (storage.isValid() && storage.bytesAvailable() >= 0
+        && storage.bytesAvailable() < totalBytes_ + 64 * 1024 * 1024) {
+        finish(false, tr("模型目录所在磁盘空间不足。"));
+        return;
+    }
     downloadNextFile();
 }
 
 void TranslationModelInstaller::cancel()
 {
-    if (finished_) {
-        return;
+    finish(false);
+}
+
+bool TranslationModelInstaller::consumeAvailableData()
+{
+    if (!activeReply_ || !activeFile_) {
+        return false;
     }
-    canceled_ = true;
-    if (activeReply_) {
-        activeReply_->abort();
+    const auto& spec = spec_.files.at(nextFileIndex_);
+    while (activeReply_->bytesAvailable() > 0) {
+        const QByteArray chunk = activeReply_->read(256 * 1024);
+        if (chunk.isEmpty()) {
+            break;
+        }
+        if (chunk.size() > spec.sizeBytes - fileBytes_) {
+            finish(false, tr("模型文件超过清单大小:%1").arg(spec.fileName));
+            return false;
+        }
+        if (activeFile_->write(chunk) != chunk.size()) {
+            finish(false, tr("写入文件失败:%1").arg(spec.fileName));
+            return false;
+        }
+        hash_.addData(chunk);
+        fileBytes_ += chunk.size();
+        receivedBytes_ += chunk.size();
     }
-    cleanupPartialFiles();
-    finished_ = true;
-    emit finished(false, QString());
+    emit progress(receivedBytes_, totalBytes_, activeFileName_);
+    return !finished_;
 }
 
 void TranslationModelInstaller::downloadNextFile()
 {
-    if (canceled_) {
+    if (finished_) {
         return;
     }
     if (nextFileIndex_ >= spec_.files.size()) {
-        if (writeTranslationModelManifest(spec_)) {
-            finished_ = true;
-            emit finished(true, QString());
-        } else {
-            emit finished(false, tr("无法写入模型清单文件。"));
-        }
+        const bool written = writeTranslationModelManifest(spec_, modelsRoot_);
+        finish(written, written ? QString() : tr("无法写入模型清单文件。"));
         return;
     }
-
-    const TranslationModelFile& file = spec_.files.at(nextFileIndex_);
+    const auto& file = spec_.files.at(nextFileIndex_);
     activeFileName_ = file.fileName;
-    // QDir would collapse the "//" in "https://"; resolve the asset name
-    // against a directory URL instead.
-    const QUrl base(effectiveModelBaseUrl(spec_));
-    QString basePath = base.path();
-    if (!basePath.endsWith(QLatin1Char('/'))) {
-        basePath += QLatin1Char('/');
+    QUrl base(effectiveModelBaseUrl(spec_));
+    if (!base.path().endsWith(QLatin1Char('/'))) {
+        base.setPath(base.path() + QLatin1Char('/'));
     }
-    QUrl baseDirectory = base;
-    baseDirectory.setPath(basePath);
-    const QUrl url = baseDirectory.resolved(QUrl(file.remotePath));
-    if (!url.isValid() || url.scheme().isEmpty()) {
-        emit finished(false, tr("模型下载地址无效:%1").arg(file.remotePath));
+    const QUrl url = base.resolved(QUrl(file.remotePath));
+    if (!url.isValid() || (url.scheme() != QStringLiteral("https")
+            && url.scheme() != QStringLiteral("http") && url.scheme() != QStringLiteral("file"))) {
+        finish(false, tr("模型下载地址无效:%1").arg(file.remotePath));
         return;
     }
-
+    activeFile_ = std::make_unique<QSaveFile>(
+        QDir(translationModelDirectory(spec_.id, modelsRoot_)).filePath(file.fileName));
+    if (!activeFile_->open(QIODevice::WriteOnly)) {
+        finish(false, tr("无法写入文件:%1").arg(file.fileName));
+        return;
+    }
+    fileBytes_ = 0;
+    hash_.reset();
     QNetworkRequest request(url);
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(30'000);
     activeReply_ = networkManager_->get(request);
-
-    const QDir packageDir = translationModelDirectory(spec_.id);
-    const QString partPath = packageDir.filePath(partSuffix(activeFileName_));
-    activeFile_ = new QFile(partPath);
-    if (!activeFile_->open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        delete activeFile_;
-        activeFile_ = nullptr;
-        activeReply_->deleteLater();
-        activeReply_ = nullptr;
-        emit finished(false, tr("无法写入文件:%1").arg(partPath));
-        return;
-    }
-
-    connect(activeReply_, &QNetworkReply::readyRead, this, [this]() {
-        if (!activeReply_ || !activeFile_) {
+    activeReply_->setReadBufferSize(256 * 1024);
+    connect(activeReply_, &QNetworkReply::readyRead, this, [this] { consumeAvailableData(); });
+    connect(activeReply_, &QNetworkReply::finished, this, [this] {
+        if (activeReply_->error() != QNetworkReply::NoError) {
+            finish(false, tr("下载失败(%1):%2").arg(activeFileName_, activeReply_->errorString()));
             return;
         }
-        const QByteArray chunk = activeReply_->readAll();
-        if (activeFile_->write(chunk) != chunk.size()) {
-            activeReply_->abort();
+        if (!consumeAvailableData()) {
             return;
         }
-        receivedBytes_ += chunk.size();
-        emit progress(receivedBytes_, totalBytes_, activeFileName_);
-    });
-
-    connect(activeReply_, &QNetworkReply::finished, this, [this, partPath]() {
-        QFile* file = activeFile_;
-        activeFile_ = nullptr;
-        QNetworkReply* reply = activeReply_;
-        activeReply_ = nullptr;
-        const TranslationModelFile& spec = spec_.files.at(nextFileIndex_);
-        const QString finalPath = QFileInfo(partPath).dir().filePath(spec.fileName);
-
-        const auto fail = [this, &partPath, &file](const QString& message) {
-            delete file;
-            file = nullptr;
-            QFile::remove(partPath);
-            emit finished(false, message);
-        };
-
-        if (canceled_) {
-            delete file;
-            QFile::remove(partPath);
+        const auto& file = spec_.files.at(nextFileIndex_);
+        if (fileBytes_ != file.sizeBytes || hash_.result().toHex().toLower() != file.sha256.toLower()) {
+            finish(false, tr("模型文件校验失败:%1").arg(file.fileName));
             return;
         }
-        if (reply->error() != QNetworkReply::NoError) {
-            reply->deleteLater();
-            fail(tr("下载失败(%1):%2").arg(spec.fileName, reply->errorString()));
+        if (!activeFile_->commit()) {
+            finish(false, tr("无法保存模型文件:%1").arg(file.fileName));
             return;
         }
-
-        const QByteArray remaining = reply->readAll();
-        reply->deleteLater();
-        if (!remaining.isEmpty()) {
-            if (file->write(remaining) != remaining.size()) {
-                fail(tr("写入文件失败:%1").arg(partPath));
-                return;
-            }
-            receivedBytes_ += remaining.size();
-            emit progress(receivedBytes_, totalBytes_, activeFileName_);
-        }
-        file->flush();
-        delete file;
-        file = nullptr;
-
-        QCryptographicHash hash(QCryptographicHash::Sha256);
-        QFile verifyFile(partPath);
-        if (!verifyFile.open(QIODevice::ReadOnly) || !hash.addData(&verifyFile)) {
-            fail(tr("无法校验下载文件:%1").arg(spec.fileName));
-            return;
-        }
-        verifyFile.close();
-
-        const bool sizeOk = spec.sizeBytes <= 0
-            || QFileInfo(partPath).size() == spec.sizeBytes;
-        const bool hashOk = QString::fromLatin1(hash.result().toHex())
-            .compare(QString::fromLatin1(spec.sha256), Qt::CaseInsensitive) == 0;
-        if (!sizeOk || !hashOk) {
-            fail(tr("模型文件校验失败:%1").arg(spec.fileName));
-            return;
-        }
-
-        QFile::remove(finalPath);
-        if (!QFile::rename(partPath, finalPath)) {
-            fail(tr("无法保存模型文件:%1").arg(spec.fileName));
-            return;
-        }
-
+        resetDownload();
         ++nextFileIndex_;
         downloadNextFile();
     });
-}
-
-void TranslationModelInstaller::cleanupPartialFiles()
-{
-    const QDir packageDir = translationModelDirectory(spec_.id);
-    const QStringList entries = packageDir.entryList(
-        QStringList() << QStringLiteral("*.part"), QDir::Files);
-    for (const QString& entry : entries) {
-        QFile::remove(packageDir.filePath(entry));
-    }
 }
 
 } // namespace snipnexs

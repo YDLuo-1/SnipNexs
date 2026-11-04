@@ -1,9 +1,11 @@
 #include "RecorderController.h"
 
 #include "RecordingIndicator.h"
+#include "RecordingOutput.h"
 #include "app/MainWindow.h"
 
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
@@ -32,16 +34,17 @@ RecorderController::RecorderController(MainWindow& mainWindow, QObject* parent)
 RecorderController::~RecorderController()
 {
     service_.stop();
-    service_.wait();
-    if (!partialPath_.isEmpty()) {
-        QFile::remove(partialPath_);
+    const RecordingResult result = service_.wait();
+    const QString error = finishRecordingOutput(result, partialPath_, finalPath_);
+    if (!error.isEmpty()) {
+        qWarning().noquote() << error;
     }
 }
 
 void RecorderController::startRegion(
     quintptr monitorHandle, const QString& screenName, const QRect& pixelRect)
 {
-    if (service_.isRunning()) {
+    if (service_.isRunning() || !partialPath_.isEmpty()) {
         mainWindow_.showNotification(
             tr("正在录屏"), tr("请先停止当前录制。"));
         return;
@@ -101,7 +104,7 @@ void RecorderController::startRegion(
     indicator->moveToBottomRight(screenName);
     indicator->show();
     mainWindow_.hide();
-    mainWindow_.setCaptureStatus(tr("正在启动 Windows GPU 录屏与 H.264 编码器…"));
+    mainWindow_.setCaptureStatus(tr("正在启动 Windows 录屏与 H.264 编码器…"));
 }
 
 void RecorderController::stop()
@@ -119,35 +122,13 @@ void RecorderController::handleCompleted(const RecordingResult& result)
         indicator_ = nullptr;
     }
 
-    if (!result.succeeded) {
-        QFile::remove(partialPath_);
-        partialPath_.clear();
-        mainWindow_.setCaptureStatus(result.error);
-        mainWindow_.showNotification(tr("录屏失败"), result.error);
-        mainWindow_.showAndActivate();
-        return;
-    }
-
-    const QString partialPath = partialPath_;
-    const std::wstring partialNative = QDir::toNativeSeparators(partialPath).toStdWString();
-    const std::wstring finalNative = QDir::toNativeSeparators(finalPath_).toStdWString();
-    if (!MoveFileExW(
-            partialNative.c_str(),
-            finalNative.c_str(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        // The message promises the user a recoverable file, so forget the
-        // partial path and let the file survive application shutdown.
-        partialPath_.clear();
-        const QString message = tr(
-            "MP4 已生成，但无法原子移动到目标路径（错误 %1）。临时文件保留在：%2")
-            .arg(GetLastError())
-            .arg(QDir::toNativeSeparators(partialPath));
+    const QString message = finishRecordingOutput(result, partialPath_, finalPath_);
+    if (!result.succeeded || !message.isEmpty()) {
         mainWindow_.setCaptureStatus(message);
-        mainWindow_.showNotification(tr("录屏文件未移动"), message);
+        mainWindow_.showNotification(tr("录屏保存异常"), message);
         mainWindow_.showAndActivate();
         return;
     }
-    partialPath_.clear();
 
     const QString nativePath = QDir::toNativeSeparators(finalPath_);
     mainWindow_.setCaptureStatus(
@@ -155,8 +136,9 @@ void RecorderController::handleCompleted(const RecordingResult& result)
             .arg(result.submittedFrames)
             .arg(result.elapsedMs / 1000.0, 0, 'f', 1)
             .arg(result.outputBytes / 1024.0 / 1024.0, 0, 'f', 1)
-            .arg(nativePath));
-    mainWindow_.showNotification(tr("录屏已保存"), nativePath);
+            .arg(nativePath) + (result.warning.isEmpty() ? QString() : QLatin1Char('\n') + result.warning));
+    mainWindow_.showNotification(tr("录屏已保存"),
+        result.warning.isEmpty() ? nativePath : nativePath + QLatin1Char('\n') + result.warning);
     mainWindow_.showAndActivate();
 }
 

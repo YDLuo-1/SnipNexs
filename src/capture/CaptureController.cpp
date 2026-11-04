@@ -38,9 +38,17 @@ constexpr qsizetype kMaximumCaptureHistoryEntries = 20;
 
 }
 
-CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent)
+CaptureController::CaptureController(MainWindow& mainWindow, QObject* parent, QString historyDirectory)
     : QObject(parent)
     , mainWindow_(mainWindow)
+    , historyStore_(std::move(historyDirectory))
+    , historyWriter_(historyStore_.directory(), [this]() {
+        QMetaObject::invokeMethod(this, [this]() {
+            const QString message = tr("截图已完成，但无法写入历史记录。请检查磁盘空间和目录权限。");
+            mainWindow_.setCaptureStatus(message);
+            mainWindow_.showNotification(tr("历史记录保存失败"), message);
+        }, Qt::QueuedConnection);
+    })
 {
     captureHistory_ = historyStore_.load();
     for (const QImage& image : captureHistory_) {
@@ -79,6 +87,7 @@ void CaptureController::startCapture()
     }
 
     capturePending_ = true;
+    captureTimer_.start();
     mainWindowWasVisible_ = mainWindow_.isVisible();
     setMainWindowCaptureExclusion(mainWindowWasVisible_);
     mainWindow_.setCaptureActive(true);
@@ -103,8 +112,6 @@ void CaptureController::captureAfterUiSettles()
         return;
     }
 
-    QElapsedTimer timer;
-    timer.start();
     QPixmap screenshot = screen->grabWindow(0);
     if (screenshot.isNull()) {
         reportFailure(tr("屏幕捕获失败。请检查远程桌面或系统权限。"));
@@ -141,7 +148,7 @@ void CaptureController::captureAfterUiSettles()
     mainWindow_.setCaptureStatus(
         tr("已捕获 %1，耗时 %2 ms。选区可移动并通过八个控制点缩放。")
             .arg(screen->name())
-            .arg(timer.elapsed()));
+            .arg(captureTimer_.elapsed()));
 }
 
 void CaptureController::recordRegion(const QRect& pixelRect)
@@ -290,7 +297,7 @@ void CaptureController::finishCapture(bool restoreMainWindow)
         overlay_ = nullptr;
     }
     mainWindow_.setCaptureActive(false);
-    if (restoreMainWindow) {
+    if (restoreMainWindow || !mainWindow_.trayAvailable()) {
         mainWindow_.showAndActivate();
     }
 }
@@ -309,7 +316,7 @@ void CaptureController::rememberSuccessfulCapture(const QImage& image)
         captureHistoryBytes_ -= captureHistory_.first().sizeInBytes();
         captureHistory_.removeFirst();
     }
-    historyStore_.append(image);
+    historyWriter_.append(image);
 }
 
 void CaptureController::setMainWindowCaptureExclusion(bool excluded)

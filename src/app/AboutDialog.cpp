@@ -168,17 +168,10 @@ OpenSourceLicensesDialog::OpenSourceLicensesDialog(QWidget* parent)
     tabs_->addTab(
         createLicenseBrowser(
             QStringLiteral("Local translation"),
-            tr("本地翻译使用 CTranslate2（MIT）、SentencePiece（Apache-2.0）"
-               "与 llama.cpp（MIT）。语言包由 Helsinki-NLP 的 OPUS-MT 模型和"
-               "腾讯 Hy-MT2 模型转换而来，首次使用时按需下载，"
-               "模型许可与文件校验值见第三方声明与各语言包内的 manifest.json。"),
-            resourceText(QStringLiteral(":/licenses/licenses/CTranslate2-MIT.txt"))
-                + QStringLiteral("\n\n")
-                + resourceText(QStringLiteral(
-                    ":/licenses/licenses/SentencePiece-Apache-2.0.txt"))
-                + QStringLiteral("\n\n")
-                + resourceText(QStringLiteral(
-                    ":/licenses/licenses/llama.cpp-MIT.txt")),
+            tr("本地翻译使用 llama.cpp（MIT）和腾讯 Hy-MT2 模型（Apache-2.0）。"
+               "模型缺失时按需下载，下载后可离线使用。"
+               "模型许可与文件校验值见第三方声明与模型目录内的 manifest.json。"),
+            resourceText(QStringLiteral(":/licenses/licenses/llama.cpp-MIT.txt")),
             tabs_),
         tr("翻译引擎"));
 

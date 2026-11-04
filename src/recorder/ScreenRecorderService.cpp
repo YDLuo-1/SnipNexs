@@ -28,12 +28,15 @@ bool ScreenRecorderService::start(const RecordingSettings& settings)
         worker_.join();
     }
     stopRequested_.store(false, std::memory_order_relaxed);
+    result_ = {};
     worker_ = std::jthread([this, settings]() {
-        const RecordingResult result = recordScreenNative(settings, stopRequested_, [this]() {
+        result_ = recordScreenNative(settings, stopRequested_, [this]() {
             QMetaObject::invokeMethod(this, &ScreenRecorderService::ready, Qt::QueuedConnection);
         });
-        running_.store(false, std::memory_order_release);
-        QMetaObject::invokeMethod(this, [this, result]() { emit completed(result); }, Qt::QueuedConnection);
+        QMetaObject::invokeMethod(this, [this, result = result_]() {
+            running_.store(false, std::memory_order_release);
+            emit completed(result);
+        }, Qt::QueuedConnection);
     });
     return true;
 }
@@ -43,11 +46,12 @@ void ScreenRecorderService::stop()
     stopRequested_.store(true, std::memory_order_relaxed);
 }
 
-void ScreenRecorderService::wait()
+RecordingResult ScreenRecorderService::wait()
 {
     if (worker_.joinable()) {
         worker_.join();
     }
+    return result_;
 }
 
 bool ScreenRecorderService::isRunning() const

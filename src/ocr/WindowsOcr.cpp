@@ -77,26 +77,43 @@ winrt::Windows::Graphics::Imaging::SoftwareBitmap toSoftwareBitmap(const QImage&
     return bitmap;
 }
 
-QStringList linesFromResult(
-    const winrt::Windows::Media::Ocr::OcrResult& result,
-    const QString& languageTag)
+bool isCjk(QChar character)
+{
+    return character.script() == QChar::Script_Han
+        || character.script() == QChar::Script_Hiragana
+        || character.script() == QChar::Script_Katakana;
+}
+
+QStringList linesFromResult(const winrt::Windows::Media::Ocr::OcrResult& result)
 {
     QStringList lines;
-    const bool joinWithoutSpaces = languageTag.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)
-        || languageTag.startsWith(QStringLiteral("ja"), Qt::CaseInsensitive);
     for (const auto& line : result.Lines()) {
         QString text;
-        bool firstWord = true;
         for (const auto& word : line.Words()) {
-            if (!firstWord && !joinWithoutSpaces) {
+            const QString next = fromHString(word.Text());
+            if (next.isEmpty()) { continue; }
+            // Chinese recognizers also return Latin words: only suppress spaces
+            // at CJK boundaries and before closing/after opening punctuation.
+            if (!text.isEmpty() && !isCjk(text.back()) && !isCjk(next.front())
+                && !QStringLiteral(",.;:!?)]}，。；：！？、》」").contains(next.front())
+                && !QStringLiteral("([{《「").contains(text.back())) {
                 text += QLatin1Char(' ');
             }
-            text += fromHString(word.Text());
-            firstWord = false;
+            text += next;
         }
         lines.append(text);
     }
     return lines;
+}
+
+bool looksLatin(const QString& text)
+{
+    int latin = 0;
+    for (QChar character : text) {
+        if (character.isLetter() && character.script() != QChar::Script_Latin) { return false; }
+        if (character.script() == QChar::Script_Latin) { ++latin; }
+    }
+    return latin >= 3;
 }
 
 QString textFromResult(const QStringList& lines)
@@ -140,8 +157,28 @@ Result recognize(const QImage& input)
         const auto bitmap = toSoftwareBitmap(image);
         const auto result = engine.RecognizeAsync(bitmap).get();
         output.languageTag = fromHString(engine.RecognizerLanguage().LanguageTag());
-        output.lines = linesFromResult(result, output.languageTag);
+        output.lines = linesFromResult(result);
         output.text = textFromResult(output.lines);
+        // RecognizerLanguage describes engine configuration, not detected text.
+        // Retry Latin text with an installed English recognizer when available.
+        if ((output.languageTag.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)
+             || output.languageTag.startsWith(QStringLiteral("ja"), Qt::CaseInsensitive))
+            && looksLatin(output.text)) {
+            for (const auto& language : OcrEngine::AvailableRecognizerLanguages()) {
+                const QString tag = fromHString(language.LanguageTag());
+                if (!tag.startsWith(QStringLiteral("en"), Qt::CaseInsensitive)) { continue; }
+                const auto englishEngine = OcrEngine::TryCreateFromLanguage(language);
+                if (!englishEngine) { continue; }
+                const auto englishLines = linesFromResult(englishEngine.RecognizeAsync(bitmap).get());
+                const QString englishText = textFromResult(englishLines);
+                if (!englishText.isEmpty()) {
+                    output.lines = englishLines;
+                    output.text = englishText;
+                    output.languageTag = tag;
+                }
+                break;
+            }
+        }
         output.elapsedMs = timer.elapsed();
         return output;
     } catch (const winrt::hresult_error& error) {

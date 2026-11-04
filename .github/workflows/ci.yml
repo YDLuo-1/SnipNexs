@@ -27,8 +27,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Pin CMake 3.31
-        # CMake 4 rejects third_party cmake_minimum_required(VERSION <3.5)
-        # that CTranslate2 vendored dependencies still carry.
+        # Keep the validated toolchain version stable across local and CI builds.
         run: python -m pip install "cmake==3.31.*" && cmake --version
 
       - name: Configure
@@ -38,9 +37,6 @@ jobs:
         run: cmake --build --preset windows-release --parallel
 
       - name: Test
-        run: ctest --preset windows-release --output-on-failure -E NativeScreenRecorderTests
-
-      - name: Recorder timing test
-        # NativeScreenRecorderTests samples WGC timing and is sensitive to
-        # VM scheduling; retry this test only, not the whole suite.
-        run: ctest --preset windows-release --output-on-failure -R NativeScreenRecorderTests --repeat until-pass:3
+        # Desktop acceptance is opt-in; audio buffers and recording output
+        # lifecycle have separate deterministic tests that run here.
+        run: ctest --preset windows-release --output-on-failure

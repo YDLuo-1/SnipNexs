@@ -130,11 +130,11 @@ void MainWindow::retranslateUi()
     subtitleLabel_->setText(tr("轻量、原生、可扩展的 Windows 截图工具"));
     statusLabel_->setText(
         tr("截图选区支持标注、贴图和本地文字识别。\n"
-           "区域录屏使用 Windows GPU 捕获并保存 H.264 MP4，可录制系统声音或麦克风。"));
+           "区域录屏使用 Windows 捕获并保存 H.264 MP4，可录制系统声音或麦克风。"));
     languageLabel_->setText(tr("语言"));
     languageCombo_->setItemText(0, tr("简体中文"));
     languageCombo_->setItemText(1, QStringLiteral("English"));
-    hideButton_->setText(tr("最小化到托盘"));
+    hideButton_->setText(trayAvailable() ? tr("最小化到托盘") : tr("最小化"));
     const QString captureText = tr("区域截图");
     captureButton_->setText(captureShortcut_.isEmpty()
         ? captureText
@@ -270,7 +270,13 @@ void MainWindow::setupUi()
 
     setCentralWidget(central);
 
-    connect(hideButton_, &QPushButton::clicked, this, &QWidget::hide);
+    connect(hideButton_, &QPushButton::clicked, this, [this]() {
+        if (trayAvailable()) {
+            hide();
+        } else {
+            showMinimized();
+        }
+    });
     connect(recordButton_, &QPushButton::clicked, this, &MainWindow::recordRequested);
     connect(captureButton_, &QPushButton::clicked, this, &MainWindow::captureRequested);
     connect(settingsButton_, &QPushButton::clicked, this, &MainWindow::showSettings);
@@ -307,6 +313,10 @@ void MainWindow::setupUi()
 
 void MainWindow::setupTray()
 {
+    if (QGuiApplication::platformName() == QStringLiteral("offscreen")) {
+        QApplication::setQuitOnLastWindowClosed(true);
+        return;
+    }
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         QApplication::setQuitOnLastWindowClosed(true);
         return;

@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <atomic>
 
 namespace {
 
@@ -31,7 +32,9 @@ QStringList historyFiles(const QString& directory)
 int main(int argc, char* argv[])
 {
     QCoreApplication app(argc, argv);
-    QTemporaryDir temporary;
+    QDir().mkpath(QStringLiteral("test-temp"));
+    const QString pattern = QDir::current().filePath(QStringLiteral("test-temp/history-XXXXXX"));
+    QTemporaryDir temporary(pattern);
     if (!temporary.isValid()) {
         return 1;
     }
@@ -60,7 +63,8 @@ int main(int argc, char* argv[])
             && historyFiles(temporary.path()).size() == 1;
     }
 
-    QTemporaryDir recoveryDirectory;
+    QTemporaryDir recoveryDirectory(pattern);
+    if (!recoveryDirectory.isValid()) { return 1; }
     snipnexs::CaptureHistoryStore recoveryStore(recoveryDirectory.path());
     const bool recoveryWrites = recoveryStore.append(first)
         && recoveryStore.append(second);
@@ -74,7 +78,8 @@ int main(int argc, char* argv[])
         makeImage(QColor(10, 200, 90), QSize(18, 9), 1.0))
         && recoveryStore.load().size() == 3;
 
-    QTemporaryDir capacityDirectory;
+    QTemporaryDir capacityDirectory(pattern);
+    if (!capacityDirectory.isValid()) { return 1; }
     snipnexs::CaptureHistoryStore capacityStore(capacityDirectory.path());
     bool entriesWritten = true;
     for (int i = 0; i < 21; ++i) {
@@ -83,7 +88,8 @@ int main(int argc, char* argv[])
     }
     const bool entryLimitOk = capacityStore.load().size() == 20;
 
-    QTemporaryDir byteLimitDirectory;
+    QTemporaryDir byteLimitDirectory(pattern);
+    if (!byteLimitDirectory.isValid()) { return 1; }
     snipnexs::CaptureHistoryStore byteLimitStore(byteLimitDirectory.path());
     const bool firstLargeWritten = byteLimitStore.append(
         makeImage(QColor(10, 20, 30), QSize(4096, 2200), 1.0));
@@ -91,13 +97,37 @@ int main(int argc, char* argv[])
         makeImage(QColor(30, 20, 10), QSize(4096, 2200), 1.0));
     const bool byteLimitOk = byteLimitStore.load().size() == 1;
 
-    const bool ok = firstWritten && secondWritten && orderAndDprOk
+    QTemporaryDir asyncDirectory(pattern);
+    if (!asyncDirectory.isValid()) { return 1; }
+    std::atomic<int> writeErrors = 0;
+    {
+        snipnexs::CaptureHistoryWriter writer(asyncDirectory.path(), [&] { ++writeErrors; });
+        for (int i = 0; i < 25; ++i) {
+            writer.append(makeImage(QColor(i, 0, 0)));
+        }
+    }
+    const auto asyncLoaded = snipnexs::CaptureHistoryStore(asyncDirectory.path()).load();
+    bool asyncOk = writeErrors == 0 && asyncLoaded.size() == 20;
+    for (int i = 0; i < asyncLoaded.size(); ++i) {
+        asyncOk &= asyncLoaded.at(i).pixelColor(0, 0).red() == i + 5;
+    }
+    QFile blocked(QDir(asyncDirectory.path()).filePath(QStringLiteral("not-a-directory")));
+    const bool blockedCreated = blocked.open(QIODevice::WriteOnly);
+    blocked.close();
+    {
+        snipnexs::CaptureHistoryWriter writer(blocked.fileName(), [&] { ++writeErrors; });
+        writer.append(first);
+    }
+    asyncOk &= blockedCreated && writeErrors == 1;
+
+    const bool ok = asyncOk && firstWritten && secondWritten && orderAndDprOk
         && corruptionSkipped && entriesWritten && entryLimitOk
         && recoveryOk && appendAfterLoss
         && firstLargeWritten && secondLargeWritten && byteLimitOk;
     QTextStream(stdout)
         << "capture history store: " << (ok ? "ok" : "failed")
         << " persistence=" << (firstWritten && secondWritten && orderAndDprOk)
+        << " async=" << asyncOk
         << " corruption=" << corruptionSkipped
         << " recovery=" << recoveryOk
         << " appendAfterLoss=" << appendAfterLoss

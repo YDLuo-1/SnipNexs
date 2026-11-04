@@ -10,6 +10,7 @@
 #include <QCommandLineParser>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QDir>
 #include <QLibrary>
 #include <QLibraryInfo>
 #include <QLabel>
@@ -20,6 +21,7 @@
 #include <QSslSocket>
 #include <QTextStream>
 #include <QTimer>
+#include <QTemporaryDir>
 #include <QTranslator>
 
 namespace {
@@ -68,6 +70,10 @@ void configureCaptureHotkey(
     snipnexs::MainWindow& window,
     bool showNotification)
 {
+    if (QGuiApplication::platformName() == QStringLiteral("offscreen")) {
+        window.setCaptureShortcut({});
+        return;
+    }
     const bool registered = hotkey.registerCaptureShortcut();
     window.setCaptureShortcut(hotkey.shortcutText());
 
@@ -104,26 +110,30 @@ int runRuntimeSelfTest(int argc, char* argv[])
     // deployed layout, where only the plugins/ folder shipped with the app is
     // available (no qoffscreen/qwindows platform plugin required).
     const bool tlsOk = QSslSocket::supportsSsl();
-    QLibrary ctranslate2(QStringLiteral("ctranslate2"));
-    const bool ctranslate2Ok = ctranslate2.load();
-    QLibrary llama(QStringLiteral("llama"));
+    const QDir binaryDirectory(QCoreApplication::applicationDirPath());
+    QLibrary llama(binaryDirectory.filePath(QStringLiteral("llama")));
     const bool llamaOk = llama.load();
+    QLibrary ggml(binaryDirectory.filePath(QStringLiteral("ggml")));
+    using LoadBackends = void (*)(const char*);
+    using DeviceCount = size_t (*)();
+    const auto loadBackends = reinterpret_cast<LoadBackends>(ggml.resolve("ggml_backend_load_all_from_path"));
+    const auto deviceCount = reinterpret_cast<DeviceCount>(ggml.resolve("ggml_backend_dev_count"));
+    if (loadBackends) {
+        loadBackends(binaryDirectory.absolutePath().toUtf8().constData());
+    }
+    const bool cpuBackendOk = deviceCount && deviceCount() > 0;
 
-    const bool ok = tlsOk && ctranslate2Ok && llamaOk;
+    const bool ok = tlsOk && llamaOk && cpuBackendOk;
     QTextStream output(stdout);
     output << "SnipNexs " << QCoreApplication::applicationVersion() << '\n'
            << "tls: " << (tlsOk ? "ok" : "failed")
            << " (" << QSslSocket::sslLibraryVersionString() << ")\n"
-           << "ctranslate2: " << (ctranslate2Ok ? "ok" : "failed");
-    if (!ctranslate2Ok) {
-        output << " (" << ctranslate2.errorString() << ')';
-    }
-    output << '\n'
            << "llama: " << (llamaOk ? "ok" : "failed");
     if (!llamaOk) {
         output << " (" << llama.errorString() << ')';
     }
     output << '\n'
+           << "cpu-backend: " << (cpuBackendOk ? "ok" : "failed") << '\n'
            << "runtime-self-test: " << (ok ? "ok" : "failed") << '\n';
     output.flush();
     return ok ? 0 : 1;
@@ -137,7 +147,12 @@ int runSelfTest(
     const bool versionOk = !QCoreApplication::applicationVersion().isEmpty();
     const bool qtOk = QLibraryInfo::version() >= QVersionNumber(6, 8);
     snipnexs::MainWindow window;
-    snipnexs::CaptureController captureController(window);
+    QDir().mkpath(QStringLiteral("test-temp"));
+    QTemporaryDir historyDirectory(QDir::current().filePath(QStringLiteral("test-temp/self-test-XXXXXX")));
+    if (!historyDirectory.isValid()) {
+        return 1;
+    }
+    snipnexs::CaptureController captureController(window, nullptr, historyDirectory.path());
     snipnexs::RecorderController recorderController(window);
     snipnexs::GlobalHotkey captureHotkey;
     QString language = QString::fromLatin1(kChineseLanguage);

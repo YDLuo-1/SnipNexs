@@ -1,5 +1,15 @@
 # 本地翻译引擎选型决策
 
+## 当前决策：仅使用 Hy-MT2（0.8.4，2026-11-04）
+
+按用户要求删除快速翻译路径，Hy-MT2-1.8B Q4_K_M 成为唯一本地引擎。保留当前 llama.cpp 固定提交和模型 SHA-256，不更换模型或采样策略。移除 OPUS-MT 模型目录、CTranslate2 / SentencePiece 构建依赖、快速引擎实现和界面切换。
+
+引擎固定为 Hy-MT2，不保存引擎选择设置，不提供旧配置迁移逻辑。普通和逐行对照共用 Hy-MT2，保留取消、长文本分段、输出上限错误与 session 复用。代价是 CPU 推理较慢及约 1.1 GB 模型体积；高质量不等于保证译文准确。
+
+离线包只包含 Hy-MT2。打包迁移将旧快速模型留在 `user-data` 中以便恢复，不加入新部署。联网下载测试改为 `SNIPNEXS_TEST_LLAMA_DOWNLOAD=1` 显式启用的完整模型下载，默认跳过，避免隐式下载大文件。
+
+**以下为历史决策与验证记录，不代表 0.8.4 的当前引擎配置。**
+
 状态：已采纳并随 v0.8.0 发布（2026-10-03）
 决策日期：2026-08-28
 关联文档：[架构约束](architecture.md)、[依赖与许可](dependencies.md)、[第三方声明](../THIRD_PARTY_NOTICES.md)
@@ -120,3 +130,12 @@ OPUS-MT 属于"快速可用的粗翻"：对短句、日常文本够用，但断�
 - 若 CTranslate2 在 MSVC 上出现无法修复的构建/运行回归，转评 Bergamot 或 ONNX Runtime，并更新本文档。
 - 若用户实际反馈"要求装 Ollama 可接受且质量需求强烈"，再启用 Ollama 后端（预期为一个独立的 HTTP 后端实现，不改上层）。
 - 若模型包的分发成本（GitHub Release 在部分网络的可达性）成为实际障碍，增设镜像配置项，不改变包格式与校验机制。**已实现**：`QSettings` 键 `translation/modelBaseUrl` 可覆盖分发基址（http(s)/file URL，目录布局需与 Release 一致），SHA-256 校验与来源无关，始终生效。
+
+## 0.8.3 修复补充（2026-10-30）
+
+- Windows OCR 的 `RecognizerLanguage` 是识别器配置，不是输入文本语言。Latin 文字在已安装英语能力时重试英语识别器；翻译自动方向使用当前编辑文本的脚本特征，提供显式目标选择。
+- OPUS 英译中词表要求原始 `>>cmn_Hans<<` 前缀。普通与对照路径均保留句子边界，并对每个句子按实际 token 分块（240 token）；`max_input_length=0` 禁止底层悄悄丢弃末尾。
+- CTranslate2 4.8.1 的逐 token 回调仅支持 greedy search。为在取消/退出时及时停止推理，使用 `beam_size=1`；仍为 FLOAT32/单 worker，模型和依赖版本不变。真实模型回归检查简体目标、数字、长行尾部及取消后的 session 复用；这不替代通用翻译质量评测。
+- Hy-MT2 同时遵守 batch 和 context token 上限。到达输出上限而未生成结束标记时，两引擎均显式失败，不呈现不完整译文。
+
+- 两套已发布模型的 `config.json` 均为 `add_source_eos=false`（通过 Transformers 转换）。SentencePiece 输出后必须显式追加 `</s>`，否则 decoder 可能反复生成译文。这个要求见 [CTranslate2 的 Transformers 特殊 token 说明](https://opennmt.net/CTranslate2/guides/transformers.html#special-tokens-in-translation)，与多语目标前缀分别处理。
