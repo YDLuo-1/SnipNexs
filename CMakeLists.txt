@@ -551,7 +551,8 @@ if(BUILD_TESTING)
         target_compile_options(WindowsOcrTests PRIVATE /W4 /permissive- /utf-8 /EHsc)
     endif()
     add_test(NAME WindowsOcrTests COMMAND WindowsOcrTests)
-    set_tests_properties(WindowsOcrTests PROPERTIES
+    add_test(NAME WindowsChineseOcrTests COMMAND WindowsOcrTests --chinese)
+    set_tests_properties(WindowsOcrTests WindowsChineseOcrTests PROPERTIES
         SKIP_RETURN_CODE 77
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
         ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"

@@ -80,6 +80,24 @@ int main(int argc, char* argv[])
         return 77;
     }
 
+    if (app.arguments().contains(QStringLiteral("--chinese"))) {
+        // The production path uses the user's default recognizer, not whichever
+        // language a fixture happens to contain. CI normally selects en-US.
+        if (!result.languageTag.startsWith(QStringLiteral("zh"), Qt::CaseInsensitive)) {
+            QTextStream(stdout) << "Chinese OCR: skipped (default recognizer is "
+                                << result.languageTag << ", requires Chinese)\n";
+            return 77;
+        }
+        const auto chinese = snipnexs::windows_ocr::recognize(createTestImage(
+            L"你好世界", L"打开文件", 75));
+        const bool ok = chinese.error.isEmpty()
+            && chinese.text.contains(QStringLiteral("你好世界"))
+            && chinese.text.contains(QStringLiteral("打开文件"));
+        QTextStream(stdout) << "Chinese OCR: " << chinese.text << '\n'
+                            << (ok ? "windows chinese ocr: ok" : "windows chinese ocr: failed") << '\n';
+        return ok ? 0 : 1;
+    }
+
     bool ok = result.text.contains(QStringLiteral("1234567890"))
         && result.text.contains(QStringLiteral("0987654321"));
     // The line list drives the bilingual view: joining it must reproduce the
@@ -94,11 +112,6 @@ int main(int argc, char* argv[])
     ok &= english.error.isEmpty() && english.text.contains(QStringLiteral("Hello world"))
         && english.text.contains(QStringLiteral("Open the file"));
     QTextStream(stdout) << "English OCR: " << english.text << " (" << english.languageTag << ")\n";
-    const auto chinese = snipnexs::windows_ocr::recognize(createTestImage(
-        L"你好世界", L"打开文件", 75));
-    ok &= chinese.error.isEmpty() && chinese.text.contains(QStringLiteral("你好世界"))
-        && chinese.text.contains(QStringLiteral("打开文件"));
-    QTextStream(stdout) << "Chinese OCR: " << chinese.text << '\n';
     QTextStream(stdout) << (ok ? "windows ocr: ok" : "windows ocr: failed")
                         << " (" << result.languageTag << ", " << result.elapsedMs << " ms, text="
                         << result.text << ")\n";
